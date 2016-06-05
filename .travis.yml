@@ -1,0 +1,17 @@
+language: python
+python:
+    - "2.7"
+    - "3.4"
+    - "3.5"
+install:
+    - pip install coveralls
+    - pip install -r requirements.txt
+    - pip install -r test-requirements.txt
+script:
+    - flake8 stockstats.py test.py
+    - py.test --cov=stockstats --junit-xml=junit-result.xml --cov-report term-missing test.py
+after_success:
+    - coveralls
+notifications:
+    email:
+        - jealous@163.com
