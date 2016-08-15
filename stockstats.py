@@ -640,6 +640,9 @@ class StockDataFrame(pd.DataFrame):
             index_column = 'date'
 
         if isinstance(value, pd.DataFrame):
+            # use all lower case for column name
+            value.columns = map(lambda c: c.lower(), value.columns)
+
             if index_column in value.columns:
                 value.set_index(index_column, inplace=True)
             value = StockDataFrame(value)
