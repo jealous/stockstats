@@ -368,3 +368,8 @@ class StockDataFrameTest(TestCase):
                     only_contains(20110106, 20110107, 20110110))
         assert_that(stock.in_date_delta(3, 20110110).index,
                     only_contains(20110110, 20110111, 20110112, 20110113))
+
+    def test_rsv_nan_value(self):
+        s = Sdf.retype(pd.read_csv(get_file('asml.as.csv')))
+        df = Sdf.retype(s)
+        assert_that(df['rsv_9'][0], equal_to(0.0))

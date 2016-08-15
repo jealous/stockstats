@@ -248,8 +248,8 @@ class StockDataFrame(pd.DataFrame):
         high_max = df['high'].rolling(min_periods=1, window=n_days,
                                       center=False).max()
 
-        df[column_name] = ((df['close'] - low_min) /
-                           (high_max - low_min).astype('float64') * 100)
+        cv = (df['close'] - low_min) / (high_max - low_min)
+        df[column_name] = cv.fillna(0).astype('float64') * 100
 
     @classmethod
     def _get_kdj_default(cls, df):
