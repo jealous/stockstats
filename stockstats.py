@@ -251,6 +251,52 @@ class StockDataFrame(pd.DataFrame):
         cv = (df['close'] - low_min) / (high_max - low_min)
         df[column_name] = cv.fillna(0).astype('float64') * 100
 
+    @staticmethod
+    def _positive_sum(data):
+        data = [i if i > 0 else 0 for i in data]
+        ret = data[0]
+        for i in data[1:]:
+            ret = (ret * (len(data) - 1) + i) / len(data)
+        return ret
+
+    @staticmethod
+    def _negative_sum(data):
+        data = [-i if i < 0 else 0 for i in data]
+        ret = data[0]
+        for i in data[1:]:
+            ret = (ret * (len(data) - 1) + i) / len(data)
+        return ret
+
+    # noinspection PyUnresolvedReferences
+    @classmethod
+    def _get_rsi(cls, df, n_days):
+        """ Calculate the RSI (Relative Strength Index) within N days
+
+        calculated based on the formula at:
+        https://en.wikipedia.org/wiki/Relative_strength_index
+
+        :param df: data
+        :param n_days: N days
+        :return: None
+        """
+        n_days = int(n_days)
+        d = df['close_-1_d']
+        p_values = (d + d.abs()) / 2
+        n_values = (-d + d.abs()) / 2
+
+        p_ema = p_values.ewm(
+            ignore_na=False, alpha=1.0 / n_days,
+            min_periods=0, adjust=True).mean()
+
+        n_ema = n_values.ewm(
+            ignore_na=False, alpha=1.0 / n_days,
+            min_periods=0, adjust=True).mean()
+
+        rs_column_name = 'rs_{}'.format(n_days)
+        rsi_column_name = 'rsi_{}'.format(n_days)
+        df[rs_column_name] = rs = p_ema / n_ema
+        df[rsi_column_name] = 100 - 100 / (1.0 + rs)
+
     @classmethod
     def _get_kdj_default(cls, df):
         """ default KDJ, 9 days

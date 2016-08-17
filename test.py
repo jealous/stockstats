@@ -38,6 +38,7 @@ __author__ = 'Cedric Zhuang'
 
 
 def get_file(filename):
+    filename = os.path.join('test_data', filename)
     return os.path.join(os.path.split(__file__)[0], filename)
 
 
@@ -373,3 +374,12 @@ class StockDataFrameTest(TestCase):
         s = Sdf.retype(pd.read_csv(get_file('asml.as.csv')))
         df = Sdf.retype(s)
         assert_that(df['rsv_9'][0], equal_to(0.0))
+
+    def test_get_rsi(self):
+        stock = Sdf.retype(pd.read_csv(get_file('002032.csv')))
+        stock.get('rsi_6')
+        stock.get('rsi_12')
+        stock.get('rsi_24')
+        assert_that(stock.ix[20160817]['rsi_6'], close_to(71.31, 0.01))
+        assert_that(stock.ix[20160817]['rsi_12'], close_to(63.11, 0.01))
+        assert_that(stock.ix[20160817]['rsi_24'], close_to(61.31, 0.01))

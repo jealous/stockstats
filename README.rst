@@ -2,16 +2,16 @@ Stock Statistics/Indicators Calculation Helper
 ==============================================
 
 .. image:: https://travis-ci.org/jealous/stockstats.svg
-    :target: https://travis-ci.org/jealous/stockstats
+:target: https://travis-ci.org/jealous/stockstats
     
 .. image:: https://coveralls.io/repos/jealous/stockstats/badge.svg
-    :target: https://coveralls.io/github/jealous/stockstats
+:target: https://coveralls.io/github/jealous/stockstats
 
 .. image:: https://img.shields.io/pypi/v/stockstats.svg
-    :target: https://pypi.python.org/pypi/stockstats
+:target: https://pypi.python.org/pypi/stockstats
 
 
-VERSION: 0.1.2
+VERSION: 0.1.3
 
 Introduction
 ------------
@@ -33,6 +33,7 @@ Supported statistics/indicators are:
 - MSTD: moving standard deviation
 - MVAR: moving variance
 - RSV: raw stochastic value
+- RSI: relative strength index
 - KDJ: Stochastic oscillator
 - Bolling: including upper band and lower band.
 - MACD: moving average convergence divergence.  Including signal and histogram.
@@ -130,6 +131,11 @@ Tutorial
 
     # CR MA2 cross up CR MA1 in 20 days count
     stock['cr-ma2_xu_cr-ma1_20_c']
+
+    # 6 days RSI
+    stock['rsi_6']
+    # 12 days RSI
+    stock['rsi_12']
 
 
 To file issue, please visit:
