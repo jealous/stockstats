@@ -343,6 +343,15 @@ class StockDataFrame(pd.DataFrame):
         df['middle'] = (df['close'] + df['high'] + df['low']) / 3.0
 
     @classmethod
+    def _calc_kd(cls, column):
+        param0, param1 = cls.KDJ_PARAM
+        k = 50.0
+        # noinspection PyTypeChecker
+        for i in param1 * column:
+            k = param0 * k + i
+            yield k
+
+    @classmethod
     def _get_kdjk(cls, df, n_days):
         """ Get the K of KDJ
 
@@ -354,15 +363,7 @@ class StockDataFrame(pd.DataFrame):
         """
         rsv_column = 'rsv_{}'.format(n_days)
         k_column = 'kdjk_{}'.format(n_days)
-        df.get(rsv_column)
-        prev_k = 50.0
-        kdj_k = []
-        for i in df.index:
-            record = df.ix[i]
-            prev_k = cls.KDJ_PARAM[0] * prev_k + cls.KDJ_PARAM[1] * record[
-                rsv_column]
-            kdj_k.append(prev_k)
-        df[k_column] = kdj_k
+        df[k_column] = list(cls._calc_kd(df.get(rsv_column)))
 
     @classmethod
     def _get_kdjd(cls, df, n_days):
@@ -376,15 +377,7 @@ class StockDataFrame(pd.DataFrame):
         """
         k_column = 'kdjk_{}'.format(n_days)
         d_column = 'kdjd_{}'.format(n_days)
-        df.get(k_column)
-        prev_d = 50.0
-        kdj_d = []
-        for i in df.index:
-            record = df.ix[i]
-            prev_d = cls.KDJ_PARAM[0] * prev_d + cls.KDJ_PARAM[1] * record[
-                k_column]
-            kdj_d.append(prev_d)
-        df[d_column] = kdj_d
+        df[d_column] = list(cls._calc_kd(df.get(k_column)))
 
     @staticmethod
     def _get_kdjj(df, n_days):
