@@ -23,7 +23,6 @@
 # ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 from __future__ import unicode_literals
 
 import os
@@ -44,6 +43,7 @@ def get_file(filename):
 
 class StockDataFrameTest(TestCase):
     _stock = Sdf.retype(pd.read_csv(get_file('987654.csv')))
+    _supor = Sdf.retype(pd.read_csv(get_file('002032.csv')))
 
     def get_stock_20day(self):
         return self.get_stock().within(20110101, 20110120)
@@ -376,10 +376,15 @@ class StockDataFrameTest(TestCase):
         assert_that(df['rsv_9'][0], equal_to(0.0))
 
     def test_get_rsi(self):
-        stock = Sdf.retype(pd.read_csv(get_file('002032.csv')))
-        stock.get('rsi_6')
-        stock.get('rsi_12')
-        stock.get('rsi_24')
-        assert_that(stock.ix[20160817]['rsi_6'], close_to(71.31, 0.01))
-        assert_that(stock.ix[20160817]['rsi_12'], close_to(63.11, 0.01))
-        assert_that(stock.ix[20160817]['rsi_24'], close_to(61.31, 0.01))
+        self._supor.get('rsi_6')
+        self._supor.get('rsi_12')
+        self._supor.get('rsi_24')
+        assert_that(self._supor.ix[20160817]['rsi_6'], close_to(71.31, 0.01))
+        assert_that(self._supor.ix[20160817]['rsi_12'], close_to(63.11, 0.01))
+        assert_that(self._supor.ix[20160817]['rsi_24'], close_to(61.31, 0.01))
+
+    def test_get_wr(self):
+        self._supor.get('wr_10')
+        self._supor.get('wr_6')
+        assert_that(self._supor.ix[20160817]['wr_10'], close_to(13.06, 0.01))
+        assert_that(self._supor.ix[20160817]['wr_6'], close_to(16.53, 0.01))

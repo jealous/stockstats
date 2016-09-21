@@ -11,7 +11,7 @@ Stock Statistics/Indicators Calculation Helper
 :target: https://pypi.python.org/pypi/stockstats
 
 
-VERSION: 0.1.4
+VERSION: 0.1.5
 
 Introduction
 ------------
@@ -38,6 +38,7 @@ Supported statistics/indicators are:
 - Bolling: including upper band and lower band.
 - MACD: moving average convergence divergence.  Including signal and histogram.
 - CR:
+- WR: Williams Overbought/Oversold index
 - line cross check, cross up or cross down.
 
 
@@ -136,6 +137,11 @@ Tutorial
     stock['rsi_6']
     # 12 days RSI
     stock['rsi_12']
+
+    # 10 days WR
+    stock['wr_10']
+    # 6 days WR
+    stock['wr_6']
 
 
 To file issue, please visit:

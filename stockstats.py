@@ -298,6 +298,28 @@ class StockDataFrame(pd.DataFrame):
         df[rsi_column_name] = 100 - 100 / (1.0 + rs)
 
     @classmethod
+    def _get_wr(cls, df, n_days):
+        """ Williams Overbought/Oversold Index
+
+        WMS=[(Hn—Ct)/(Hn—Ln)] ×100
+        Ct - the close price
+        Hn - N days high
+        Ln - N days low
+
+        :param df: data
+        :param n_days: N days
+        :return: None
+        """
+        n_days = int(n_days)
+        ln = df['low'].rolling(min_periods=1, window=n_days,
+                               center=False).min()
+
+        hn = df['high'].rolling(min_periods=1, window=n_days,
+                                center=False).max()
+        column_name = 'wr_{}'.format(n_days)
+        df[column_name] = (hn - df['close']) / (hn - ln) * 100
+
+    @classmethod
     def _get_kdj_default(cls, df):
         """ default KDJ, 9 days
 
