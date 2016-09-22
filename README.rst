@@ -2,16 +2,16 @@ Stock Statistics/Indicators Calculation Helper
 ==============================================
 
 .. image:: https://travis-ci.org/jealous/stockstats.svg
-:target: https://travis-ci.org/jealous/stockstats
+    :target: https://travis-ci.org/jealous/stockstats
     
 .. image:: https://coveralls.io/repos/jealous/stockstats/badge.svg
-:target: https://coveralls.io/github/jealous/stockstats
+    :target: https://coveralls.io/github/jealous/stockstats
 
 .. image:: https://img.shields.io/pypi/v/stockstats.svg
-:target: https://pypi.python.org/pypi/stockstats
+    :target: https://pypi.python.org/pypi/stockstats
 
 
-VERSION: 0.1.5
+VERSION: 0.1.6
 
 Introduction
 ------------
@@ -39,6 +39,7 @@ Supported statistics/indicators are:
 - MACD: moving average convergence divergence.  Including signal and histogram.
 - CR:
 - WR: Williams Overbought/Oversold index
+- CCI: Commodity Channel Index
 - line cross check, cross up or cross down.
 
 
@@ -142,6 +143,11 @@ Tutorial
     stock['wr_10']
     # 6 days WR
     stock['wr_6']
+
+    # CCI, default to 14 days
+    stock['cci']
+    # 20 days CCI
+    stock['cci_20']
 
 
 To file issue, please visit:

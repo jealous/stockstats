@@ -388,3 +388,11 @@ class StockDataFrameTest(TestCase):
         self._supor.get('wr_6')
         assert_that(self._supor.ix[20160817]['wr_10'], close_to(13.06, 0.01))
         assert_that(self._supor.ix[20160817]['wr_6'], close_to(16.53, 0.01))
+
+    def test_get_cci(self):
+        self._supor.get('cci_14')
+        self._supor.get('cci')
+        assert_that(self._supor.ix[20160817]['cci'], close_to(50, 0.01))
+        assert_that(self._supor.ix[20160817]['cci_14'], close_to(50, 0.01))
+        assert_that(self._supor.ix[20160816]['cci_14'], close_to(24.8, 0.01))
+        assert_that(self._supor.ix[20160815]['cci_14'], close_to(-26.46, 0.01))

@@ -320,6 +320,33 @@ class StockDataFrame(pd.DataFrame):
         df[column_name] = (hn - df['close']) / (hn - ln) * 100
 
     @classmethod
+    def _get_cci(cls, df, n_days=None):
+        """ Commodity Channel Index
+
+        CCI = (Typical Price  -  20-period SMA of TP) / (.015 x Mean Deviation)
+        Typical Price (TP) = (High + Low + Close)/3
+        TP is also implemented as 'middle'.
+
+        :param df: data
+        :param n_days: N days window
+        :return: None
+        """
+        if n_days is None:
+            n_days = 14
+            column_name = 'cci'
+        else:
+            n_days = int(n_days)
+            column_name = 'cci_{}'.format(n_days)
+
+        tp = df['middle']
+        tp_sma = df['middle_{}_sma'.format(n_days)]
+        md = df['middle'].rolling(
+            min_periods=1, center=False, window=n_days).apply(
+            lambda x: np.fabs(x - x.mean()).mean())
+
+        df[column_name] = (tp - tp_sma) / (.015 * md)
+
+    @classmethod
     def _get_kdj_default(cls, df):
         """ default KDJ, 9 days
 
@@ -626,6 +653,8 @@ class StockDataFrame(pd.DataFrame):
             cls._get_kdj_default(df)
         elif key in ['cr', 'cr-ma1', 'cr-ma2', 'cr-ma3']:
             cls._get_cr(df)
+        elif key in ['cci']:
+            cls._get_cci(df)
         elif key == 'log-ret':
             cls._get_log_ret(df)
         elif key.endswith('_delta'):
