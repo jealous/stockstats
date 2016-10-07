@@ -396,3 +396,17 @@ class StockDataFrameTest(TestCase):
         assert_that(self._supor.ix[20160817]['cci_14'], close_to(50, 0.01))
         assert_that(self._supor.ix[20160816]['cci_14'], close_to(24.8, 0.01))
         assert_that(self._supor.ix[20160815]['cci_14'], close_to(-26.46, 0.01))
+
+    def test_get_atr(self):
+        self._supor.get('atr_14')
+        self._supor.get('atr')
+        assert_that(self._supor.ix[20160817]['atr_14'], close_to(1.33, 0.01))
+        assert_that(self._supor.ix[20160817]['atr'], close_to(1.33, 0.01))
+        assert_that(self._supor.ix[20160816]['atr'], close_to(1.32, 0.01))
+        assert_that(self._supor.ix[20160815]['atr'], close_to(1.28, 0.01))
+
+    def _test_get_sma_tr(self):
+        c = self._supor.get('tr_14_sma')
+        assert_that(c.ix[20160817], close_to(1.33, 0.01))
+        assert_that(c.ix[20160816], close_to(1.37, 0.01))
+        assert_that(c.ix[20160815], close_to(1.47, 0.01))

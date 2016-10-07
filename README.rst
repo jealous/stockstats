@@ -11,7 +11,7 @@ Stock Statistics/Indicators Calculation Helper
     :target: https://pypi.python.org/pypi/stockstats
 
 
-VERSION: 0.1.6
+VERSION: 0.1.7
 
 Introduction
 ------------
@@ -40,6 +40,8 @@ Supported statistics/indicators are:
 - CR:
 - WR: Williams Overbought/Oversold index
 - CCI: Commodity Channel Index
+- TR: true range
+- ATR: average true range
 - line cross check, cross up or cross down.
 
 
@@ -148,6 +150,11 @@ Tutorial
     stock['cci']
     # 20 days CCI
     stock['cci_20']
+
+    # TR (true range)
+    stock['tr']
+    # ATR (Average True Range)
+    stock['atr']
 
 
 To file issue, please visit:

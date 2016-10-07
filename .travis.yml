@@ -4,6 +4,8 @@ python:
     - "3.4"
     - "3.5"
 install:
+    - sudo apt-get install python-numpy
+    - sudo apt-get install python-pandas
     - pip install coveralls
     - pip install -r requirements.txt
     - pip install -r test-requirements.txt

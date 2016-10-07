@@ -347,6 +347,44 @@ class StockDataFrame(pd.DataFrame):
         df[column_name] = (tp - tp_sma) / (.015 * md)
 
     @classmethod
+    def _get_tr(cls, df):
+        """ True Range of the trading
+
+        tr = max[(high - low), abs(high - close_prev), abs(low - close_prev)]
+        :param df: data
+        :return: None
+        """
+        prev_close = df['close_-1_s']
+        high = df['high']
+        low = df['low']
+        c1 = high - low
+        c2 = np.abs(high - prev_close)
+        c3 = np.abs(low - prev_close)
+        df['tr'] = np.max((c1, c2, c3), axis=0)
+
+    @classmethod
+    def _get_atr(cls, df, window=None):
+        """ Average True Range
+
+        The average true range is an N-day smoothed moving average (SMMA) of
+        the true range values.  Default to 14 days.
+        https://en.wikipedia.org/wiki/Average_true_range
+
+        :param df: data
+        :return: None
+        """
+        if window is None:
+            window = 14
+            column_name = 'atr'
+        else:
+            window = int(window)
+            column_name = 'atr_{}'.format(window)
+        atr = df['tr'].ewm(
+            ignore_na=False, alpha=1.0 / window,
+            min_periods=0, adjust=True).mean()
+        df[column_name] = atr
+
+    @classmethod
     def _get_kdj_default(cls, df):
         """ default KDJ, 9 days
 
@@ -655,6 +693,10 @@ class StockDataFrame(pd.DataFrame):
             cls._get_cr(df)
         elif key in ['cci']:
             cls._get_cci(df)
+        elif key in ['tr']:
+            cls._get_tr(df)
+        elif key in ['atr']:
+            cls._get_atr(df)
         elif key == 'log-ret':
             cls._get_log_ret(df)
         elif key.endswith('_delta'):
