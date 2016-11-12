@@ -385,6 +385,118 @@ class StockDataFrame(pd.DataFrame):
         df[column_name] = atr
 
     @classmethod
+    def _get_dma(cls, df):
+        """ Different of Moving Average
+
+        default to 10 and 50.
+        :param df: data
+        :return: None
+        """
+        df['dma'] = df['close_10_sma'] - df['close_50_sma']
+
+    @classmethod
+    def _get_dmi(cls, df):
+        """ get the default setting for DMI
+
+        including:
+        +DI: 14 days SMMA of +DM,
+        -DI: 14 days SMMA of -DM,
+        DX: based on +DI and -DI
+        ADX: 6 days SMMA of DX
+        :param df: data
+        :return:
+        """
+        df['pdi'] = cls._get_pdi(df, 14)
+        df['mdi'] = cls._get_mdi(df, 14)
+        df['dx'] = cls._get_dx(df, 14)
+        df['adx'] = df['dx_6_ema']
+        df['adxr'] = df['adx_6_ema']
+
+    @classmethod
+    def _get_um_dm(cls, df):
+        """ Up move and down move
+
+        initialize up move and down move
+        :param df: data
+        """
+        hd = df['high_delta']
+        df['um'] = (hd + hd.abs()) / 2
+        ld = -df['low_delta']
+        df['dm'] = (ld + ld.abs()) / 2
+
+    @classmethod
+    def _get_pdm(cls, df, windows):
+        """ +DM, positive directional moving
+
+        If window is not 1, calculate the SMMA of +DM
+        :param df: data
+        :param windows: range
+        :return:
+        """
+        window = cls.get_only_one_positive_int(windows)
+        column_name = 'pdm_{}'.format(window)
+        um, dm = df['um'], df['dm']
+        df['pdm'] = np.where(um > dm, um, 0)
+        if window > 1:
+            pdm = df['pdm_{}_ema'.format(window)]
+        else:
+            pdm = df['pdm']
+        df[column_name] = pdm
+
+    @classmethod
+    def _get_mdm(cls, df, windows):
+        """ -DM, negative directional moving accumulation
+
+        If window is not 1, return the SMA of -DM.
+        :param df: data
+        :param windows: range
+        :return:
+        """
+        window = cls.get_only_one_positive_int(windows)
+        column_name = 'mdm_{}'.format(window)
+        um, dm = df['um'], df['dm']
+        df['mdm'] = np.where(dm > um, dm, 0)
+        if window > 1:
+            mdm = df['mdm_{}_ema'.format(window)]
+        else:
+            mdm = df['mdm']
+        df[column_name] = mdm
+
+    @classmethod
+    def _get_pdi(cls, df, windows):
+        """ +DI, positive directional moving index
+
+        :param df: data
+        :param windows: range
+        :return:
+        """
+        window = cls.get_only_one_positive_int(windows)
+        pdm_column = 'pdm_{}'.format(window)
+        tr_column = 'atr_{}'.format(window)
+        pdi_column = 'pdi_{}'.format(window)
+        df[pdi_column] = df[pdm_column] / df[tr_column] * 100
+        return df[pdi_column]
+
+    @classmethod
+    def _get_mdi(cls, df, windows):
+        window = cls.get_only_one_positive_int(windows)
+        mdm_column = 'mdm_{}'.format(window)
+        tr_column = 'atr_{}'.format(window)
+        mdi_column = 'mdi_{}'.format(window)
+        df[mdi_column] = df[mdm_column] / df[tr_column] * 100
+        return df[mdi_column]
+
+    @classmethod
+    def _get_dx(cls, df, windows):
+        window = cls.get_only_one_positive_int(windows)
+        dx_column = 'dx_{}'.format(window)
+        mdi_column = 'mdi_{}'.format(window)
+        pdi_column = 'pdi_{}'.format(window)
+        mdi, pdi = df[mdi_column], df[pdi_column]
+        df[dx_column] = abs(pdi - mdi) / (pdi + mdi) * 100
+        return df[dx_column]
+
+    @classmethod
     def _get_kdj_default(cls, df):
         """ default KDJ, 9 days
 
@@ -492,8 +604,8 @@ class StockDataFrame(pd.DataFrame):
         df[column_name] = df[column] - df[shift_column]
         StockDataFrame.set_nan(df[column_name], shift)
 
-    @staticmethod
-    def _get_sma(df, column, windows):
+    @classmethod
+    def _get_sma(cls, df, column, windows):
         """ get simple moving average
 
         :param df: data
@@ -501,7 +613,7 @@ class StockDataFrame(pd.DataFrame):
         :param windows: collection of window of simple moving average
         :return: None
         """
-        window = StockDataFrame.get_only_one_positive_int(windows)
+        window = cls.get_only_one_positive_int(windows)
         column_name = '{}_{}_sma'.format(column, window)
         df[column_name] = df[column].rolling(min_periods=1, window=window,
                                              center=False).mean()
@@ -573,9 +685,12 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def get_only_one_positive_int(cls, windows):
-        window = cls.to_int(windows)
-        if window <= 0:
-            raise IndexError("window must be greater than 0")
+        if isinstance(windows, int):
+            window = windows
+        else:
+            window = cls.to_int(windows)
+            if window <= 0:
+                raise IndexError("window must be greater than 0")
         return window
 
     @classmethod
@@ -697,6 +812,12 @@ class StockDataFrame(pd.DataFrame):
             cls._get_tr(df)
         elif key in ['atr']:
             cls._get_atr(df)
+        elif key in ['um', 'dm']:
+            cls._get_um_dm(df)
+        elif key in ['pdi', 'mdi', 'dx', 'adx', 'adxr']:
+            cls._get_dmi(df)
+        elif key in ['dma']:
+            cls._get_dma(df)
         elif key == 'log-ret':
             cls._get_log_ret(df)
         elif key.endswith('_delta'):

@@ -405,8 +405,44 @@ class StockDataFrameTest(TestCase):
         assert_that(self._supor.ix[20160816]['atr'], close_to(1.32, 0.01))
         assert_that(self._supor.ix[20160815]['atr'], close_to(1.28, 0.01))
 
-    def _test_get_sma_tr(self):
+    def test_get_sma_tr(self):
         c = self._supor.get('tr_14_sma')
         assert_that(c.ix[20160817], close_to(1.33, 0.01))
         assert_that(c.ix[20160816], close_to(1.37, 0.01))
         assert_that(c.ix[20160815], close_to(1.47, 0.01))
+
+    def test_get_dma(self):
+        c = self._supor.get('dma')
+        assert_that(c.ix[20160817], close_to(2.08, 0.01))
+        assert_that(c.ix[20160816], close_to(2.15, 0.01))
+        assert_that(c.ix[20160815], close_to(2.27, 0.01))
+
+    def test_get_pdi(self):
+        c = self._supor.get('pdi')
+        assert_that(c.ix[20160817], close_to(24.60, 0.01))
+        assert_that(c.ix[20160816], close_to(28.60, 0.01))
+        assert_that(c.ix[20160815], close_to(21.23, 0.01))
+
+    def test_get_mdi(self):
+        c = self._supor.get('mdi')
+        assert_that(c.ix[20160817], close_to(13.60, 0.01))
+        assert_that(c.ix[20160816], close_to(15.82, 0.01))
+        assert_that(c.ix[20160815], close_to(18.85, 0.01))
+
+    def test_dx(self):
+        c = self._supor.get('dx')
+        assert_that(c.ix[20160817], close_to(28.78, 0.01))
+        assert_that(c.ix[20160815], close_to(5.95, 0.01))
+        assert_that(c.ix[20160812], close_to(10.05, 0.01))
+
+    def test_adx(self):
+        c = self._supor.get('adx')
+        assert_that(c.ix[20160817], close_to(20.15, 0.01))
+        assert_that(c.ix[20160816], close_to(16.71, 0.01))
+        assert_that(c.ix[20160815], close_to(11.88, 0.01))
+
+    def test_adxr(self):
+        c = self._supor.get('adxr')
+        assert_that(c.ix[20160817], close_to(17.36, 0.01))
+        assert_that(c.ix[20160816], close_to(16.24, 0.01))
+        assert_that(c.ix[20160815], close_to(16.06, 0.01))

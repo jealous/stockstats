@@ -11,7 +11,7 @@ Stock Statistics/Indicators Calculation Helper
     :target: https://pypi.python.org/pypi/stockstats
 
 
-VERSION: 0.1.7
+VERSION: 0.1.8
 
 Introduction
 ------------
@@ -43,6 +43,13 @@ Supported statistics/indicators are:
 - TR: true range
 - ATR: average true range
 - line cross check, cross up or cross down.
+- DMA: Different of Moving Average (10, 50)
+- DMI: Directional Moving Index, including
+
+  - +DI: Positive Directional Indicator
+  - -DI: Negative Directional Indicator
+  - ADX: Average Directional Movement Index
+  - ADXR: Smoothed Moving Average of ADX
 
 
 Installation
@@ -155,6 +162,22 @@ Tutorial
     stock['tr']
     # ATR (Average True Range)
     stock['atr']
+
+    # DMA, difference of 10 and 50 moving average
+    stock['dma']
+
+    # DMI
+    # +DI, default to 14 days
+    stock['pdi']
+    # -DI, default to 14 days
+    stock['mdi]
+    # DX, default to 14 days of +DI and -DI
+    stock['dx']
+    # ADX, 6 days SMA of DX, same as stock['dx_6_ema']
+    stock['adx]
+    # ADXR, 6 days SMA of ADX, same as stock['adx_6_ema']
+    stock['adxr']
+
 
 
 To file issue, please visit:
