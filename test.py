@@ -446,3 +446,15 @@ class StockDataFrameTest(TestCase):
         assert_that(c.ix[20160817], close_to(17.36, 0.01))
         assert_that(c.ix[20160816], close_to(16.24, 0.01))
         assert_that(c.ix[20160815], close_to(16.06, 0.01))
+
+    def test_trix_default(self):
+        c = self._supor.get('trix')
+        assert_that(c.ix[20160817], close_to(0.20, 0.01))
+        assert_that(c.ix[20160816], close_to(0.21, 0.01))
+        assert_that(c.ix[20160815], close_to(0.24, 0.01))
+
+    def test_trix_ma(self):
+        c = self._supor.get('trix_9_sma')
+        assert_that(c.ix[20160817], close_to(0.34, 0.01))
+        assert_that(c.ix[20160816], close_to(0.38, 0.01))
+        assert_that(c.ix[20160815], close_to(0.42, 0.01))

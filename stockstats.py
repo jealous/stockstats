@@ -142,8 +142,8 @@ class StockDataFrame(pd.DataFrame):
         elif shift < 0:
             pd_obj.iloc[:-shift] = val
 
-    @staticmethod
-    def _get_r(df, column, shifts):
+    @classmethod
+    def _get_r(cls, df, column, shifts):
         """ Get rate of change of column
 
         :param df: DataFrame object
@@ -151,7 +151,7 @@ class StockDataFrame(pd.DataFrame):
         :param shifts: days to shift, accept one shift only
         :return: None
         """
-        shift = StockDataFrame.to_int(shifts)
+        shift = cls.to_int(shifts)
         rate_key = '{}_{}_r'.format(column, shift)
         df[rate_key] = df[column].pct_change(periods=-shift) * 100
 
@@ -207,28 +207,26 @@ class StockDataFrame(pd.DataFrame):
                 ret[[0, -1]] = -1, 1
         return ret
 
-    @staticmethod
-    def _init_shifted_columns(column, df, shifts):
+    @classmethod
+    def _init_shifted_columns(cls, column, df, shifts):
         # initialize the column if not
         df.get(column)
-        shifts = StockDataFrame.to_ints(shifts)
+        shifts = cls.to_ints(shifts)
         shift_column_names = ['{}_{}_s'.format(column, shift) for shift in
                               shifts]
         [df.get(name) for name in shift_column_names]
         return shift_column_names
 
-    @staticmethod
-    def _get_max(df, column, shifts):
+    @classmethod
+    def _get_max(cls, df, column, shifts):
         column_name = '{}_{}_max'.format(column, shifts)
-        shift_column_names = StockDataFrame. \
-            _init_shifted_columns(column, df, shifts)
+        shift_column_names = cls._init_shifted_columns(column, df, shifts)
         df[column_name] = np.max(df[shift_column_names], axis=1)
 
-    @staticmethod
-    def _get_min(df, column, shifts):
+    @classmethod
+    def _get_min(cls, df, column, shifts):
         column_name = '{}_{}_min'.format(column, shifts)
-        shift_column_names = StockDataFrame. \
-            _init_shifted_columns(column, df, shifts)
+        shift_column_names = cls._init_shifted_columns(column, df, shifts)
         df[column_name] = np.min(df[shift_column_names], axis=1)
 
     @staticmethod
@@ -243,10 +241,10 @@ class StockDataFrame(pd.DataFrame):
         """
         n_days = int(n_days)
         column_name = 'rsv_{}'.format(n_days)
-        low_min = df['low'].rolling(min_periods=1, window=n_days,
-                                    center=False).min()
-        high_max = df['high'].rolling(min_periods=1, window=n_days,
-                                      center=False).max()
+        low_min = df['low'].rolling(
+            min_periods=1, window=n_days, center=False).min()
+        high_max = df['high'].rolling(
+            min_periods=1, window=n_days, center=False).max()
 
         cv = (df['close'] - low_min) / (high_max - low_min)
         df[column_name] = cv.fillna(0).astype('float64') * 100
@@ -281,21 +279,65 @@ class StockDataFrame(pd.DataFrame):
         """
         n_days = int(n_days)
         d = df['close_-1_d']
-        p_values = (d + d.abs()) / 2
-        n_values = (-d + d.abs()) / 2
 
-        p_ema = p_values.ewm(
-            ignore_na=False, alpha=1.0 / n_days,
-            min_periods=0, adjust=True).mean()
-
-        n_ema = n_values.ewm(
-            ignore_na=False, alpha=1.0 / n_days,
-            min_periods=0, adjust=True).mean()
+        df['closepm'] = (d + d.abs()) / 2
+        df['closenm'] = (-d + d.abs()) / 2
+        closepm_smma_column = 'closepm_{}_smma'.format(n_days)
+        closenm_smma_column = 'closenm_{}_smma'.format(n_days)
+        p_ema = df[closepm_smma_column]
+        n_ema = df[closenm_smma_column]
 
         rs_column_name = 'rs_{}'.format(n_days)
         rsi_column_name = 'rsi_{}'.format(n_days)
         df[rs_column_name] = rs = p_ema / n_ema
         df[rsi_column_name] = 100 - 100 / (1.0 + rs)
+
+        del df['closepm']
+        del df['closenm']
+        del df[closepm_smma_column]
+        del df[closenm_smma_column]
+
+    @classmethod
+    def _get_smma(cls, df, column, windows):
+        """ get smoothed moving average.
+
+        :param df: data
+        :param windows: range
+        :return: result series
+        """
+        window = cls.get_only_one_positive_int(windows)
+        column_name = '{}_{}_smma'.format(column, window)
+        smma = df[column].ewm(
+            ignore_na=False, alpha=1.0 / window,
+            min_periods=0, adjust=True).mean()
+        df[column_name] = smma
+        return smma
+
+    @classmethod
+    def _get_trix(cls, df, column=None, windows=None):
+        if column is None and windows is None:
+            column_name = 'trix'
+        else:
+            column_name = '{}_{}_trix'.format(column, windows)
+
+        if column is None:
+            column = 'close'
+        if windows is None:
+            windows = 12
+        window = cls.get_only_one_positive_int(windows)
+
+        single = '{c}_{w}_ema'.format(c=column, w=window)
+        double = '{c}_{w}_ema_{w}_ema'.format(c=column, w=window)
+        triple = '{c}_{w}_ema_{w}_ema_{w}_ema'.format(c=column, w=window)
+        df['ema3'] = df[triple]
+        prev_ema3 = df['ema3_-1_s']
+        df[column_name] = (df['ema3'] - prev_ema3) * 100 / prev_ema3
+
+        del df[single]
+        del df[double]
+        del df[triple]
+        del df['ema3']
+        del df['ema3_-1_s']
 
     @classmethod
     def _get_wr(cls, df, n_days):
@@ -379,10 +421,10 @@ class StockDataFrame(pd.DataFrame):
         else:
             window = int(window)
             column_name = 'atr_{}'.format(window)
-        atr = df['tr'].ewm(
-            ignore_na=False, alpha=1.0 / window,
-            min_periods=0, adjust=True).mean()
-        df[column_name] = atr
+        tr_smma_column = 'tr_{}_smma'.format(window)
+
+        df[column_name] = df[tr_smma_column]
+        del df[tr_smma_column]
 
     @classmethod
     def _get_dma(cls, df):
@@ -627,7 +669,7 @@ class StockDataFrame(pd.DataFrame):
         :param windows: collection of window of exponential moving average
         :return: None
         """
-        window = StockDataFrame.get_only_one_positive_int(windows)
+        window = cls.get_only_one_positive_int(windows)
         column_name = '{}_{}_ema'.format(column, window)
         if len(df[column]) > 0:
             df[column_name] = df[column].ewm(
@@ -707,8 +749,8 @@ class StockDataFrame(pd.DataFrame):
         df[column_name] = df[column].rolling(min_periods=1, window=window,
                                              center=False).std()
 
-    @staticmethod
-    def _get_mvar(df, column, windows):
+    @classmethod
+    def _get_mvar(cls, df, column, windows):
         """ get moving variance
 
         :param df: data
@@ -716,10 +758,10 @@ class StockDataFrame(pd.DataFrame):
         :param windows: collection of window of moving variance
         :return: None
         """
-        window = StockDataFrame.get_only_one_positive_int(windows)
+        window = cls.get_only_one_positive_int(windows)
         column_name = '{}_{}_mvar'.format(column, window)
-        df[column_name] = df[column].rolling(min_periods=1, window=window,
-                                             center=False).var()
+        df[column_name] = df[column].rolling(
+            min_periods=1, window=window, center=False).var()
 
     @staticmethod
     def parse_column_name(name):
@@ -736,14 +778,13 @@ class StockDataFrame(pd.DataFrame):
 
     CROSS_COLUMN_MATCH_STR = '(.+)_(x|xu|xd)_(.+)'
 
-    @staticmethod
-    def is_cross_columns(name):
-        return re.match(StockDataFrame.CROSS_COLUMN_MATCH_STR,
-                        name) is not None
+    @classmethod
+    def is_cross_columns(cls, name):
+        return re.match(cls.CROSS_COLUMN_MATCH_STR, name) is not None
 
-    @staticmethod
-    def parse_cross_column(name):
-        m = re.match(StockDataFrame.CROSS_COLUMN_MATCH_STR, name)
+    @classmethod
+    def parse_cross_column(cls, name):
+        m = re.match(cls.CROSS_COLUMN_MATCH_STR, name)
         ret = [None, None, None]
         if m is not None:
             ret = m.group(1, 2, 3)
@@ -816,6 +857,8 @@ class StockDataFrame(pd.DataFrame):
             cls._get_um_dm(df)
         elif key in ['pdi', 'mdi', 'dx', 'adx', 'adxr']:
             cls._get_dmi(df)
+        elif key in ['trix']:
+            cls._get_trix(df)
         elif key in ['dma']:
             cls._get_dma(df)
         elif key == 'log-ret':

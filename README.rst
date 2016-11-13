@@ -11,7 +11,7 @@ Stock Statistics/Indicators Calculation Helper
     :target: https://pypi.python.org/pypi/stockstats
 
 
-VERSION: 0.1.8
+VERSION: 0.1.9
 
 Introduction
 ------------
@@ -51,6 +51,7 @@ Supported statistics/indicators are:
   - ADX: Average Directional Movement Index
   - ADXR: Smoothed Moving Average of ADX
 
+- TRIX: Triple Exponential Moving Average
 
 Installation
 ------------
@@ -178,6 +179,11 @@ Tutorial
     # ADXR, 6 days SMA of ADX, same as stock['adx_6_ema']
     stock['adxr']
 
+    # TRIX, default to 12 days
+    stock['trix']
+    # MATRIX is the simple moving average of TRIX
+    stock['trix_9_sma']
+
 
 
 To file issue, please visit:
@@ -190,4 +196,3 @@ Contact author:
 - Cedric Zhuang <jealous@163.com>
 
 .. _BSD: LICENSE.txt
-.. _test.py: test.py
