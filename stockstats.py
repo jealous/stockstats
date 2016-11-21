@@ -486,6 +486,32 @@ class StockDataFrame(pd.DataFrame):
         df[column_name] = pdm
 
     @classmethod
+    def _get_vr(cls, df, windows=None):
+        if windows is None:
+            window = 26
+            column_name = 'vr'
+        else:
+            window = cls.get_only_one_positive_int(windows)
+            column_name = 'vr_{}'.format(window)
+
+        df['av'] = np.where(df['change'] > 0, df['volume'], 0)
+        avs = df['av'].rolling(
+            min_periods=1, window=window, center=False).sum()
+
+        df['bv'] = np.where(df['change'] < 0, df['volume'], 0)
+        bvs = df['bv'].rolling(
+            min_periods=1, window=window, center=False).sum()
+
+        df['cv'] = np.where(df['change'] == 0, df['volume'], 0)
+        cvs = df['cv'].rolling(
+            min_periods=1, window=window, center=False).sum()
+
+        df[column_name] = (avs + cvs / 2) / (bvs + cvs / 2) * 100
+        del df['av']
+        del df['bv']
+        del df['cv']
+
+    @classmethod
     def _get_mdm(cls, df, windows):
         """ -DM, negative directional moving accumulation
 
@@ -859,6 +885,8 @@ class StockDataFrame(pd.DataFrame):
             cls._get_dmi(df)
         elif key in ['trix']:
             cls._get_trix(df)
+        elif key in ['vr']:
+            cls._get_vr(df)
         elif key in ['dma']:
             cls._get_dma(df)
         elif key == 'log-ret':

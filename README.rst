@@ -11,7 +11,7 @@ Stock Statistics/Indicators Calculation Helper
     :target: https://pypi.python.org/pypi/stockstats
 
 
-VERSION: 0.1.9
+VERSION: 0.2.0
 
 Introduction
 ------------
@@ -52,6 +52,7 @@ Supported statistics/indicators are:
   - ADXR: Smoothed Moving Average of ADX
 
 - TRIX: Triple Exponential Moving Average
+- VR: Volatility Volume Ratio
 
 Installation
 ------------
@@ -183,6 +184,11 @@ Tutorial
     stock['trix']
     # MATRIX is the simple moving average of TRIX
     stock['trix_9_sma']
+
+    # VR, default to 26 days
+    stock['vr']
+    # MAVR is the simple moving average of VR
+    stock['vr_6_sma']
 
 
 

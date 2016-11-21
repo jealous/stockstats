@@ -458,3 +458,20 @@ class StockDataFrameTest(TestCase):
         assert_that(c.ix[20160817], close_to(0.34, 0.01))
         assert_that(c.ix[20160816], close_to(0.38, 0.01))
         assert_that(c.ix[20160815], close_to(0.42, 0.01))
+
+    def test_vr_default(self):
+        c = self._supor['vr']
+        assert_that(c.ix[20160817], close_to(153.2, 0.01))
+        assert_that(c.ix[20160816], close_to(171.69, 0.01))
+        assert_that(c.ix[20160815], close_to(178.78, 0.01))
+
+        c = self._supor['vr_26']
+        assert_that(c.ix[20160817], close_to(153.2, 0.01))
+        assert_that(c.ix[20160816], close_to(171.69, 0.01))
+        assert_that(c.ix[20160815], close_to(178.78, 0.01))
+
+    def test_vr_ma(self):
+        c = self._supor['vr_6_sma']
+        assert_that(c.ix[20160817], close_to(182.77, 0.01))
+        assert_that(c.ix[20160816], close_to(190.1, 0.01))
+        assert_that(c.ix[20160815], close_to(197.52, 0.01))
