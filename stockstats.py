@@ -734,7 +734,7 @@ class StockDataFrame(pd.DataFrame):
     def _get_macd(df):
         """ Moving Average Convergence Divergence
 
-        This function will initialize all following columns
+        This function will initialize all following columns.
 
         MACD Line (macd): (12-day EMA - 26-day EMA)
         Signal Line (macds): 9-day EMA of MACD Line
@@ -746,7 +746,8 @@ class StockDataFrame(pd.DataFrame):
         slow = df['close_26_ema']
         df['macd'] = fast - slow
         df['macds'] = df['macd_9_ema']
-        df['macdh'] = 2 * (df['macd'] - df['macds'])
+        df['macdh'] = (df['macd'] - df['macds'])
+        log.critical("NOTE: Behavior of MACDH calculation has changed as of July 2017 - it is now 1/2 of previous calculated values")
         del df['macd_9_ema']
         del fast
         del slow

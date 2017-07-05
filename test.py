@@ -223,7 +223,7 @@ class StockDataFrameTest(TestCase):
         record = stock.ix[20110225]
         assert_that(record['macd'], close_to(-0.0382, 0.0001))
         assert_that(record['macds'], close_to(-0.0101, 0.0001))
-        assert_that(record['macdh'], close_to(-0.0562, 0.0001))
+        assert_that(record['macdh'], close_to(-0.02805, 0.0001))
 
     def test_column_macds(self):
         stock = self.get_stock_90day()
@@ -235,7 +235,7 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_90day()
         stock.get('macdh')
         record = stock.ix[20110225]
-        assert_that(record['macdh'], close_to(-0.0561, 0.0001))
+        assert_that(record['macdh'], close_to(-0.02805, 0.0001))
 
     def test_column_mstd(self):
         stock = self.get_stock_20day()
