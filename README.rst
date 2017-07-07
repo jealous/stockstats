@@ -36,7 +36,7 @@ Supported statistics/indicators are:
 - RSI: relative strength index
 - KDJ: Stochastic oscillator
 - Bolling: including upper band and lower band.
-- MACD: moving average convergence divergence.  Including signal and histogram.
+- MACD: moving average convergence divergence.  Including signal and histogram. (see note)
 - CR:
 - WR: Williams Overbought/Oversold index
 - CCI: Commodity Channel Index
@@ -196,6 +196,10 @@ To file issue, please visit:
 
 https://github.com/jealous/stockstats
 
+
+MACDH Note:
+
+In July 2017 the code for MACDH was changed to drop an extra 2x multiplier on the final value to align better with calculation methods used in tools like cryptowatch, tradingview, etc.
 
 Contact author:
 
