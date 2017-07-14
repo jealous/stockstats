@@ -42,12 +42,10 @@ log = logging.getLogger(__name__)
 
 
 class StockDataFrame(pd.DataFrame):
+    print 'StockDataFrame'
     OPERATORS = ['le', 'ge', 'lt', 'gt', 'eq', 'ne']
 
     KDJ_PARAM = (2.0 / 3.0, 1.0 / 3.0)
-
-    BOLL_PERIOD = 20
-    BOLL_STD_TIMES = 2
 
     @staticmethod
     def _get_change(df):
@@ -703,38 +701,49 @@ class StockDataFrame(pd.DataFrame):
                 min_periods=0, adjust=True).mean()
         else:
             df[column_name] = []
-
+    
     @classmethod
-    def _get_boll(cls, df):
+    def _get_boll(cls, df, widths, windows):
         """ Get Bollinger bands.
 
         boll_ub means the upper band of the Bollinger bands
         boll_lb means the lower band of the Bollinger bands
         boll_ub = MA + Kσ
         boll_lb = MA − Kσ
-        M = BOLL_PERIOD
-        K = BOLL_STD_TIMES
+        M = window (SMA period)
+        K = width (Number of standard deviations)
         :param df: data
         :return: None
         """
-        moving_avg = df['close_{}_sma'.format(cls.BOLL_PERIOD)]
-        moving_std = df['close_{}_mstd'.format(cls.BOLL_PERIOD)]
-        df['boll'] = moving_avg
+        window = cls.get_only_one_positive_int(windows)
+        
+        if '.' in widths:
+            width = cls.get_only_one_positive_float(widths)
+        else:
+            width = cls.get_only_one_positive_int(widths)
+        
+        moving_avg = df['close_{}_sma'.format(window)]
+        moving_std = df['close_{}_mstd'.format(window)]
+        
+        boll_lb_column_name = '{}_{}_boll-lb'.format(width, window)
+        boll_column_name = '{}_{}_boll'.format(width, window)
+        boll_ub_column_name = '{}_{}_boll-ub'.format(width, window)
+        
+        df[boll_column_name] = moving_avg
+        
         moving_avg = list(map(np.float64, moving_avg))
         moving_std = list(map(np.float64, moving_std))
+        
         # noinspection PyTypeChecker
-        df['boll_ub'] = np.add(moving_avg,
-                               np.multiply(cls.BOLL_STD_TIMES, moving_std))
+        df[boll_lb_column_name] = np.subtract(moving_avg, np.multiply(width, moving_std))  
         # noinspection PyTypeChecker
-        df['boll_lb'] = np.subtract(moving_avg,
-                                    np.multiply(cls.BOLL_STD_TIMES,
-                                                moving_std))
-
+        df[boll_ub_column_name] = np.add(moving_avg, np.multiply(width, moving_std))
+    
     @staticmethod
     def _get_macd(df):
         """ Moving Average Convergence Divergence
 
-        This function will initialize all following columns.
+        This function will initialize all following columns
 
         MACD Line (macd): (12-day EMA - 26-day EMA)
         Signal Line (macds): 9-day EMA of MACD Line
@@ -746,9 +755,7 @@ class StockDataFrame(pd.DataFrame):
         slow = df['close_26_ema']
         df['macd'] = fast - slow
         df['macds'] = df['macd_9_ema']
-        df['macdh'] = (df['macd'] - df['macds'])
-        log.critical("NOTE: Behavior of MACDH calculation has changed as of "
-                     "July 2017 - it is now 1/2 of previous calculated values")
+        df['macdh'] = 2 * (df['macd'] - df['macds'])
         del df['macd_9_ema']
         del fast
         del slow
@@ -761,6 +768,16 @@ class StockDataFrame(pd.DataFrame):
             window = cls.to_int(windows)
             if window <= 0:
                 raise IndexError("window must be greater than 0")
+        return window
+    
+    @classmethod
+    def get_only_one_positive_float(cls, windows):
+        if isinstance(windows, float):
+            window = windows
+        else:
+            window = cls.to_float(windows)
+            if window <= 0.0:
+                raise IndexError("window must be greater than 0.0")
         return window
 
     @classmethod
@@ -867,7 +884,7 @@ class StockDataFrame(pd.DataFrame):
             cls._get_rate(df)
         elif key == 'middle':
             cls._get_middle(df)
-        elif key in ['boll', 'boll_ub', 'boll_lb']:
+        elif key in ['boll', 'boll-ub', 'boll-lb']:
             cls._get_boll(df)
         elif key in ['macd', 'macds', 'macdh']:
             cls._get_macd(df)
