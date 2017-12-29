@@ -1,4 +1,4 @@
 flake8
-pytest
+pytest>=4.0
 pytest-cov
 PyHamcrest
