@@ -669,7 +669,7 @@ class StockDataFrame(pd.DataFrame):
         shift = StockDataFrame.to_int(shifts)
         shift_column = '{}_{}_s'.format(column, shift)
         column_name = '{}_{}_d'.format(column, shift)
-        df[column_name] = df[column] - df[shift_column]
+        df[column_name] = df[column].astype(float) - df[shift_column].astype(float)
         StockDataFrame.set_nan(df[column_name], shift)
 
     @classmethod
@@ -830,7 +830,7 @@ class StockDataFrame(pd.DataFrame):
     @staticmethod
     def _get_delta(df, key):
         key_to_delta = key.replace('_delta', '')
-        df[key] = df[key_to_delta].diff()
+        df[key] = df[key_to_delta].astype(float).diff()
         return df[key]
 
     @staticmethod
@@ -968,6 +968,7 @@ class StockDataFrame(pd.DataFrame):
         if isinstance(value, pd.DataFrame):
             # use all lower case for column name
             value.columns = map(lambda c: c.lower(), value.columns)
+            value = value.astype(float)
 
             if index_column in value.columns:
                 value.set_index(index_column, inplace=True)

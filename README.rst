@@ -122,7 +122,7 @@ Tutorial
     stock['kdjj']
 
     # three days KDJK cross up 3 days KDJD
-    stock['kdj_3_xu_kdjd_3']
+    stock['kdjk_3_xu_kdjd_3']
 
     # 2 days simple moving average on open price
     stock['open_2_sma']
@@ -172,11 +172,11 @@ Tutorial
     # +DI, default to 14 days
     stock['pdi']
     # -DI, default to 14 days
-    stock['mdi]
+    stock['mdi']
     # DX, default to 14 days of +DI and -DI
     stock['dx']
     # ADX, 6 days SMA of DX, same as stock['dx_6_ema']
-    stock['adx]
+    stock['adx']
     # ADXR, 6 days SMA of ADX, same as stock['adx_6_ema']
     stock['adxr']
 
