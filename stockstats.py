@@ -747,8 +747,6 @@ class StockDataFrame(pd.DataFrame):
         df['macd'] = fast - slow
         df['macds'] = df['macd_9_ema']
         df['macdh'] = (df['macd'] - df['macds'])
-        log.critical("NOTE: Behavior of MACDH calculation has changed as of "
-                     "July 2017 - it is now 1/2 of previous calculated values")
         del df['macd_9_ema']
         del fast
         del slow
