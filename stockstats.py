@@ -444,15 +444,19 @@ class StockDataFrame(pd.DataFrame):
         +DI: 14 days SMMA of +DM,
         -DI: 14 days SMMA of -DM,
         DX: based on +DI and -DI
-        ADX: 6 days SMMA of DX
+        ADX: 14 days SMMA of DX
+        
+        Chris 27-08-2018:
+        I changed the ADX to have a 14 day window.
+        
         :param df: data
         :return:
         """
         df['pdi'] = cls._get_pdi(df, 14)
         df['mdi'] = cls._get_mdi(df, 14)
         df['dx'] = cls._get_dx(df, 14)
-        df['adx'] = df['dx_6_ema']
-        df['adxr'] = df['adx_6_ema']
+        df['adx'] = df['dx_14_smma']
+        df['adxr'] = df['adx_6_smma']
 
     @classmethod
     def _get_um_dm(cls, df):
@@ -474,13 +478,15 @@ class StockDataFrame(pd.DataFrame):
         :param df: data
         :param windows: range
         :return:
+        
         """
         window = cls.get_only_one_positive_int(windows)
         column_name = 'pdm_{}'.format(window)
         um, dm = df['um'], df['dm']
         df['pdm'] = np.where(um > dm, um, 0)
         if window > 1:
-            pdm = df['pdm_{}_ema'.format(window)]
+            # Chris 27-08-2018: changed pdm_{}_ema to pdm_{}_smma
+            pdm = df['pdm_{}_smma'.format(window)]
         else:
             pdm = df['pdm']
         df[column_name] = pdm
@@ -515,7 +521,7 @@ class StockDataFrame(pd.DataFrame):
     def _get_mdm(cls, df, windows):
         """ -DM, negative directional moving accumulation
 
-        If window is not 1, return the SMA of -DM.
+        If window is not 1, return the SMMA of -DM.
         :param df: data
         :param windows: range
         :return:
@@ -525,7 +531,8 @@ class StockDataFrame(pd.DataFrame):
         um, dm = df['um'], df['dm']
         df['mdm'] = np.where(dm > um, dm, 0)
         if window > 1:
-            mdm = df['mdm_{}_ema'.format(window)]
+            # Chris 27-08-2018: changed mdm_{}_ema to pdm_{}_smma
+            mdm = df['mdm_{}_smma'.format(window)]
         else:
             mdm = df['mdm']
         df[column_name] = mdm
@@ -542,7 +549,7 @@ class StockDataFrame(pd.DataFrame):
         pdm_column = 'pdm_{}'.format(window)
         tr_column = 'atr_{}'.format(window)
         pdi_column = 'pdi_{}'.format(window)
-        df[pdi_column] = df[pdm_column] / df[tr_column] * 100
+        df[pdi_column] = (df[pdm_column] / df[tr_column]) * 100
         return df[pdi_column]
 
     @classmethod
@@ -551,7 +558,7 @@ class StockDataFrame(pd.DataFrame):
         mdm_column = 'mdm_{}'.format(window)
         tr_column = 'atr_{}'.format(window)
         mdi_column = 'mdi_{}'.format(window)
-        df[mdi_column] = df[mdm_column] / df[tr_column] * 100
+        df[mdi_column] = (df[mdm_column] / df[tr_column]) * 100
         return df[mdi_column]
 
     @classmethod
@@ -747,8 +754,6 @@ class StockDataFrame(pd.DataFrame):
         df['macd'] = fast - slow
         df['macds'] = df['macd_9_ema']
         df['macdh'] = (df['macd'] - df['macds'])
-        log.critical("NOTE: Behavior of MACDH calculation has changed as of "
-                     "July 2017 - it is now 1/2 of previous calculated values")
         del df['macd_9_ema']
         del fast
         del slow
