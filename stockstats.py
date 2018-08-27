@@ -444,7 +444,11 @@ class StockDataFrame(pd.DataFrame):
         +DI: 14 days SMMA of +DM,
         -DI: 14 days SMMA of -DM,
         DX: based on +DI and -DI
-        ADX: 6 days SMMA of DX
+        ADX: 14 days SMMA of DX
+        
+        Chris 27-08-2018:
+        I changed the ADX to have a 14 day window.
+        
         :param df: data
         :return:
         """
@@ -474,12 +478,14 @@ class StockDataFrame(pd.DataFrame):
         :param df: data
         :param windows: range
         :return:
+        
         """
         window = cls.get_only_one_positive_int(windows)
         column_name = 'pdm_{}'.format(window)
         um, dm = df['um'], df['dm']
         df['pdm'] = np.where(um > dm, um, 0)
         if window > 1:
+            # Chris 27-08-2018: changed pdm_{}_ema to pdm_{}_smma
             pdm = df['pdm_{}_smma'.format(window)]
         else:
             pdm = df['pdm']
@@ -515,7 +521,7 @@ class StockDataFrame(pd.DataFrame):
     def _get_mdm(cls, df, windows):
         """ -DM, negative directional moving accumulation
 
-        If window is not 1, return the SMA of -DM.
+        If window is not 1, return the SMMA of -DM.
         :param df: data
         :param windows: range
         :return:
@@ -525,6 +531,7 @@ class StockDataFrame(pd.DataFrame):
         um, dm = df['um'], df['dm']
         df['mdm'] = np.where(dm > um, dm, 0)
         if window > 1:
+            # Chris 27-08-2018: changed mdm_{}_ema to pdm_{}_smma
             mdm = df['mdm_{}_smma'.format(window)]
         else:
             mdm = df['mdm']
