@@ -451,8 +451,8 @@ class StockDataFrame(pd.DataFrame):
         df['pdi'] = cls._get_pdi(df, 14)
         df['mdi'] = cls._get_mdi(df, 14)
         df['dx'] = cls._get_dx(df, 14)
-        df['adx'] = df['dx_6_ema']
-        df['adxr'] = df['adx_6_ema']
+        df['adx'] = df['dx_14_smma']
+        df['adxr'] = df['adx_6_smma']
 
     @classmethod
     def _get_um_dm(cls, df):
@@ -480,7 +480,7 @@ class StockDataFrame(pd.DataFrame):
         um, dm = df['um'], df['dm']
         df['pdm'] = np.where(um > dm, um, 0)
         if window > 1:
-            pdm = df['pdm_{}_ema'.format(window)]
+            pdm = df['pdm_{}_smma'.format(window)]
         else:
             pdm = df['pdm']
         df[column_name] = pdm
@@ -525,7 +525,7 @@ class StockDataFrame(pd.DataFrame):
         um, dm = df['um'], df['dm']
         df['mdm'] = np.where(dm > um, dm, 0)
         if window > 1:
-            mdm = df['mdm_{}_ema'.format(window)]
+            mdm = df['mdm_{}_smma'.format(window)]
         else:
             mdm = df['mdm']
         df[column_name] = mdm
@@ -542,7 +542,7 @@ class StockDataFrame(pd.DataFrame):
         pdm_column = 'pdm_{}'.format(window)
         tr_column = 'atr_{}'.format(window)
         pdi_column = 'pdi_{}'.format(window)
-        df[pdi_column] = df[pdm_column] / df[tr_column] * 100
+        df[pdi_column] = (df[pdm_column] / df[tr_column]) * 100
         return df[pdi_column]
 
     @classmethod
@@ -551,7 +551,7 @@ class StockDataFrame(pd.DataFrame):
         mdm_column = 'mdm_{}'.format(window)
         tr_column = 'atr_{}'.format(window)
         mdi_column = 'mdi_{}'.format(window)
-        df[mdi_column] = df[mdm_column] / df[tr_column] * 100
+        df[mdi_column] = (df[mdm_column] / df[tr_column]) * 100
         return df[mdi_column]
 
     @classmethod
