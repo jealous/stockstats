@@ -172,11 +172,11 @@ Tutorial
     # +DI, default to 14 days
     stock['pdi']
     # -DI, default to 14 days
-    stock['mdi]
+    stock['mdi']
     # DX, default to 14 days of +DI and -DI
     stock['dx']
     # ADX, 6 days SMA of DX, same as stock['dx_6_ema']
-    stock['adx]
+    stock['adx']
     # ADXR, 6 days SMA of ADX, same as stock['adx_6_ema']
     stock['adxr']
 
