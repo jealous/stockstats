@@ -2,6 +2,7 @@
 *.pyc
 .tox/
 .env/
+venv/
 .cache/
 ~/
 build/
@@ -18,3 +19,5 @@ junit-result.xml
 htmlcov/
 .coverage
 __pycache__/
+.pytest_cache/
+README.html

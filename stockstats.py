@@ -44,10 +44,34 @@ log = logging.getLogger(__name__)
 class StockDataFrame(pd.DataFrame):
     OPERATORS = ['le', 'ge', 'lt', 'gt', 'eq', 'ne']
 
+    # Start of options.
     KDJ_PARAM = (2.0 / 3.0, 1.0 / 3.0)
+    KDJ_WINDOW = 9
 
     BOLL_PERIOD = 20
     BOLL_STD_TIMES = 2
+
+    MACD_EMA_SHORT = 12
+    MACD_EMA_LONG = 26
+    MACD_EMA_SIGNAL = 9
+
+    PDI_SMMA = 14
+    MDI_SMMA = 14
+    DX_SMMA = 14
+    ADX_EMA = 6
+    ADXR_EMA = 6
+
+    CR_MA1 = 5
+    CR_MA2 = 10
+    CR_MA3 = 20
+
+    TRIX_EMA_WINDOW = 12
+
+    TEMA_EMA_WINDOW = 5
+
+    ATR_SMMA = 14
+
+    # End of options
 
     @staticmethod
     def _get_change(df):
@@ -181,12 +205,36 @@ class StockDataFrame(pd.DataFrame):
         :param df: stock data
         :param column: column name
         :param shifts: range to count, only to previous
-        :return:
+        :return: result series
         """
-        column_name = '{}_{}_{}'.format(column, shifts, 'c')
-        shifts = abs(cls.to_int(shifts))
+        column_name = '{}_{}_c'.format(column, shifts)
+        shifts = cls.get_only_one_positive_int(shifts)
         df[column_name] = df[column].rolling(
-            center=False, window=shifts).apply(np.count_nonzero)
+            center=False,
+            window=shifts,
+            min_periods=0).apply(np.count_nonzero)
+        return df[column_name]
+
+    @classmethod
+    def _get_fc(cls, df, column, shifts):
+        """ get the count of column in range of future (shifts)
+
+        example: kdjj_0_le_20_fc
+        :param df: stock data
+        :param column: column name
+        :param shifts: range to count, only to future
+        :return: result series
+        """
+        column_name = '{}_{}_fc'.format(column, shifts)
+        shift = cls.get_only_one_positive_int(shifts)
+        reversed_series = df[column][::-1]
+        reversed_counts = reversed_series.rolling(
+            center=False,
+            window=shift,
+            min_periods=0).apply(np.count_nonzero)
+        counts = reversed_counts[::-1]
+        df[column_name] = counts
+        return counts
 
     @classmethod
     def _get_op(cls, df, column, threshold, op):
@@ -292,10 +340,15 @@ class StockDataFrame(pd.DataFrame):
         df[rs_column_name] = rs = p_ema / n_ema
         df[rsi_column_name] = 100 - 100 / (1.0 + rs)
 
-        del df['closepm']
-        del df['closenm']
-        del df[closepm_smma_column]
-        del df[closenm_smma_column]
+        columns_to_remove = ['closepm',
+                             'closenm',
+                             closepm_smma_column,
+                             closenm_smma_column]
+        cls._drop_columns(df, columns_to_remove)
+
+    @staticmethod
+    def _drop_columns(df, columns):
+        df.drop(columns, inplace=True, axis=1)
 
     @classmethod
     def _get_smma(cls, df, column, windows):
@@ -323,21 +376,48 @@ class StockDataFrame(pd.DataFrame):
         if column is None:
             column = 'close'
         if windows is None:
-            windows = 12
+            windows = cls.TRIX_EMA_WINDOW
         window = cls.get_only_one_positive_int(windows)
 
         single = '{c}_{w}_ema'.format(c=column, w=window)
         double = '{c}_{w}_ema_{w}_ema'.format(c=column, w=window)
         triple = '{c}_{w}_ema_{w}_ema_{w}_ema'.format(c=column, w=window)
-        df['ema3'] = df[triple]
-        prev_ema3 = df['ema3_-1_s']
-        df[column_name] = (df['ema3'] - prev_ema3) * 100 / prev_ema3
+        prev_triple = '{}_-1_s'.format(triple)
+        df[column_name] = ((df[triple] - df[prev_triple]) * 100
+                           / df[prev_triple])
 
-        del df[single]
-        del df[double]
-        del df[triple]
-        del df['ema3']
-        del df['ema3_-1_s']
+        columns_to_drop = [single, double, triple, prev_triple]
+        cls._drop_columns(df, columns_to_drop)
+
+    @classmethod
+    def _get_tema(cls, df, column=None, windows=None):
+        """ Another implementation for triple ema
+
+        Check the algorithm described below:
+        https://www.forextraders.com/forex-education/forex-technical-analysis/triple-exponential-moving-average-the-tema-indicator/
+        :param df: data frame
+        :param column: column to calculate ema
+        :param windows: window of the calculation
+        :return: result series
+        """
+        if column is None and windows is None:
+            column_name = 'tema'
+        else:
+            column_name = '{}_{}_tema'.format(column, windows)
+
+        if column is None:
+            column = 'close'
+        if windows is None:
+            windows = cls.TEMA_EMA_WINDOW
+        window = cls.get_only_one_positive_int(windows)
+
+        single = '{c}_{w}_ema'.format(c=column, w=window)
+        double = '{c}_{w}_ema_{w}_ema'.format(c=column, w=window)
+        triple = '{c}_{w}_ema_{w}_ema_{w}_ema'.format(c=column, w=window)
+        df[column_name] = 3 * df[single] - 3 * df[double] + df[triple]
+
+        cls._drop_columns(df, [single, double, triple])
+        return df[column_name]
 
     @classmethod
     def _get_wr(cls, df, n_days):
@@ -416,7 +496,7 @@ class StockDataFrame(pd.DataFrame):
         :return: None
         """
         if window is None:
-            window = 14
+            window = cls.ATR_SMMA
             column_name = 'atr'
         else:
             window = int(window)
@@ -424,7 +504,7 @@ class StockDataFrame(pd.DataFrame):
         tr_smma_column = 'tr_{}_smma'.format(window)
 
         df[column_name] = df[tr_smma_column]
-        del df[tr_smma_column]
+        cls._drop_columns(df, [tr_smma_column])
 
     @classmethod
     def _get_dma(cls, df):
@@ -448,11 +528,11 @@ class StockDataFrame(pd.DataFrame):
         :param df: data
         :return:
         """
-        df['pdi'] = cls._get_pdi(df, 14)
-        df['mdi'] = cls._get_mdi(df, 14)
-        df['dx'] = cls._get_dx(df, 14)
-        df['adx'] = df['dx_6_ema']
-        df['adxr'] = df['adx_6_ema']
+        df['pdi'] = cls._get_pdi(df, cls.PDI_SMMA)
+        df['mdi'] = cls._get_mdi(df, cls.MDI_SMMA)
+        df['dx'] = cls._get_dx(df, cls.DX_SMMA)
+        df['adx'] = df['dx_{}_ema'.format(cls.ADX_EMA)]
+        df['adxr'] = df['adx_{}_ema'.format(cls.ADXR_EMA)]
 
     @classmethod
     def _get_um_dm(cls, df):
@@ -507,9 +587,7 @@ class StockDataFrame(pd.DataFrame):
             min_periods=1, window=window, center=False).sum()
 
         df[column_name] = (avs + cvs / 2) / (bvs + cvs / 2) * 100
-        del df['av']
-        del df['bv']
-        del df['cv']
+        cls._drop_columns(df, ['av', 'bv', 'cv'])
 
     @classmethod
     def _get_mdm(cls, df, windows):
@@ -571,9 +649,9 @@ class StockDataFrame(pd.DataFrame):
         :param df: k line data frame
         :return: None
         """
-        df['kdjk'] = df['kdjk_9']
-        df['kdjd'] = df['kdjd_9']
-        df['kdjj'] = df['kdjj_9']
+        df['kdjk'] = df['kdjk_{}'.format(cls.KDJ_WINDOW)]
+        df['kdjd'] = df['kdjd_{}'.format(cls.KDJ_WINDOW)]
+        df['kdjj'] = df['kdjj_{}'.format(cls.KDJ_WINDOW)]
 
     @classmethod
     def _get_cr(cls, df, window=26):
@@ -587,9 +665,9 @@ class StockDataFrame(pd.DataFrame):
             min_periods=1, window=window, center=False).sum()
         df['cr'] = p1 / p2 * 100
         del df['middle_-1_s']
-        df['cr-ma1'] = cls._shifted_cr_sma(df, 5)
-        df['cr-ma2'] = cls._shifted_cr_sma(df, 10)
-        df['cr-ma3'] = cls._shifted_cr_sma(df, 20)
+        df['cr-ma1'] = cls._shifted_cr_sma(df, cls.CR_MA1)
+        df['cr-ma2'] = cls._shifted_cr_sma(df, cls.CR_MA2)
+        df['cr-ma3'] = cls._shifted_cr_sma(df, cls.CR_MA3)
 
     @classmethod
     def _shifted_cr_sma(cls, df, window):
@@ -730,8 +808,8 @@ class StockDataFrame(pd.DataFrame):
                                     np.multiply(cls.BOLL_STD_TIMES,
                                                 moving_std))
 
-    @staticmethod
-    def _get_macd(df):
+    @classmethod
+    def _get_macd(cls, df):
         """ Moving Average Convergence Divergence
 
         This function will initialize all following columns.
@@ -742,16 +820,17 @@ class StockDataFrame(pd.DataFrame):
         :param df: data
         :return: None
         """
-        fast = df['close_12_ema']
-        slow = df['close_26_ema']
+        ema_short = 'close_{}_ema'.format(cls.MACD_EMA_SHORT)
+        ema_long = 'close_{}_ema'.format(cls.MACD_EMA_LONG)
+        ema_signal = 'macd_{}_ema'.format(cls.MACD_EMA_SIGNAL)
+        fast = df[ema_short]
+        slow = df[ema_long]
         df['macd'] = fast - slow
-        df['macds'] = df['macd_9_ema']
+        df['macds'] = df[ema_signal]
         df['macdh'] = (df['macd'] - df['macds'])
         log.critical("NOTE: Behavior of MACDH calculation has changed as of "
                      "July 2017 - it is now 1/2 of previous calculated values")
-        del df['macd_9_ema']
-        del fast
-        del slow
+        cls._drop_columns(df, [ema_short, ema_long, ema_signal])
 
     @classmethod
     def get_only_one_positive_int(cls, windows):
@@ -793,10 +872,10 @@ class StockDataFrame(pd.DataFrame):
 
     @staticmethod
     def parse_column_name(name):
-        m = re.match('(.*)_([\d\-\+~,\.]+)_(\w+)', name)
+        m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
         ret = [None, None, None]
         if m is None:
-            m = re.match('(.*)_([\d\-\+~,]+)', name)
+            m = re.match(r'(.*)_([\d\-+~,]+)', name)
             if m is not None:
                 ret = m.group(1, 2)
                 ret = ret + (None,)
@@ -887,6 +966,8 @@ class StockDataFrame(pd.DataFrame):
             cls._get_dmi(df)
         elif key in ['trix']:
             cls._get_trix(df)
+        elif key in ['tema']:
+            cls._get_tema(df)
         elif key in ['vr']:
             cls._get_vr(df)
         elif key in ['dma']:
@@ -939,7 +1020,7 @@ class StockDataFrame(pd.DataFrame):
             start, end = anchor, other_day
         else:
             start, end = other_day, anchor
-        return self.retype(self.ix[start:end])
+        return self.retype(self.loc[start:end])
 
     def till(self, end_date):
         return self[self.index <= end_date]
