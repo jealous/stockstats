@@ -204,10 +204,14 @@ Tutorial
 
     # TRIX, default to 12 days
     stock['trix']
+	# TRIX based on the close price for a window of 3
+    stock['close_3_trix']
     # MATRIX is the simple moving average of TRIX
     stock['trix_9_sma']
     # TEMA, another implementation for triple ema
     stock['tema']
+	# TEMA based on the close price for a window of 2
+    stock['close_2_tema']
 
     # VR, default to 26 days
     stock['vr']
