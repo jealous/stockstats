@@ -11,7 +11,7 @@ Stock Statistics/Indicators Calculation Helper
     :target: https://pypi.python.org/pypi/stockstats
 
 
-VERSION: 0.3.0
+VERSION: 0.3.1
 
 Introduction
 ------------
@@ -62,6 +62,13 @@ Installation
 
 ``pip install stockstats``
 
+Compatibility
+-------------
+
+Please check the `setup.py`_ file.
+
+Note that pandas add some type check after version 1.0.
+One type assert is skipped in ``StockDataFrame``.  Check ISSUE-50 for detail.
 
 License
 -------
@@ -260,3 +267,4 @@ Contact author:
 - Cedric Zhuang <jealous@163.com>
 
 .. _BSD: LICENSE.txt
+.. _setup.py: setup.py

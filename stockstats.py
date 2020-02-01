@@ -350,6 +350,13 @@ class StockDataFrame(pd.DataFrame):
     def _drop_columns(df, columns):
         df.drop(columns, inplace=True, axis=1)
 
+    def _ensure_type(self, obj):
+        """ override the method in pandas, omit the check
+
+        This patch is not the perfect way but could make the lib work.
+        """
+        return obj
+
     @classmethod
     def _get_smma(cls, df, column, windows):
         """ get smoothed moving average.
