@@ -171,7 +171,7 @@ Tutorial
     # CR MA2 cross up CR MA1 in 20 days count
     stock['cr-ma2_xu_cr-ma1_20_c']
 
-    # count forward(future) where close prise is larger than 10
+    # count forward(future) where close price is larger than 10
     stock['close_10.0_ge_5_fc']
 
     # 6 days RSI
