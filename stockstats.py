@@ -75,6 +75,11 @@ class StockDataFrame(pd.DataFrame):
 
     @staticmethod
     def _get_change(df):
+        """ Get the percentage change column
+
+        :param df: DataFrame object
+        :return: result series
+        """
         df['change'] = df['close'].pct_change() * 100
         return df['change']
 
