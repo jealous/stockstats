@@ -148,7 +148,7 @@ Tutorial
     stock['kdjj']
 
     # three days KDJK cross up 3 days KDJD
-    stock['kdj_3_xu_kdjd_3']
+    stock['kdjk_3_xu_kdjd_3']
 
     # 2 days simple moving average on open price
     stock['open_2_sma']
