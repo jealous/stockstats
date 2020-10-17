@@ -29,7 +29,8 @@ import os
 from unittest import TestCase
 
 import pandas as pd
-from hamcrest import greater_than, assert_that, equal_to, close_to, contains, \
+from hamcrest import greater_than, assert_that, equal_to, close_to, \
+    contains_exactly, \
     none, only_contains, is_not
 from numpy import isnan
 
@@ -67,7 +68,7 @@ class StockDataFrameTest(TestCase):
     def test_multiple_columns(self):
         ret = self.get_stock()
         ret = ret[['open', 'close']]
-        assert_that(ret.columns, contains('open', 'close'))
+        assert_that(ret.columns, contains_exactly('open', 'close'))
 
     def test_column_le_count(self):
         stock = self.get_stock_20day()
@@ -126,12 +127,14 @@ class StockDataFrameTest(TestCase):
         assert_that(stock['cr-ma1'].loc[20110331], close_to(120.0, 0.1))
         assert_that(stock['cr-ma2'].loc[20110331], close_to(117.1, 0.1))
         assert_that(stock['cr-ma3'].loc[20110331], close_to(111.5, 0.1))
-        assert_that(self._supor.columns, is_not(contains('middle_-1_s')))
+        assert_that(self._supor.columns,
+                    is_not(contains_exactly('middle_-1_s')))
 
     def test_column_permutation(self):
         stock = self.get_stock_20day()
         amount_p = stock['volume_-1_d_-3,-2,-1_p']
-        assert_that(amount_p.loc[20110107:20110112], contains(2, 5, 2, 4))
+        assert_that(amount_p.loc[20110107:20110112],
+                    contains_exactly(2, 5, 2, 4))
         assert_that(isnan(amount_p.loc[20110104]), equal_to(True))
         assert_that(isnan(amount_p.loc[20110105]), equal_to(True))
         assert_that(isnan(amount_p.loc[20110106]), equal_to(True))
@@ -161,13 +164,14 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_20day()
         close_s = stock['close_0_s']
         assert_that(close_s.loc[20110118:20110120],
-                    contains(12.69, 12.82, 12.48))
+                    contains_exactly(12.69, 12.82, 12.48))
 
     def test_column_shift_negative(self):
         stock = self.get_stock_20day()
         close_s = stock['close_-1_s']
         assert_that(isnan(close_s.loc[20110104]), equal_to(True))
-        assert_that(close_s.loc[20110105:20110106], contains(12.61, 12.71))
+        assert_that(close_s.loc[20110105:20110106],
+                    contains_exactly(12.61, 12.71))
 
     def test_column_rsv(self):
         stock = self.get_stock_20day()
@@ -238,9 +242,9 @@ class StockDataFrameTest(TestCase):
         fast = 'close_{}_ema'.format(Sdf.MACD_EMA_SHORT)
         slow = 'close_{}_ema'.format(Sdf.MACD_EMA_LONG)
         signal = 'macd_{}_ema'.format(Sdf.MACD_EMA_SIGNAL)
-        assert_that(self._supor.columns, is_not(contains(fast)))
-        assert_that(self._supor.columns, is_not(contains(slow)))
-        assert_that(self._supor.columns, is_not(contains(signal)))
+        assert_that(self._supor.columns, is_not(contains_exactly(fast)))
+        assert_that(self._supor.columns, is_not(contains_exactly(slow)))
+        assert_that(self._supor.columns, is_not(contains_exactly(signal)))
 
     def test_column_macds(self):
         stock = self.get_stock_90day()
@@ -332,19 +336,19 @@ class StockDataFrameTest(TestCase):
 
     def test_to_int_split(self):
         shifts = Sdf.to_ints('5,1,3, -2')
-        assert_that(shifts, contains(-2, 1, 3, 5))
+        assert_that(shifts, contains_exactly(-2, 1, 3, 5))
 
     def test_to_int_continue(self):
         shifts = Sdf.to_ints('3, -3~-1, 5')
-        assert_that(shifts, contains(-3, -2, -1, 3, 5))
+        assert_that(shifts, contains_exactly(-3, -2, -1, 3, 5))
 
     def test_to_int_dedup(self):
         shifts = Sdf.to_ints('3, -3~-1, 5, -2~-1')
-        assert_that(shifts, contains(-3, -2, -1, 3, 5))
+        assert_that(shifts, contains_exactly(-3, -2, -1, 3, 5))
 
     def test_to_floats(self):
         floats = Sdf.to_floats('1.3, 4, -12.5, 4.0')
-        assert_that(floats, contains(-12.5, 1.3, 4))
+        assert_that(floats, contains_exactly(-12.5, 1.3, 4))
 
     def test_to_float(self):
         number = Sdf.to_float('12.3')
@@ -362,17 +366,18 @@ class StockDataFrameTest(TestCase):
 
     def test_parse_cross_column(self):
         assert_that(Sdf.parse_cross_column('a_x_b'),
-                    contains('a', 'x', 'b'))
+                    contains_exactly('a', 'x', 'b'))
 
     def test_parse_cross_column_xu(self):
         assert_that(Sdf.parse_cross_column('a_xu_b'),
-                    contains('a', 'xu', 'b'))
+                    contains_exactly('a', 'xu', 'b'))
 
     def test_get_shift_convolve_array(self):
-        assert_that(Sdf.get_diff_convolve_array(0), contains(1))
-        assert_that(Sdf.get_diff_convolve_array(-1), contains(1, -1))
-        assert_that(Sdf.get_diff_convolve_array(-2), contains(1, 0, -1))
-        assert_that(Sdf.get_diff_convolve_array(2), contains(-1, 0, 1))
+        assert_that(Sdf.get_diff_convolve_array(0), contains_exactly(1))
+        assert_that(Sdf.get_diff_convolve_array(-1), contains_exactly(1, -1))
+        assert_that(Sdf.get_diff_convolve_array(-2),
+                    contains_exactly(1, 0, -1))
+        assert_that(Sdf.get_diff_convolve_array(2), contains_exactly(-1, 0, 1))
 
     def test_get_log_ret(self):
         stock = self.get_stock_30day()
@@ -399,10 +404,12 @@ class StockDataFrameTest(TestCase):
         assert_that(self._supor.loc[20160817, 'rsi_6'], close_to(71.31, 0.01))
         assert_that(self._supor.loc[20160817, 'rsi_12'], close_to(63.11, 0.01))
         assert_that(self._supor.loc[20160817, 'rsi_24'], close_to(61.31, 0.01))
-        assert_that(self._supor.columns, is_not(contains('closepm')))
-        assert_that(self._supor.columns, is_not(contains('closepm_6_smma')))
-        assert_that(self._supor.columns, is_not(contains('closenm')))
-        assert_that(self._supor.columns, is_not(contains('closenm_6_smma')))
+        assert_that(self._supor.columns, is_not(contains_exactly('closepm')))
+        assert_that(self._supor.columns,
+                    is_not(contains_exactly('closepm_6_smma')))
+        assert_that(self._supor.columns, is_not(contains_exactly('closenm')))
+        assert_that(self._supor.columns,
+                    is_not(contains_exactly('closenm_6_smma')))
 
     def test_get_wr(self):
         self._supor.get('wr_10')
@@ -426,7 +433,8 @@ class StockDataFrameTest(TestCase):
         assert_that(self._supor.loc[20160817, 'atr'], close_to(1.33, 0.01))
         assert_that(self._supor.loc[20160816, 'atr'], close_to(1.32, 0.01))
         assert_that(self._supor.loc[20160815, 'atr'], close_to(1.28, 0.01))
-        assert_that(self._supor.columns, is_not(contains('tr_14_smma')))
+        assert_that(self._supor.columns,
+                    is_not(contains_exactly('tr_14_smma')))
 
     def test_get_sma_tr(self):
         c = self._supor.get('tr_14_sma')
@@ -480,10 +488,10 @@ class StockDataFrameTest(TestCase):
         double = 'close_{w}_ema_{w}_ema'.format(w=Sdf.TRIX_EMA_WINDOW)
         triple = 'close_{w}_ema_{w}_ema_{w}_ema'.format(w=Sdf.TRIX_EMA_WINDOW)
         prev_triple = '{}_-1_s'.format(triple)
-        assert_that(self._supor.columns, is_not(contains(single)))
-        assert_that(self._supor.columns, is_not(contains(double)))
-        assert_that(self._supor.columns, is_not(contains(triple)))
-        assert_that(self._supor.columns, is_not(contains(prev_triple)))
+        assert_that(self._supor.columns, is_not(contains_exactly(single)))
+        assert_that(self._supor.columns, is_not(contains_exactly(double)))
+        assert_that(self._supor.columns, is_not(contains_exactly(triple)))
+        assert_that(self._supor.columns, is_not(contains_exactly(prev_triple)))
 
     def test_tema_default(self):
         c = self._supor.get('tema')
@@ -496,9 +504,9 @@ class StockDataFrameTest(TestCase):
         single = 'close_{}_ema'.format(Sdf.TRIX_EMA_WINDOW)
         double = 'close_{w}_ema_{w}_ema'.format(w=Sdf.TRIX_EMA_WINDOW)
         triple = 'close_{w}_ema_{w}_ema_{w}_ema'.format(w=Sdf.TRIX_EMA_WINDOW)
-        assert_that(self._supor.columns, is_not(contains(single)))
-        assert_that(self._supor.columns, is_not(contains(double)))
-        assert_that(self._supor.columns, is_not(contains(triple)))
+        assert_that(self._supor.columns, is_not(contains_exactly(single)))
+        assert_that(self._supor.columns, is_not(contains_exactly(double)))
+        assert_that(self._supor.columns, is_not(contains_exactly(triple)))
 
     def test_trix_ma(self):
         c = self._supor.get('trix_9_sma')
@@ -517,9 +525,9 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160816], close_to(171.69, 0.01))
         assert_that(c.loc[20160815], close_to(178.78, 0.01))
 
-        assert_that(self._supor.columns, is_not(contains('av')))
-        assert_that(self._supor.columns, is_not(contains('bv')))
-        assert_that(self._supor.columns, is_not(contains('cv')))
+        assert_that(self._supor.columns, is_not(contains_exactly('av')))
+        assert_that(self._supor.columns, is_not(contains_exactly('bv')))
+        assert_that(self._supor.columns, is_not(contains_exactly('cv')))
 
     def test_vr_ma(self):
         c = self._supor['vr_6_sma']

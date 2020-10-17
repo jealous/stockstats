@@ -114,8 +114,10 @@ class StockDataFrame(pd.DataFrame):
             else:
                 indices += index
             count += 1
-        StockDataFrame.set_nan(indices, shifts)
-        df[column_name] = indices
+        if indices is not None:
+            cp = indices.copy()
+            StockDataFrame.set_nan(cp, shifts)
+            df[column_name] = cp
 
     @classmethod
     def to_ints(cls, shifts):
@@ -196,7 +198,9 @@ class StockDataFrame(pd.DataFrame):
         shift = cls.to_int(shifts)
         shifted_key = "{}_{}_s".format(column, shift)
         df[shifted_key] = df[column].shift(-shift)
-        StockDataFrame.set_nan(df[shifted_key], shift)
+        cp = df[shifted_key].copy()
+        StockDataFrame.set_nan(cp, shift)
+        df[shifted_key] = cp
 
     @classmethod
     def _get_log_ret(cls, df):
@@ -760,7 +764,9 @@ class StockDataFrame(pd.DataFrame):
         shift_column = '{}_{}_s'.format(column, shift)
         column_name = '{}_{}_d'.format(column, shift)
         df[column_name] = df[column] - df[shift_column]
-        StockDataFrame.set_nan(df[column_name], shift)
+        cp = df[column_name].copy()
+        StockDataFrame.set_nan(cp, shift)
+        df[column_name] = cp
 
     @classmethod
     def _get_sma(cls, df, column, windows):
@@ -840,8 +846,6 @@ class StockDataFrame(pd.DataFrame):
         df['macd'] = fast - slow
         df['macds'] = df[ema_signal]
         df['macdh'] = (df['macd'] - df['macds'])
-        log.critical("NOTE: Behavior of MACDH calculation has changed as of "
-                     "July 2017 - it is now 1/2 of previous calculated values")
         cls._drop_columns(df, [ema_short, ema_long, ema_signal])
 
     @classmethod
