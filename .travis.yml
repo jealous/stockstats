@@ -6,7 +6,7 @@ python:
     - "3.6"
     - "3.7"
     - "3.8"
-    - "3.9"
+    - "3.9-dev"
 install:
     - sudo apt-get install python-numpy
     - sudo apt-get install python-pandas
