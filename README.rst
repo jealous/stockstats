@@ -225,6 +225,7 @@ Tutorial
     stock['vr']
     # MAVR is the simple moving average of VR
     stock['vr_6_sma']
+    
     #vwap is volume weighted average price
     stock['vwap']
 
