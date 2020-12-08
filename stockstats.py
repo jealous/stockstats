@@ -849,6 +849,15 @@ class StockDataFrame(pd.DataFrame):
         cls._drop_columns(df, [ema_short, ema_long, ema_signal])
 
     @classmethod
+    def _get_vwap(cls,df):
+        df['avg_price'] = (df['high']+df['close']+df['low'])/3
+        df['cumilative_volume'] = df['volume'].cumsum()
+        df['pv'] = df['avg_price']*df['volume']
+        df['cumilative_pv'] = df['pv'].cumsum()
+        df['vwap'] = df['cumilative_pv']/df['cumilative_volume']
+        cls._drop_columns(df, ['avg_price', 'cumilative_volume', 'pv', 'cumilative_pv'])
+
+    @classmethod
     def get_only_one_positive_int(cls, windows):
         if isinstance(windows, int):
             window = windows
@@ -990,6 +999,8 @@ class StockDataFrame(pd.DataFrame):
             cls._get_dma(df)
         elif key == 'log-ret':
             cls._get_log_ret(df)
+        elif key in ['vwap']:
+            cls._get_vwap(df)
         elif key.endswith('_delta'):
             cls._get_delta(df, key)
         elif cls.is_cross_columns(key):
