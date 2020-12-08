@@ -56,6 +56,7 @@ Supported statistics/indicators are:
 - TRIX: Triple Exponential Moving Average
 - TEMA: Another Triple Exponential Moving Average
 - VR: Volatility Volume Ratio
+- VWAP: Volume Weighted Average Price
 
 Installation
 ------------
@@ -224,6 +225,8 @@ Tutorial
     stock['vr']
     # MAVR is the simple moving average of VR
     stock['vr_6_sma']
+    #vwap is volume weighted average price
+    stock['vwap']
 
 
 - Following options are available for tuning.  Note that all of them are class level options and MUST be changed before any calculation happens.
