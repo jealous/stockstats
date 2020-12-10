@@ -855,7 +855,8 @@ class StockDataFrame(pd.DataFrame):
         df['pv'] = df['avg_price']*df['volume']
         df['cumilative_pv'] = df['pv'].cumsum()
         df['vwap'] = df['cumilative_pv']/df['cumilative_volume']
-        cls._drop_columns(df, ['avg_price', 'cumilative_volume', 'pv', 'cumilative_pv'])
+        cls._drop_columns(
+            df, ['avg_price', 'cumilative_volume', 'pv', 'cumilative_pv'])
 
     @classmethod
     def get_only_one_positive_int(cls, windows):
