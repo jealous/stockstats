@@ -355,6 +355,31 @@ class StockDataFrame(pd.DataFrame):
                              closenm_smma_column]
         cls._drop_columns(df, columns_to_remove)
 
+    @classmethod
+    def _get_stochrsi(cls, df, n_days):
+        """ Calculate the Stochastic RSI
+
+        calculated based on the formula at:
+        https://www.investopedia.com/terms/s/stochrsi.asp
+
+        :param df: data
+        :param n_days: N days
+        :return: None
+        """
+        n_days = int(n_days)
+        column_name = 'stochrsi_{}'.format(n_days)
+
+        cls._get_rsi(df, n_days)
+
+        rsi = df['rsi_{}'.format(n_days)]
+        rsi_min = rsi.rolling(
+            min_periods=1, window=n_days, center=False).min()
+        rsi_max = rsi.rolling(
+            min_periods=1, window=n_days, center=False).max()
+
+        cv = (rsi - rsi_min) / (rsi_max - rsi_min)
+        df[column_name] = cv.fillna(0).astype('float64') * 100
+
     @staticmethod
     def _drop_columns(df, columns):
         df.drop(columns, inplace=True, axis=1)
