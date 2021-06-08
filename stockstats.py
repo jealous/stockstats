@@ -390,6 +390,29 @@ class StockDataFrame(pd.DataFrame):
         This patch is not the perfect way but could make the lib work.
         """
         return obj
+    
+    @classmethod
+    def _get_wavetrend(cls, df, n1=10, n2=21):
+        """ Calculate LazyBear's Wavetrend
+
+        Check the algorithm described below:
+        https://medium.com/@samuel.mcculloch/lets-take-a-look-at-wavetrend-with-crosses-lazybear-s-indicator-2ece1737f72f
+        :param df: data frame
+        :param n1: period of EMA on typical price
+        :param n2: period of EMA
+        :return: None
+        """
+        df["tp"] = df["middle"]
+        df["esa"] = df["tp_{}_ema".format(n1)]
+        df["dd"] = np.abs(df["tp"]-df["esa"])
+        df["d"] = df["dd_{}_ema".format(n1)]
+        df["ci"] = (df["tp"] - df["esa"]) / (0.015*df["d"])
+        df["tci"] = df["ci_{}_ema".format(n2)]
+        df["wt1"] = df["tci"]
+        df["wt2"] = df["wt1_4_sma"]
+        cls._drop_columns(df, ["tp", "esa", "dd", "d", "ci", "tci", "middle",
+                               "tp_{}_ema".format(n1), "dd_{}_ema".format(n1),
+                               "ci_{}_ema".format(n2), "wt1_4_sma",])
 
     @classmethod
     def _get_smma(cls, df, column, windows):
@@ -1013,6 +1036,8 @@ class StockDataFrame(pd.DataFrame):
             cls._get_vr(df)
         elif key in ['dma']:
             cls._get_dma(df)
+        elif key in ['wt1', 'wt2']:
+            cls._get_wavetrend(df)
         elif key == 'log-ret':
             cls._get_log_ret(df)
         elif key.endswith('_delta'):
