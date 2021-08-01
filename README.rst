@@ -56,6 +56,7 @@ Supported statistics/indicators are:
 - TRIX: Triple Exponential Moving Average
 - TEMA: Another Triple Exponential Moving Average
 - VR: Volatility Volume Ratio
+- MFI: Money Flow Index
 
 Installation
 ------------
@@ -211,13 +212,13 @@ Tutorial
 
     # TRIX, default to 12 days
     stock['trix']
-	# TRIX based on the close price for a window of 3
+    # TRIX based on the close price for a window of 3
     stock['close_3_trix']
     # MATRIX is the simple moving average of TRIX
     stock['trix_9_sma']
     # TEMA, another implementation for triple ema
     stock['tema']
-	# TEMA based on the close price for a window of 2
+    # TEMA based on the close price for a window of 2
     stock['close_2_tema']
 
     # VR, default to 26 days
@@ -225,6 +226,8 @@ Tutorial
     # MAVR is the simple moving average of VR
     stock['vr_6_sma']
 
+    # Money flow index, default to 14 days
+    stock['mfi']
 
 - Following options are available for tuning.  Note that all of them are class level options and MUST be changed before any calculation happens.
     - KDJ
@@ -251,6 +254,8 @@ Tutorial
         - TEMA_EMA_WINDOW: default to 5
     - ATR
         - ATR_SMMA: default to 14
+    - MFI
+        - MFI: default to 14
 
 
 To file issue, please visit:

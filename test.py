@@ -534,3 +534,13 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160817], close_to(182.77, 0.01))
         assert_that(c.loc[20160816], close_to(190.1, 0.01))
         assert_that(c.loc[20160815], close_to(197.52, 0.01))
+
+    def test_mfi(self):
+        c_default = self._stock['mfi']
+        assert ((c_default.iloc[:14] == 0.5).all())
+        assert_that(c_default.loc[19991201.0], close_to(0.2675, 0.001))
+        c = self._stock['mfi_15']
+        assert ((c.iloc[:15] == 0.5).all())
+        assert_that(c.loc[19991202.0], close_to(0.2628, 0.001))
+        assert_that(c.loc[20000417.0], close_to(0.5483, 0.001))
+        assert_that(c.loc[20000509.0], close_to(0.4801, 0.001))

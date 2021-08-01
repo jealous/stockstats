@@ -71,6 +71,8 @@ class StockDataFrame(pd.DataFrame):
 
     ATR_SMMA = 14
 
+    MFI = 14
+
     # End of options
 
     @staticmethod
@@ -886,6 +888,33 @@ class StockDataFrame(pd.DataFrame):
         df[column_name] = df[column].rolling(
             min_periods=1, window=window, center=False).var()
 
+    @classmethod
+    def _get_mfi(cls, df, n_days=None):
+        """ get money flow index as per https://www.investopedia.com/terms/m/mfi.asp
+
+        :param df: data
+        :param n_days: number of periods relevant for the indicator
+        :return: None
+        """
+        if n_days is None:
+            n_days = cls.MFI
+            column_name = 'mfi'
+        else:
+            column_name = f'mfi_{n_days}'
+        n = int(n_days)
+        assert n > 0, f"n_days '{n_days}' could not be parsed to a positive integer"
+        df[column_name] = 0.5
+        if len(df) > n and "volume" in df.columns and (df["volume"] > 0).any():
+            typical_price = df[["low", "high", "close"]].sum(axis=1) / 3.0
+            raw_money_flow = (typical_price * df["volume"]).fillna(0.0)
+            higher_rows = ((typical_price - typical_price.shift(1)) >= 0.0).to_numpy()
+            lower_rows = ((typical_price - typical_price.shift(1)) < 0.0).to_numpy()
+            for irow, row in enumerate(df.index[n + 1 :]):
+                p_pos_money_flow = raw_money_flow.reindex(df.index[irow : irow + n][higher_rows[irow : irow + n]]).sum()
+                p_neg_money_flow = raw_money_flow.reindex(df.index[irow : irow + n][lower_rows[irow : irow + n]]).sum()
+                money_flow_ratio = p_pos_money_flow / (p_neg_money_flow + 1e-12)
+                df.loc[row, column_name] = 1.0 - 1.0 / (1 + money_flow_ratio)
+
     @staticmethod
     def parse_column_name(name):
         m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
@@ -994,6 +1023,8 @@ class StockDataFrame(pd.DataFrame):
             cls._get_delta(df, key)
         elif cls.is_cross_columns(key):
             cls._get_cross(df, key)
+        elif key == 'mfi':
+            cls._get_mfi(df)
         else:
             c, r, t = cls.parse_column_name(key)
             if t is not None:
