@@ -546,7 +546,11 @@ class StockDataFrameTest(TestCase):
                                    [1.44, 2.0, 1.55, 150]])
         mfi_3_is = sdf["mfi_3"]
         # was calculated by hand:
-        mfi_3_should = [0.5, 0.5, 0.5889212827988338, 0.3503902862098872, 0.28557802365509344]
+        mfi_3_should = [0.5,
+                        0.5,
+                        0.5889212827988338,
+                        0.3503902862098872,
+                        0.28557802365509344]
         assert (mfi_3_is - mfi_3_should).abs().max() < 1e-6
         # regression tests for default settings
         mfi_default = self._stock['mfi']
