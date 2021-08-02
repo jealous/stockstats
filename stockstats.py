@@ -900,19 +900,24 @@ class StockDataFrame(pd.DataFrame):
             n_days = cls.MFI
             column_name = 'mfi'
         else:
-            column_name = f'mfi_{n_days}'
+            column_name = 'mfi_{}'.format(n_days)
         n = int(n_days)
-        assert n > 0, f"n_days '{n_days}' could not be parsed to a positive integer"
+        assert n > 0, "n_days '{}' could not be parsed " \
+                      "to a positive integer".format(n_days)
         df[column_name] = 0.5
         if len(df) > n and "volume" in df.columns and (df["volume"] > 0).any():
             typical_price = df[["low", "high", "close"]].sum(axis=1) / 3.0
             raw_money_flow = (typical_price * df["volume"]).fillna(0.0)
-            higher_rows = ((typical_price - typical_price.shift(1)) >= 0.0).to_numpy()
-            lower_rows = ((typical_price - typical_price.shift(1)) < 0.0).to_numpy()
-            for irow, row in enumerate(df.index[n - 1 :]):
-                p_pos_money_flow = raw_money_flow.reindex(df.index[irow : irow + n][higher_rows[irow : irow + n]]).sum()
-                p_neg_money_flow = raw_money_flow.reindex(df.index[irow : irow + n][lower_rows[irow : irow + n]]).sum()
-                money_flow_ratio = p_pos_money_flow / (p_neg_money_flow + 1e-12)
+            higher_rows = ((typical_price - typical_price.shift(
+                1)) >= 0.0).to_numpy()
+            lower_rows = ((typical_price - typical_price.shift(
+                1)) < 0.0).to_numpy()
+            for i, row in enumerate(df.index[n - 1:]):
+                pos_money_flow = raw_money_flow.reindex(
+                    df.index[i: i + n][higher_rows[i: i + n]]).sum()
+                neg_money_flow = raw_money_flow.reindex(
+                    df.index[i: i + n][lower_rows[i: i + n]]).sum()
+                money_flow_ratio = pos_money_flow / (neg_money_flow + 1e-12)
                 df.loc[row, column_name] = 1.0 - 1.0 / (1 + money_flow_ratio)
 
     @staticmethod
