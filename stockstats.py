@@ -909,7 +909,7 @@ class StockDataFrame(pd.DataFrame):
             raw_money_flow = (typical_price * df["volume"]).fillna(0.0)
             higher_rows = ((typical_price - typical_price.shift(1)) >= 0.0).to_numpy()
             lower_rows = ((typical_price - typical_price.shift(1)) < 0.0).to_numpy()
-            for irow, row in enumerate(df.index[n + 1 :]):
+            for irow, row in enumerate(df.index[n - 1 :]):
                 p_pos_money_flow = raw_money_flow.reindex(df.index[irow : irow + n][higher_rows[irow : irow + n]]).sum()
                 p_neg_money_flow = raw_money_flow.reindex(df.index[irow : irow + n][lower_rows[irow : irow + n]]).sum()
                 money_flow_ratio = p_pos_money_flow / (p_neg_money_flow + 1e-12)
