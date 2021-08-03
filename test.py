@@ -536,11 +536,29 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160815], close_to(197.52, 0.01))
 
     def test_mfi(self):
-        c_default = self._stock['mfi']
-        assert ((c_default.iloc[:14] == 0.5).all())
-        assert_that(c_default.loc[19991201.0], close_to(0.2675, 0.001))
-        c = self._stock['mfi_15']
-        assert ((c.iloc[:15] == 0.5).all())
-        assert_that(c.loc[19991202.0], close_to(0.2628, 0.001))
-        assert_that(c.loc[20000417.0], close_to(0.5483, 0.001))
-        assert_that(c.loc[20000509.0], close_to(0.4801, 0.001))
+        # test general calculation validity with handmade example
+        from stockstats import StockDataFrame
+        sdf = StockDataFrame(columns=["low", "high", "close", "volume"],
+                             data=[[1.1, 2.1, 1.5, 100],
+                                   [1.15, 2.3, 1.6, 200],
+                                   [1.2, 1.6, 1.9, 150],
+                                   [1.3, 1.8, 1.57, 250],
+                                   [1.44, 2.0, 1.55, 150]])
+        mfi_3_is = sdf["mfi_3"]
+        # was calculated by hand:
+        mfi_3_should = [0.5,
+                        0.5,
+                        0.5889212827988338,
+                        0.3503902862098872,
+                        0.28557802365509344]
+        assert (mfi_3_is - mfi_3_should).abs().max() < 1e-6
+        # regression tests for default settings
+        mfi_default = self._stock['mfi']
+        assert ((mfi_default.iloc[:13] == 0.5).all())
+        assert_that(mfi_default.loc[19991201.0], close_to(0.3597, 0.001))
+        # regression tests for custom settings
+        mfi_15 = self._stock['mfi_15']
+        assert ((mfi_15.iloc[:14] == 0.5).all())
+        assert_that(mfi_15.loc[19991202.0], close_to(0.3532, 0.001))
+        assert_that(mfi_15.loc[20000417.0], close_to(0.47589, 0.001))
+        assert_that(mfi_15.loc[20000509.0], close_to(0.4636, 0.001))

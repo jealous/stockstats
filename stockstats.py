@@ -912,7 +912,7 @@ class StockDataFrame(pd.DataFrame):
                 1)) >= 0.0).to_numpy()
             lower_rows = ((typical_price - typical_price.shift(
                 1)) < 0.0).to_numpy()
-            for i, row in enumerate(df.index[n + 1:]):
+            for i, row in enumerate(df.index[n - 1:]):
                 pos_money_flow = raw_money_flow.reindex(
                     df.index[i: i + n][higher_rows[i: i + n]]).sum()
                 neg_money_flow = raw_money_flow.reindex(
