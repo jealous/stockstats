@@ -73,6 +73,8 @@ class StockDataFrame(pd.DataFrame):
 
     MFI = 14
 
+    MULTI_SPLIT_INDICATORS = ("kama",)
+
     # End of options
 
     @staticmethod
@@ -920,17 +922,51 @@ class StockDataFrame(pd.DataFrame):
                 money_flow_ratio = pos_money_flow / (neg_money_flow + 1e-12)
                 df.loc[row, column_name] = 1.0 - 1.0 / (1 + money_flow_ratio)
 
+    @classmethod
+    def _get_kama(cls, df, column, windows, fasts: int = 5, slows: int = 34):
+        """ get Kaufman's Adaptive Moving Average.
+        Implemented after https://school.stockcharts.com/doku.php?id=technical_indicators:kaufman_s_adaptive_moving_average
+
+        :param df: data
+        :param column: column to calculate
+        :param windows: collection of window of exponential moving average
+        :param fasts: fastest EMA constant
+        :param slows: slowest EMA constant
+        :return: None
+        """
+        window = cls.get_only_one_positive_int(windows)
+        slow = cls.get_only_one_positive_int(slows)
+        fast = cls.get_only_one_positive_int(fasts)
+        column_name = '{}_{}_kama_{}_{}'.format(column, window, fast, slow)
+        if len(df[column]) > window:
+            change = abs(df[column] - df[column].shift(window))
+            volatility = abs(df[column] - df[column].shift(1)).rolling(window).sum()
+            efficiency_ratio = change / volatility
+            fast_ema_smoothing = 2 / (fast + 1)
+            slow_ema_smoothing = 2 / (slow +1 )
+            smoothing_constant = 2 * (efficiency_ratio * (fast_ema_smoothing + slow_ema_smoothing) + slow_ema_smoothing)
+            df[column_name] = 0.
+            for i in range(window, df.shape[0]):
+                last_kama = df.loc[df.index[i-1], column_name]
+                df.loc[df.index[i], column_name] = last_kama + smoothing_constant.iloc[i] * (df.loc[df.index[i], column] - last_kama)
+            df.loc[efficiency_ratio.isnull(), column_name] = np.nan
+        else:
+            df[column_name] = []
+
     @staticmethod
     def parse_column_name(name):
         m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
-        ret = [None, None, None]
+        ret = (None, None, None)
         if m is None:
             m = re.match(r'(.*)_([\d\-+~,]+)', name)
             if m is not None:
                 ret = m.group(1, 2)
-                ret = ret + (None,)
         else:
             ret = m.group(1, 2, 3)
+            if any(map(lambda i: i in ret[0], StockDataFrame.MULTI_SPLIT_INDICATORS)):
+                m_prev = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', ret[0])
+                if m_prev is not None:
+                    ret = m_prev.group(1, 2, 3) + ret[1:]
         return ret
 
     CROSS_COLUMN_MATCH_STR = '(.+)_(x|xu|xd)_(.+)'
@@ -1031,17 +1067,27 @@ class StockDataFrame(pd.DataFrame):
         elif key == 'mfi':
             cls._get_mfi(df)
         else:
-            c, r, t = cls.parse_column_name(key)
-            if t is not None:
+            # possible return variables: c, r, t, s, f
+            ret = cls.parse_column_name(key)
+            if len(ret) == 5:
+                c, r, t, s, f = ret
+                func_name = '_get_{}'.format(t)
+                getattr(cls, func_name)(df, c, r, s, f)
+                return
+            elif len(ret) == 3:
+                c, r, t = ret
                 if t in cls.OPERATORS:
                     # support all kinds of compare operators
                     cls._get_op(df, c, r, t)
                 else:
                     func_name = '_get_{}'.format(t)
                     getattr(cls, func_name)(df, c, r)
-            else:
+            elif len(ret) == 2:
+                c, r = ret
                 func_name = '_get_{}'.format(c)
                 getattr(cls, func_name)(df, r)
+            else:
+                raise UserWarning("Invalid number of return arguments after parsing column name: '{}'".format(key))
 
     @staticmethod
     def __init_column(df, key):

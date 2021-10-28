@@ -324,7 +324,7 @@ class StockDataFrameTest(TestCase):
         assert_that(t, equal_to('c'))
 
     def test_parse_column_name_rsv(self):
-        c, r, t = Sdf.parse_column_name('rsv_9')
+        c, r = Sdf.parse_column_name('rsv_9')
         assert_that(c, equal_to('rsv'))
         assert_that(r, equal_to('9'))
 
@@ -562,3 +562,12 @@ class StockDataFrameTest(TestCase):
         assert_that(mfi_15.loc[19991202.0], close_to(0.3532, 0.001))
         assert_that(mfi_15.loc[20000417.0], close_to(0.47589, 0.001))
         assert_that(mfi_15.loc[20000509.0], close_to(0.4636, 0.001))
+
+    def test_column_kama(self):
+        stock = Sdf.retype(pd.DataFrame(columns=["close"],
+                                        data=[107.92, 107.95, 107.70, 107.97, 106.09, 106.03, 107.65,
+                                              109.54, 110.26, 110.38, 111.94, 113.49, 113.98, 113.91,
+                                              112.62, 112.2, 111.1, 110.18, 111.13, 111.55, 112.08,
+                                              111.95, 111.60, 111.39, 112.25]))
+        kama_10 = stock['close_10_kama_2_30']
+        assert_that(kama_10.iloc[-1], close_to(111.631, 0.01))
