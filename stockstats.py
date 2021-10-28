@@ -1067,7 +1067,6 @@ class StockDataFrame(pd.DataFrame):
         elif key == 'mfi':
             cls._get_mfi(df)
         else:
-            # possible return variables: c, r, t, s, f
             ret = cls.parse_column_name(key)
             if len(ret) == 5:
                 c, r, t, s, f = ret
@@ -1087,7 +1086,8 @@ class StockDataFrame(pd.DataFrame):
                 func_name = '_get_{}'.format(c)
                 getattr(cls, func_name)(df, r)
             else:
-                raise UserWarning("Invalid number of return arguments after parsing column name: '{}'".format(key))
+                raise UserWarning("Invalid number of return arguments "
+                                  "after parsing column name: '{}'".format(key))
 
     @staticmethod
     def __init_column(df, key):
