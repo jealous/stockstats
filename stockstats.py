@@ -923,7 +923,7 @@ class StockDataFrame(pd.DataFrame):
                 df.loc[row, column_name] = 1.0 - 1.0 / (1 + money_flow_ratio)
 
     @classmethod
-    def _get_kama(cls, df, column, windows, fasts: int = 5, slows: int = 34):
+    def _get_kama(cls, df, column, windows, fasts=5, slows=34):
         """ get Kaufman's Adaptive Moving Average.
         Implemented after https://school.stockcharts.com/doku.php?id=technical_indicators:kaufman_s_adaptive_moving_average
 
@@ -1072,7 +1072,6 @@ class StockDataFrame(pd.DataFrame):
                 c, r, t, s, f = ret
                 func_name = '_get_{}'.format(t)
                 getattr(cls, func_name)(df, c, r, s, f)
-                return
             elif len(ret) == 3:
                 c, r, t = ret
                 if t in cls.OPERATORS:
