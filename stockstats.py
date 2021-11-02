@@ -73,6 +73,9 @@ class StockDataFrame(pd.DataFrame):
 
     MFI = 14
 
+    KAMA_SLOW = 34
+    KAMA_FAST = 5
+
     MULTI_SPLIT_INDICATORS = ("kama",)
 
     # End of options
@@ -923,7 +926,7 @@ class StockDataFrame(pd.DataFrame):
                 df.loc[row, column_name] = 1.0 - 1.0 / (1 + money_flow_ratio)
 
     @classmethod
-    def _get_kama(cls, df, column, windows, fasts=5, slows=34):
+    def _get_kama(cls, df, column, windows, fasts=None, slows=None):
         """ get Kaufman's Adaptive Moving Average.
         Implemented after
         'https://school.stockcharts.com/doku.php?id=technical_
@@ -937,9 +940,13 @@ class StockDataFrame(pd.DataFrame):
         :return: None
         """
         window = cls.get_only_one_positive_int(windows)
-        slow = cls.get_only_one_positive_int(slows)
-        fast = cls.get_only_one_positive_int(fasts)
-        column_name = '{}_{}_kama_{}_{}'.format(column, window, fast, slow)
+        if slows is None or fasts is None:
+            slow, fast = cls.KAMA_SLOW, cls.KAMA_FAST
+            column_name = "{}_{}_kama".format(column, window)
+        else:
+            slow = cls.get_only_one_positive_int(slows)
+            fast = cls.get_only_one_positive_int(fasts)
+            column_name = '{}_{}_kama_{}_{}'.format(column, window, fast, slow)
         if len(df[column]) > window:
             change = abs(df[column] - df[column].shift(window))
             volatility = abs(df[column] - df[column].shift(1)).\

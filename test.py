@@ -577,3 +577,5 @@ class StockDataFrameTest(TestCase):
         stock = Sdf.retype(pd.DataFrame(columns=["close"], data=kama_ref))
         kama_10 = stock['close_10_kama_2_30']
         assert_that(kama_10.iloc[-1], close_to(111.631, 0.01))
+        kama_2 = stock['close_2_kama']
+        assert_that(kama_2.iloc[-1], close_to(111.907, 0.01))
