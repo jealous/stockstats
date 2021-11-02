@@ -940,15 +940,20 @@ class StockDataFrame(pd.DataFrame):
         column_name = '{}_{}_kama_{}_{}'.format(column, window, fast, slow)
         if len(df[column]) > window:
             change = abs(df[column] - df[column].shift(window))
-            volatility = abs(df[column] - df[column].shift(1)).rolling(window).sum()
+            volatility = abs(df[column] - df[column].shift(1)).\
+                rolling(window).sum()
             efficiency_ratio = change / volatility
             fast_ema_smoothing = 2 / (fast + 1)
-            slow_ema_smoothing = 2 / (slow +1 )
-            smoothing_constant = 2 * (efficiency_ratio * (fast_ema_smoothing + slow_ema_smoothing) + slow_ema_smoothing)
+            slow_ema_smoothing = 2 / (slow + 1)
+            smoothing_constant = 2 * (efficiency_ratio * (fast_ema_smoothing
+                                                          + slow_ema_smoothing)
+                                      + slow_ema_smoothing)
             df[column_name] = 0.
             for i in range(window, df.shape[0]):
                 last_kama = df.loc[df.index[i-1], column_name]
-                df.loc[df.index[i], column_name] = last_kama + smoothing_constant.iloc[i] * (df.loc[df.index[i], column] - last_kama)
+                summand = smoothing_constant.iloc[i] \
+                          * (df.loc[df.index[i], column] - last_kama)
+                df.loc[df.index[i], column_name] = last_kama + summand
             df.loc[efficiency_ratio.isnull(), column_name] = np.nan
         else:
             df[column_name] = []
@@ -963,7 +968,8 @@ class StockDataFrame(pd.DataFrame):
                 ret = m.group(1, 2)
         else:
             ret = m.group(1, 2, 3)
-            if any(map(lambda i: i in ret[0], StockDataFrame.MULTI_SPLIT_INDICATORS)):
+            if any(map(lambda i: i in ret[0],
+                       StockDataFrame.MULTI_SPLIT_INDICATORS)):
                 m_prev = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', ret[0])
                 if m_prev is not None:
                     ret = m_prev.group(1, 2, 3) + ret[1:]
