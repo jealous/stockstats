@@ -281,6 +281,13 @@ class StockDataFrameTest(TestCase):
         mvar_3 = stock['open_3_mvar']
         assert_that(mvar_3.loc[20110106], close_to(0.0292, 0.001))
 
+    def test_column_parse_error(self):
+        stock = self.get_stock_90day()
+        with self.assertRaises(UserWarning):
+            _ = stock["foobarbaz"]
+        with self.assertRaises(KeyError):
+            _ = stock["close_1_foo_3_4"]
+
     def test_parse_column_name_1(self):
         c, r, t = Sdf.parse_column_name('amount_-5~-1_p')
         assert_that(c, equal_to('amount'))
@@ -329,10 +336,9 @@ class StockDataFrameTest(TestCase):
         assert_that(r, equal_to('9'))
 
     def test_parse_column_name_no_match(self):
-        c, r, t = Sdf.parse_column_name('no match')
-        assert_that(c, none())
-        assert_that(r, none())
-        assert_that(t, none())
+        ret = Sdf.parse_column_name('no match')
+        assert_that(len(ret), equal_to(1))
+        assert_that(ret[0], none())
 
     def test_to_int_split(self):
         shifts = Sdf.to_ints('5,1,3, -2')

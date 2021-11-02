@@ -964,7 +964,7 @@ class StockDataFrame(pd.DataFrame):
     @staticmethod
     def parse_column_name(name):
         m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
-        ret = (None, None, None)
+        ret = (None,)
         if m is None:
             m = re.match(r'(.*)_([\d\-+~,]+)', name)
             if m is not None:
