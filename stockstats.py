@@ -925,7 +925,9 @@ class StockDataFrame(pd.DataFrame):
     @classmethod
     def _get_kama(cls, df, column, windows, fasts=5, slows=34):
         """ get Kaufman's Adaptive Moving Average.
-        Implemented after https://school.stockcharts.com/doku.php?id=technical_indicators:kaufman_s_adaptive_moving_average
+        Implemented after
+        'https://school.stockcharts.com/doku.php?id=technical_
+         indicators:kaufman_s_adaptive_moving_average'
 
         :param df: data
         :param column: column to calculate
@@ -951,8 +953,9 @@ class StockDataFrame(pd.DataFrame):
             df[column_name] = 0.
             for i in range(window, df.shape[0]):
                 last_kama = df.loc[df.index[i-1], column_name]
-                summand = smoothing_constant.iloc[i] \
-                          * (df.loc[df.index[i], column] - last_kama)
+                summand = smoothing_constant.iloc[i] * (df.loc[df.index[i],
+                                                               column]
+                                                        - last_kama)
                 df.loc[df.index[i], column_name] = last_kama + summand
             df.loc[efficiency_ratio.isnull(), column_name] = np.nan
         else:
@@ -1092,7 +1095,8 @@ class StockDataFrame(pd.DataFrame):
                 getattr(cls, func_name)(df, r)
             else:
                 raise UserWarning("Invalid number of return arguments "
-                                  "after parsing column name: '{}'".format(key))
+                                  "after parsing column name: '{}'"
+                                  .format(key))
 
     @staticmethod
     def __init_column(df, key):
