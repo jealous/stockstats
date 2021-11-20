@@ -543,28 +543,33 @@ class StockDataFrameTest(TestCase):
 
     def test_mfi(self):
         # test general calculation validity with handmade example
-        from stockstats import StockDataFrame
-        sdf = StockDataFrame(columns=["low", "high", "close", "volume"],
-                             data=[[1.1, 2.1, 1.5, 100],
-                                   [1.15, 2.3, 1.6, 200],
-                                   [1.2, 1.6, 1.9, 150],
-                                   [1.3, 1.8, 1.57, 250],
-                                   [1.44, 2.0, 1.55, 150]])
+        sdf = Sdf(columns=["low", "high", "close", "volume"],
+                  data=[[1.1, 2.1, 1.5, 100],
+                        [1.15, 2.3, 1.6, 200],
+                        [1.2, 1.6, 1.9, 150],
+                        [1.3, 1.8, 1.57, 250],
+                        [1.44, 2.0, 1.55, 150]])
         mfi_3_is = sdf["mfi_3"]
+
         # was calculated by hand:
         mfi_3_should = [0.5,
                         0.5,
                         0.5889212827988338,
                         0.3503902862098872,
                         0.28557802365509344]
-        assert (mfi_3_is - mfi_3_should).abs().max() < 1e-6
+        for i in range(len(mfi_3_should)):
+            assert_that(mfi_3_is[i], close_to(mfi_3_should[i], 1e-6))
+
         # regression tests for default settings
         mfi_default = self._stock['mfi']
-        assert ((mfi_default.iloc[:13] == 0.5).all())
+        for v in mfi_default.iloc[:13]:
+            assert_that(v, equal_to(0.5))
         assert_that(mfi_default.loc[19991201.0], close_to(0.3597, 0.001))
+
         # regression tests for custom settings
         mfi_15 = self._stock['mfi_15']
-        assert ((mfi_15.iloc[:14] == 0.5).all())
+        for v in mfi_15.iloc[:14]:
+            assert_that(v, equal_to(0.5))
         assert_that(mfi_15.loc[19991202.0], close_to(0.3532, 0.001))
         assert_that(mfi_15.loc[20000417.0], close_to(0.47589, 0.001))
         assert_that(mfi_15.loc[20000509.0], close_to(0.4636, 0.001))
