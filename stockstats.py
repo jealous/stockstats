@@ -949,20 +949,20 @@ class StockDataFrame(pd.DataFrame):
             column_name = '{}_{}_kama_{}_{}'.format(column, window, fast, slow)
         if len(df[column]) > window:
             change = abs(df[column] - df[column].shift(window))
-            volatility = abs(df[column] - df[column].shift(1)).\
+            volatility = abs(df[column] - df[column].shift(1)). \
                 rolling(window).sum()
             efficiency_ratio = change / volatility
-            fast_ema_smoothing = 2 / (fast + 1)
-            slow_ema_smoothing = 2 / (slow + 1)
-            smoothing_constant = 2 * (efficiency_ratio * (fast_ema_smoothing
-                                                          + slow_ema_smoothing)
-                                      + slow_ema_smoothing)
+            fast_ema_smoothing = 2.0 / (fast + 1)
+            slow_ema_smoothing = 2.0 / (slow + 1)
+            smoothing_2 = fast_ema_smoothing + slow_ema_smoothing
+            efficient_smoothing = efficiency_ratio * smoothing_2
+            smoothing = 2 * (efficient_smoothing + slow_ema_smoothing)
             df[column_name] = 0.
             for i in range(window, df.shape[0]):
-                last_kama = df.loc[df.index[i-1], column_name]
-                summand = smoothing_constant.iloc[i] * (df.loc[df.index[i],
-                                                               column]
-                                                        - last_kama)
+                last_kama = df.loc[df.index[i - 1], column_name]
+                summand = smoothing.iloc[i] * (df.loc[df.index[i],
+                                                      column]
+                                               - last_kama)
                 df.loc[df.index[i], column_name] = last_kama + summand
             df.loc[efficiency_ratio.isnull(), column_name] = np.nan
         else:
