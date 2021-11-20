@@ -281,6 +281,13 @@ class StockDataFrameTest(TestCase):
         mvar_3 = stock['open_3_mvar']
         assert_that(mvar_3.loc[20110106], close_to(0.0292, 0.001))
 
+    def test_column_parse_error(self):
+        stock = self.get_stock_90day()
+        with self.assertRaises(UserWarning):
+            _ = stock["foobarbaz"]
+        with self.assertRaises(KeyError):
+            _ = stock["close_1_foo_3_4"]
+
     def test_parse_column_name_1(self):
         c, r, t = Sdf.parse_column_name('amount_-5~-1_p')
         assert_that(c, equal_to('amount'))
@@ -324,15 +331,14 @@ class StockDataFrameTest(TestCase):
         assert_that(t, equal_to('c'))
 
     def test_parse_column_name_rsv(self):
-        c, r, t = Sdf.parse_column_name('rsv_9')
+        c, r = Sdf.parse_column_name('rsv_9')
         assert_that(c, equal_to('rsv'))
         assert_that(r, equal_to('9'))
 
     def test_parse_column_name_no_match(self):
-        c, r, t = Sdf.parse_column_name('no match')
-        assert_that(c, none())
-        assert_that(r, none())
-        assert_that(t, none())
+        ret = Sdf.parse_column_name('no match')
+        assert_that(len(ret), equal_to(1))
+        assert_that(ret[0], none())
 
     def test_to_int_split(self):
         shifts = Sdf.to_ints('5,1,3, -2')
@@ -562,3 +568,14 @@ class StockDataFrameTest(TestCase):
         assert_that(mfi_15.loc[19991202.0], close_to(0.3532, 0.001))
         assert_that(mfi_15.loc[20000417.0], close_to(0.47589, 0.001))
         assert_that(mfi_15.loc[20000509.0], close_to(0.4636, 0.001))
+
+    def test_column_kama(self):
+        kama_ref = [107.92, 107.95, 107.70, 107.97, 106.09, 106.03, 107.65,
+                    109.54, 110.26, 110.38, 111.94, 113.49, 113.98, 113.91,
+                    112.62, 112.2, 111.1, 110.18, 111.13, 111.55, 112.08,
+                    111.95, 111.60, 111.39, 112.25]
+        stock = Sdf.retype(pd.DataFrame(columns=["close"], data=kama_ref))
+        kama_10 = stock['close_10_kama_2_30']
+        assert_that(kama_10.iloc[-1], close_to(111.631, 0.01))
+        kama_2 = stock['close_2_kama']
+        assert_that(kama_2.iloc[-1], close_to(111.907, 0.01))
