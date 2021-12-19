@@ -281,6 +281,13 @@ class StockDataFrameTest(TestCase):
         mvar_3 = stock['open_3_mvar']
         assert_that(mvar_3.loc[20110106], close_to(0.0292, 0.001))
 
+    def test_column_parse_error(self):
+        stock = self.get_stock_90day()
+        with self.assertRaises(UserWarning):
+            _ = stock["foobarbaz"]
+        with self.assertRaises(KeyError):
+            _ = stock["close_1_foo_3_4"]
+
     def test_parse_column_name_1(self):
         c, r, t = Sdf.parse_column_name('amount_-5~-1_p')
         assert_that(c, equal_to('amount'))
@@ -324,15 +331,14 @@ class StockDataFrameTest(TestCase):
         assert_that(t, equal_to('c'))
 
     def test_parse_column_name_rsv(self):
-        c, r, t = Sdf.parse_column_name('rsv_9')
+        c, r = Sdf.parse_column_name('rsv_9')
         assert_that(c, equal_to('rsv'))
         assert_that(r, equal_to('9'))
 
     def test_parse_column_name_no_match(self):
-        c, r, t = Sdf.parse_column_name('no match')
-        assert_that(c, none())
-        assert_that(r, none())
-        assert_that(t, none())
+        ret = Sdf.parse_column_name('no match')
+        assert_that(len(ret), equal_to(1))
+        assert_that(ret[0], none())
 
     def test_to_int_split(self):
         shifts = Sdf.to_ints('5,1,3, -2')
@@ -534,3 +540,47 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160817], close_to(182.77, 0.01))
         assert_that(c.loc[20160816], close_to(190.1, 0.01))
         assert_that(c.loc[20160815], close_to(197.52, 0.01))
+
+    def test_mfi(self):
+        # test general calculation validity with handmade example
+        sdf = Sdf(columns=["low", "high", "close", "volume"],
+                  data=[[1.1, 2.1, 1.5, 100],
+                        [1.15, 2.3, 1.6, 200],
+                        [1.2, 1.6, 1.9, 150],
+                        [1.3, 1.8, 1.57, 250],
+                        [1.44, 2.0, 1.55, 150]])
+        mfi_3_is = sdf["mfi_3"]
+
+        # was calculated by hand:
+        mfi_3_should = [0.5,
+                        0.5,
+                        0.5889212827988338,
+                        0.3503902862098872,
+                        0.28557802365509344]
+        for i in range(len(mfi_3_should)):
+            assert_that(mfi_3_is[i], close_to(mfi_3_should[i], 1e-6))
+
+        # regression tests for default settings
+        mfi_default = self._stock['mfi']
+        for v in mfi_default.iloc[:13]:
+            assert_that(v, equal_to(0.5))
+        assert_that(mfi_default.loc[19991201.0], close_to(0.3597, 0.001))
+
+        # regression tests for custom settings
+        mfi_15 = self._stock['mfi_15']
+        for v in mfi_15.iloc[:14]:
+            assert_that(v, equal_to(0.5))
+        assert_that(mfi_15.loc[19991202.0], close_to(0.3532, 0.001))
+        assert_that(mfi_15.loc[20000417.0], close_to(0.47589, 0.001))
+        assert_that(mfi_15.loc[20000509.0], close_to(0.4636, 0.001))
+
+    def test_column_kama(self):
+        kama_ref = [107.92, 107.95, 107.70, 107.97, 106.09, 106.03, 107.65,
+                    109.54, 110.26, 110.38, 111.94, 113.49, 113.98, 113.91,
+                    112.62, 112.2, 111.1, 110.18, 111.13, 111.55, 112.08,
+                    111.95, 111.60, 111.39, 112.25]
+        stock = Sdf.retype(pd.DataFrame(columns=["close"], data=kama_ref))
+        kama_10 = stock['close_10_kama_2_30']
+        assert_that(kama_10.iloc[-1], close_to(111.631, 0.01))
+        kama_2 = stock['close_2_kama']
+        assert_that(kama_2.iloc[-1], close_to(111.907, 0.01))

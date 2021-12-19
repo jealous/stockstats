@@ -1,23 +1,18 @@
 language: python
 dist: xenial
 python:
-    - "2.7"
-    - "3.5"
-    - "3.6"
-    - "3.7"
-    - "3.8"
-    - "3.9-dev"
+  - "2.7"
+  - "3.8"
+  - "3.9"
 install:
-    - sudo apt-get install python-numpy
-    - sudo apt-get install python-pandas
-    - pip install codecov
-    - pip install -r requirements.txt
-    - pip install -r test-requirements.txt
+  - pip install codecov
+  - pip install -r requirements.txt
+  - pip install -r test-requirements.txt
 script:
-    - flake8 stockstats.py test.py
-    - py.test --cov=./ test.py
+  - flake8 stockstats.py test.py
+  - py.test --cov=./ test.py
 after_success:
-    - codecov
+  - codecov
 notifications:
-    email:
-        - jealous@163.com
+  email:
+    - jealous@163.com

@@ -1,3 +1,2 @@
-numpy>=1.9.2
-pandas>=0.18.1
+pandas>=0.24.2
 int_date>=0.1.7
