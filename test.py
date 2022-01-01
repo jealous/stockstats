@@ -44,6 +44,9 @@ def get_file(filename):
     return os.path.join(os.path.split(__file__)[0], filename)
 
 
+dt = 1e-3
+
+
 class StockDataFrameTest(TestCase):
     _stock = wrap(pd.read_csv(get_file('987654.csv')))
     _supor = Sdf.retype(pd.read_csv(get_file('002032.csv')))
@@ -89,36 +92,36 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_20day()
         open_d = stock['open_-1_d']
         assert_that(isnan(open_d.loc[20110104]), equal_to(True))
-        assert_that(open_d.loc[20110120], close_to(0.07, 0.0001))
+        assert_that(open_d.loc[20110120], close_to(0.07, dt))
 
     def test_column_delta_p2(self):
         stock = self.get_stock_20day()
         open_d = stock['open_2_d']
         assert_that(isnan(open_d.loc[20110119]), equal_to(True))
-        assert_that(open_d.loc[20110118], close_to(-0.2, 0.001))
+        assert_that(open_d.loc[20110118], close_to(-0.2, dt))
 
     def test_column_rate_minus_2(self):
         stock = self.get_stock_20day()
         open_r = stock['open_-2_r']
         assert_that(isnan(open_r.loc[20110105]), equal_to(True))
-        assert_that(open_r.loc[20110106], close_to(2.49, 0.01))
+        assert_that(open_r.loc[20110106], close_to(2.495, dt))
 
     def test_column_rate_prev(self):
         stock = self.get_stock_20day()
         rate = stock['rate']
-        assert_that(rate.loc[20110107], close_to(4.41, 0.01))
+        assert_that(rate.loc[20110107], close_to(4.4198, dt))
 
     def test_column_rate_plus2(self):
         stock = self.get_stock_20day()
         open_r = stock['open_2_r']
-        assert_that(open_r.loc[20110118], close_to(-1.566, 0.001))
+        assert_that(open_r.loc[20110118], close_to(-1.566, dt))
         assert_that(isnan(open_r.loc[20110119]), equal_to(True))
         assert_that(isnan(open_r.loc[20110120]), equal_to(True))
 
     def test_middle(self):
         stock = self.get_stock_20day()
         middle = stock['middle']
-        assert_that(middle.loc[20110104], close_to(12.53, 0.01))
+        assert_that(middle.loc[20110104], close_to(12.53, dt))
 
     def test_cr(self):
         stock = self.get_stock_90day()
@@ -176,31 +179,31 @@ class StockDataFrameTest(TestCase):
     def test_column_rsv(self):
         stock = self.get_stock_20day()
         rsv_3 = stock['rsv_3']
-        assert_that(rsv_3.loc[20110106], close_to(60.65, 0.01))
+        assert_that(rsv_3.loc[20110106], close_to(60.6557, dt))
 
     def test_column_kdj_default(self):
         stock = self.get_stock_20day()
-        assert_that(stock['kdjk'].loc[20110104], close_to(60.52, 0.01))
-        assert_that(stock['kdjd'].loc[20110104], close_to(53.50, 0.01))
-        assert_that(stock['kdjj'].loc[20110104], close_to(74.56, 0.01))
+        assert_that(stock['kdjk'].loc[20110104], close_to(60.5263, dt))
+        assert_that(stock['kdjd'].loc[20110104], close_to(53.5087, dt))
+        assert_that(stock['kdjj'].loc[20110104], close_to(74.5614, dt))
 
     def test_column_kdjk(self):
         stock = self.get_stock_20day()
         kdjk_3 = stock['kdjk_3']
-        assert_that(kdjk_3.loc[20110104], close_to(60.52, 0.01))
-        assert_that(kdjk_3.loc[20110120], close_to(31.21, 0.01))
+        assert_that(kdjk_3.loc[20110104], close_to(60.5263, dt))
+        assert_that(kdjk_3.loc[20110120], close_to(31.2133, dt))
 
     def test_column_kdjd(self):
         stock = self.get_stock_20day()
         kdjk_3 = stock['kdjd_3']
-        assert_that(kdjk_3.loc[20110104], close_to(53.50, 0.01))
-        assert_that(kdjk_3.loc[20110120], close_to(43.13, 0.01))
+        assert_that(kdjk_3.loc[20110104], close_to(53.5087, dt))
+        assert_that(kdjk_3.loc[20110120], close_to(43.1347, dt))
 
     def test_column_kdjj(self):
         stock = self.get_stock_20day()
         kdjk_3 = stock['kdjj_3']
-        assert_that(kdjk_3.loc[20110104], close_to(74.56, 0.01))
-        assert_that(kdjk_3.loc[20110120], close_to(7.37, 0.01))
+        assert_that(kdjk_3.loc[20110104], close_to(74.5614, dt))
+        assert_that(kdjk_3.loc[20110120], close_to(7.37, dt))
 
     def test_column_cross(self):
         stock = self.get_stock_30day()
@@ -224,13 +227,13 @@ class StockDataFrameTest(TestCase):
     def test_column_sma(self):
         stock = self.get_stock_20day()
         sma_2 = stock['open_2_sma']
-        assert_that(sma_2.loc[20110105], close_to(12.56, 0.001))
+        assert_that(sma_2.loc[20110105], close_to(12.56, dt))
 
     def test_column_ema(self):
         stock = self.get_stock_20day()
         ema_5 = stock['close_5_ema']
         assert_that(isnan(ema_5.loc[20110107]), equal_to(False))
-        assert_that(ema_5.loc[20110110], close_to(12.9668, 0.01))
+        assert_that(ema_5.loc[20110110], close_to(12.9668, dt))
 
     def test_ema_of_empty_df(self):
         s = Sdf.retype(pd.DataFrame())
@@ -241,9 +244,9 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_90day()
         stock.get('macd')
         record = stock.loc[20110225]
-        assert_that(record['macd'], close_to(-0.0382, 0.0001))
-        assert_that(record['macds'], close_to(-0.0101, 0.0001))
-        assert_that(record['macdh'], close_to(-0.02805, 0.0001))
+        assert_that(record['macd'], close_to(-0.0382, dt))
+        assert_that(record['macds'], close_to(-0.0101, dt))
+        assert_that(record['macdh'], close_to(-0.02805, dt))
         fast = 'close_{}_ema'.format(Sdf.MACD_EMA_SHORT)
         slow = 'close_{}_ema'.format(Sdf.MACD_EMA_LONG)
         signal = 'macd_{}_ema'.format(Sdf.MACD_EMA_SIGNAL)
@@ -255,26 +258,27 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_90day()
         stock.get('macds')
         record = stock.loc[20110225]
-        assert_that(record['macds'], close_to(-0.0101, 0.0001))
+        assert_that(record['macds'], close_to(-0.0101, dt))
 
     def test_column_macdh(self):
         stock = self.get_stock_90day()
         stock.get('macdh')
         record = stock.loc[20110225]
-        assert_that(record['macdh'], close_to(-0.02805, 0.0001))
+        assert_that(record['macdh'], close_to(-0.02805, dt))
 
     def test_column_mstd(self):
         stock = self.get_stock_20day()
         mstd_3 = stock['close_3_mstd']
-        assert_that(mstd_3.loc[20110106], close_to(0.05033, 0.001))
+        assert_that(mstd_3.loc[20110106], close_to(0.05033, dt))
 
     def test_bollinger(self):
         stock = self.get_stock().within(20140930, 20141211)
         boll_ub = stock['boll_ub']
         boll_lb = stock['boll_lb']
-        assert_that(stock['boll'].loc[20141103], close_to(9.80, 0.01))
-        assert_that(boll_ub.loc[20141103], close_to(10.1310, 0.01))
-        assert_that(boll_lb.loc[20141103], close_to(9.48, 0.01))
+        idx = 20141103
+        assert_that(stock['boll'].loc[idx], close_to(9.8035, dt))
+        assert_that(boll_ub.loc[idx], close_to(10.1310, dt))
+        assert_that(boll_lb.loc[idx], close_to(9.4759, dt))
 
     def test_bollinger_empty(self):
         stock = self.get_stock().within(18800101, 18900101)
@@ -284,7 +288,7 @@ class StockDataFrameTest(TestCase):
     def test_column_mvar(self):
         stock = self.get_stock_20day()
         mvar_3 = stock['open_3_mvar']
-        assert_that(mvar_3.loc[20110106], close_to(0.0292, 0.001))
+        assert_that(mvar_3.loc[20110106], close_to(0.0292, dt))
 
     def test_column_parse_error(self):
         stock = self.get_stock_90day()
@@ -393,8 +397,7 @@ class StockDataFrameTest(TestCase):
     def test_get_log_ret(self):
         stock = self.get_stock_30day()
         stock.get('log-ret')
-        assert_that(stock.loc[20110128]['log-ret'],
-                    close_to(-0.010972, 0.000001))
+        assert_that(stock.loc[20110128]['log-ret'], close_to(-0.010972, dt))
 
     def test_rsv_nan_value(self):
         s = Sdf.retype(pd.read_csv(get_file('asml.as.csv')))
@@ -405,9 +408,10 @@ class StockDataFrameTest(TestCase):
         self._supor.get('rsi_6')
         self._supor.get('rsi_12')
         self._supor.get('rsi_24')
-        assert_that(self._supor.loc[20160817, 'rsi_6'], close_to(71.31, 0.01))
-        assert_that(self._supor.loc[20160817, 'rsi_12'], close_to(63.11, 0.01))
-        assert_that(self._supor.loc[20160817, 'rsi_24'], close_to(61.31, 0.01))
+        idx = 20160817
+        assert_that(self._supor.loc[idx, 'rsi_6'], close_to(71.3114, dt))
+        assert_that(self._supor.loc[idx, 'rsi_12'], close_to(63.1125, dt))
+        assert_that(self._supor.loc[idx, 'rsi_24'], close_to(61.3064, dt))
         assert_that(self._supor.columns, is_not(contains_exactly('closepm')))
         assert_that(self._supor.columns,
                     is_not(contains_exactly('closepm_6_smma')))
@@ -418,75 +422,76 @@ class StockDataFrameTest(TestCase):
     def test_get_wr(self):
         self._supor.get('wr_10')
         self._supor.get('wr_6')
-        assert_that(self._supor.loc[20160817, 'wr_10'], close_to(-13.06, 0.01))
-        assert_that(self._supor.loc[20160817, 'wr_6'], close_to(-16.53, 0.01))
+        idx = 20160817
+        assert_that(self._supor.loc[idx, 'wr_10'], close_to(-13.0573, dt))
+        assert_that(self._supor.loc[idx, 'wr_6'], close_to(-16.5322, dt))
 
     def test_get_cci(self):
         stock = self._supor.within(20160701, 20160831)
         stock.get('cci_14')
         stock.get('cci')
-        assert_that(stock.loc[20160817, 'cci'], close_to(50, 0.01))
-        assert_that(stock.loc[20160817, 'cci_14'], close_to(50, 0.01))
-        assert_that(stock.loc[20160816, 'cci_14'], close_to(24.8, 0.01))
-        assert_that(stock.loc[20160815, 'cci_14'], close_to(-26.46, 0.01))
+        assert_that(stock.loc[20160817, 'cci'], close_to(50, dt))
+        assert_that(stock.loc[20160817, 'cci_14'], close_to(50, dt))
+        assert_that(stock.loc[20160816, 'cci_14'], close_to(24.7987, dt))
+        assert_that(stock.loc[20160815, 'cci_14'], close_to(-26.46, dt))
 
     def test_get_atr(self):
         self._supor.get('atr_14')
         self._supor.get('atr')
-        assert_that(self._supor.loc[20160817, 'atr_14'], close_to(1.33, 0.01))
-        assert_that(self._supor.loc[20160817, 'atr'], close_to(1.33, 0.01))
-        assert_that(self._supor.loc[20160816, 'atr'], close_to(1.32, 0.01))
-        assert_that(self._supor.loc[20160815, 'atr'], close_to(1.28, 0.01))
+        assert_that(self._supor.loc[20160817, 'atr_14'], close_to(1.3334, dt))
+        assert_that(self._supor.loc[20160817, 'atr'], close_to(1.3334, dt))
+        assert_that(self._supor.loc[20160816, 'atr'], close_to(1.3229, dt))
+        assert_that(self._supor.loc[20160815, 'atr'], close_to(1.2815, dt))
         assert_that(self._supor.columns,
                     is_not(contains_exactly('tr_14_smma')))
 
     def test_get_sma_tr(self):
         c = self._supor.get('tr_14_sma')
-        assert_that(c.loc[20160817], close_to(1.33, 0.01))
-        assert_that(c.loc[20160816], close_to(1.37, 0.01))
-        assert_that(c.loc[20160815], close_to(1.47, 0.01))
+        assert_that(c.loc[20160817], close_to(1.3321, dt))
+        assert_that(c.loc[20160816], close_to(1.37, dt))
+        assert_that(c.loc[20160815], close_to(1.47, dt))
 
     def test_get_dma(self):
         c = self._supor.get('dma')
-        assert_that(c.loc[20160817], close_to(2.08, 0.01))
-        assert_that(c.loc[20160816], close_to(2.15, 0.01))
-        assert_that(c.loc[20160815], close_to(2.27, 0.01))
+        assert_that(c.loc[20160817], close_to(2.078, dt))
+        assert_that(c.loc[20160816], close_to(2.15, dt))
+        assert_that(c.loc[20160815], close_to(2.2743, dt))
 
     def test_get_pdi(self):
         c = self._supor.get('pdi')
-        assert_that(c.loc[20160817], close_to(24.60, 0.01))
-        assert_that(c.loc[20160816], close_to(28.60, 0.01))
-        assert_that(c.loc[20160815], close_to(21.23, 0.01))
+        assert_that(c.loc[20160817], close_to(24.5989, dt))
+        assert_that(c.loc[20160816], close_to(28.6088, dt))
+        assert_that(c.loc[20160815], close_to(21.23, dt))
 
     def test_get_mdi(self):
         c = self._supor.get('mdi')
-        assert_that(c.loc[20160817], close_to(13.60, 0.01))
-        assert_that(c.loc[20160816], close_to(15.82, 0.01))
-        assert_that(c.loc[20160815], close_to(18.85, 0.01))
+        assert_that(c.loc[20160817], close_to(13.6049, dt))
+        assert_that(c.loc[20160816], close_to(15.8227, dt))
+        assert_that(c.loc[20160815], close_to(18.8455, dt))
 
     def test_dx(self):
         c = self._supor.get('dx')
-        assert_that(c.loc[20160817], close_to(28.78, 0.01))
-        assert_that(c.loc[20160815], close_to(5.95, 0.01))
-        assert_that(c.loc[20160812], close_to(10.05, 0.01))
+        assert_that(c.loc[20160817], close_to(28.7771, dt))
+        assert_that(c.loc[20160815], close_to(5.95, dt))
+        assert_that(c.loc[20160812], close_to(10.05, dt))
 
     def test_adx(self):
         c = self._supor.get('adx')
-        assert_that(c.loc[20160817], close_to(20.15, 0.01))
-        assert_that(c.loc[20160816], close_to(16.71, 0.01))
-        assert_that(c.loc[20160815], close_to(11.88, 0.01))
+        assert_that(c.loc[20160817], close_to(20.1545, dt))
+        assert_that(c.loc[20160816], close_to(16.7054, dt))
+        assert_that(c.loc[20160815], close_to(11.8767, dt))
 
     def test_adxr(self):
         c = self._supor.get('adxr')
-        assert_that(c.loc[20160817], close_to(17.36, 0.01))
-        assert_that(c.loc[20160816], close_to(16.24, 0.01))
-        assert_that(c.loc[20160815], close_to(16.06, 0.01))
+        assert_that(c.loc[20160817], close_to(17.3630, dt))
+        assert_that(c.loc[20160816], close_to(16.2464, dt))
+        assert_that(c.loc[20160815], close_to(16.0628, dt))
 
     def test_trix_default(self):
         c = self._supor.get('trix')
-        assert_that(c.loc[20160817], close_to(0.20, 0.01))
-        assert_that(c.loc[20160816], close_to(0.21, 0.01))
-        assert_that(c.loc[20160815], close_to(0.24, 0.01))
+        assert_that(c.loc[20160817], close_to(0.1999, dt))
+        assert_that(c.loc[20160816], close_to(0.2135, dt))
+        assert_that(c.loc[20160815], close_to(0.24, dt))
 
         single = 'close_{}_ema'.format(Sdf.TRIX_EMA_WINDOW)
         double = 'close_{w}_ema_{w}_ema'.format(w=Sdf.TRIX_EMA_WINDOW)
@@ -501,9 +506,9 @@ class StockDataFrameTest(TestCase):
         c = self._supor.get('tema')
         a = self._supor.get('close_5_tema')
         assert_that(c.loc[20160817], equal_to(a.loc[20160817]))
-        assert_that(c.loc[20160817], close_to(40.29, 0.01))
-        assert_that(c.loc[20160816], close_to(39.63, 0.01))
-        assert_that(c.loc[20160815], close_to(39.37, 0.01))
+        assert_that(c.loc[20160817], close_to(40.2883, dt))
+        assert_that(c.loc[20160816], close_to(39.6371, dt))
+        assert_that(c.loc[20160815], close_to(39.3778, dt))
 
         single = 'close_{}_ema'.format(Sdf.TRIX_EMA_WINDOW)
         double = 'close_{w}_ema_{w}_ema'.format(w=Sdf.TRIX_EMA_WINDOW)
@@ -514,20 +519,20 @@ class StockDataFrameTest(TestCase):
 
     def test_trix_ma(self):
         c = self._supor.get('trix_9_sma')
-        assert_that(c.loc[20160817], close_to(0.34, 0.01))
-        assert_that(c.loc[20160816], close_to(0.38, 0.01))
-        assert_that(c.loc[20160815], close_to(0.42, 0.01))
+        assert_that(c.loc[20160817], close_to(0.34, dt))
+        assert_that(c.loc[20160816], close_to(0.38, dt))
+        assert_that(c.loc[20160815], close_to(0.4238, dt))
 
     def test_vr_default(self):
         c = self._supor['vr']
-        assert_that(c.loc[20160817], close_to(153.2, 0.01))
-        assert_that(c.loc[20160816], close_to(171.69, 0.01))
-        assert_that(c.loc[20160815], close_to(178.78, 0.01))
+        assert_that(c.loc[20160817], close_to(153.1961, dt))
+        assert_that(c.loc[20160816], close_to(171.6939, dt))
+        assert_that(c.loc[20160815], close_to(178.7854, dt))
 
         c = self._supor['vr_26']
-        assert_that(c.loc[20160817], close_to(153.2, 0.01))
-        assert_that(c.loc[20160816], close_to(171.69, 0.01))
-        assert_that(c.loc[20160815], close_to(178.78, 0.01))
+        assert_that(c.loc[20160817], close_to(153.1961, dt))
+        assert_that(c.loc[20160816], close_to(171.6939, dt))
+        assert_that(c.loc[20160815], close_to(178.7854, dt))
 
         assert_that(self._supor.columns, is_not(contains_exactly('av')))
         assert_that(self._supor.columns, is_not(contains_exactly('bv')))
@@ -535,9 +540,9 @@ class StockDataFrameTest(TestCase):
 
     def test_vr_ma(self):
         c = self._supor['vr_6_sma']
-        assert_that(c.loc[20160817], close_to(182.77, 0.01))
-        assert_that(c.loc[20160816], close_to(190.1, 0.01))
-        assert_that(c.loc[20160815], close_to(197.52, 0.01))
+        assert_that(c.loc[20160817], close_to(182.7714, dt))
+        assert_that(c.loc[20160816], close_to(190.0970, dt))
+        assert_that(c.loc[20160815], close_to(197.5225, dt))
 
     def test_mfi(self):
         # test general calculation validity with handmade example
@@ -556,21 +561,21 @@ class StockDataFrameTest(TestCase):
                         0.35039028,
                         0.28557802]
         for i in range(len(mfi_3_should)):
-            assert_that(mfi_3_is[i], close_to(mfi_3_should[i], 1e-6))
+            assert_that(mfi_3_is[i], close_to(mfi_3_should[i], dt))
 
         # regression tests for default settings
         mfi_default = self._stock['mfi']
         for v in mfi_default.iloc[:13]:
             assert_that(v, equal_to(0.5))
-        assert_that(mfi_default.loc[19991201], close_to(0.3597, 0.001))
+        assert_that(mfi_default.loc[19991201], close_to(0.359748, dt))
 
         # regression tests for custom settings
         mfi_15 = self._stock['mfi_15']
         for v in mfi_15.iloc[:14]:
             assert_that(v, equal_to(0.5))
-        assert_that(mfi_15.loc[19991202], close_to(0.3532, 0.001))
-        assert_that(mfi_15.loc[20000417], close_to(0.47589, 0.001))
-        assert_that(mfi_15.loc[20000509], close_to(0.4636, 0.001))
+        assert_that(mfi_15.loc[19991202], close_to(0.353297, dt))
+        assert_that(mfi_15.loc[20000417], close_to(0.475890, dt))
+        assert_that(mfi_15.loc[20000509], close_to(0.463642, dt))
 
     def test_column_kama(self):
         kama_ref = [107.92, 107.95, 107.70, 107.97, 106.09, 106.03, 107.65,
@@ -579,14 +584,27 @@ class StockDataFrameTest(TestCase):
                     111.95, 111.60, 111.39, 112.25]
         stock = Sdf.retype(pd.DataFrame(columns=["close"], data=kama_ref))
         kama_10 = stock['close_10_kama_2_30']
-        assert_that(kama_10.iloc[-1], close_to(111.631, 0.01))
+        assert_that(kama_10.iloc[-1], close_to(111.631, dt))
         kama_2 = stock['close_2_kama']
-        assert_that(kama_2.iloc[-1], close_to(111.907, 0.01))
+        assert_that(kama_2.iloc[-1], close_to(111.907, dt))
 
     def test_vwma(self):
         stock = self.get_stock_90day()
         vwma = stock['vwma']
+        vwma_7 = stock['vwma_7']
         vwma_14 = stock['vwma_14']
-        assert_that(vwma.loc[20110330], close_to(13.312679, 0.001))
-        assert_that(vwma.loc[20110331], close_to(13.350941, 0.001))
-        assert_that(vwma_14.loc[20110331], close_to(vwma.loc[20110331], 0.001))
+        assert_that(vwma.loc[20110330], close_to(13.312679, dt))
+        idx = 20110331
+        assert_that(vwma.loc[idx], close_to(13.350941, dt))
+        assert_that(vwma_14.loc[idx], close_to(vwma.loc[idx], dt))
+        assert_that(vwma_7.loc[idx], is_not(close_to(vwma.loc[idx], dt)))
+
+    def test_chop(self):
+        stock = self.get_stock_90day()
+        chop = stock['chop']
+        chop_7 = stock['chop_7']
+        chop_14 = stock['chop_14']
+        idx = 20110330
+        assert_that(chop.loc[idx], close_to(44.8926, dt))
+        assert_that(chop_14.loc[idx], close_to(chop.loc[idx], dt))
+        assert_that(chop_7.loc[idx], is_not(close_to(chop.loc[idx], dt)))
