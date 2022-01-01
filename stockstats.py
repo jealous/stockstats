@@ -34,11 +34,14 @@ import re
 
 import numpy as np
 import pandas as pd
-from int_date import get_date_from_diff
 
 __author__ = 'Cedric Zhuang'
 
 log = logging.getLogger(__name__)
+
+
+def wrap(df, index_column=None):
+    return StockDataFrame.retype(df, index_column)
 
 
 class StockDataFrame(pd.DataFrame):
@@ -72,6 +75,8 @@ class StockDataFrame(pd.DataFrame):
     ATR_SMMA = 14
 
     MFI = 14
+
+    CCI = 14
 
     KAMA_SLOW = 34
     KAMA_FAST = 5
@@ -313,22 +318,6 @@ class StockDataFrame(pd.DataFrame):
         cv = (df['close'] - low_min) / (high_max - low_min)
         df[column_name] = cv.fillna(0).astype('float64') * 100
 
-    @staticmethod
-    def _positive_sum(data):
-        data = [i if i > 0 else 0 for i in data]
-        ret = data[0]
-        for i in data[1:]:
-            ret = (ret * (len(data) - 1) + i) / len(data)
-        return ret
-
-    @staticmethod
-    def _negative_sum(data):
-        data = [-i if i < 0 else 0 for i in data]
-        ret = data[0]
-        for i in data[1:]:
-            ret = (ret * (len(data) - 1) + i) / len(data)
-        return ret
-
     # noinspection PyUnresolvedReferences
     @classmethod
     def _get_rsi(cls, df, n_days):
@@ -365,13 +354,6 @@ class StockDataFrame(pd.DataFrame):
     @staticmethod
     def _drop_columns(df, columns):
         df.drop(columns, inplace=True, axis=1)
-
-    def _ensure_type(self, obj):
-        """ override the method in pandas, omit the check
-
-        This patch is not the perfect way but could make the lib work.
-        """
-        return obj
 
     @classmethod
     def _get_smma(cls, df, column, windows):
@@ -477,17 +459,18 @@ class StockDataFrame(pd.DataFrame):
         :return: None
         """
         if n_days is None:
-            n_days = 14
+            n_days = cls.CCI
             column_name = 'cci'
         else:
-            n_days = int(n_days)
             column_name = 'cci_{}'.format(n_days)
+        n = cls.get_only_one_positive_int(n_days)
 
-        tp = df['middle']
-        tp_sma = df['middle_{}_sma'.format(n_days)]
-        md = df['middle'].rolling(
-            min_periods=1, center=False, window=n_days).apply(
-            lambda x: np.fabs(x - x.mean()).mean())
+        middle = 'middle'
+        middle_sma = '{}_{}_sma'.format(middle, n)
+        tp = df[middle]
+        tp_sma = df[middle_sma]
+        rolling = tp.rolling(min_periods=1, center=False, window=n)
+        md = rolling.apply(lambda x: np.fabs(x - x.mean()).mean())
 
         df[column_name] = (tp - tp_sma) / (.015 * md)
 
@@ -704,7 +687,7 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def _temp_name(cls):
-        return 'sdf{}'.format(random.randint(0, 10e8))
+        return 'sdf{}'.format(random.randint(0, int(10e8)))
 
     @classmethod
     def _get_middle(cls, df):
@@ -762,10 +745,6 @@ class StockDataFrame(pd.DataFrame):
         df[j_column] = 3 * df[k_column] - 2 * df[d_column]
 
     @staticmethod
-    def remove_random_nan(pd_obj):
-        return pd_obj.where((pd.notnull(pd_obj)), None)
-
-    @staticmethod
     def _get_d(df, column, shifts):
         shift = StockDataFrame.to_int(shifts)
         shift_column = '{}_{}_s'.format(column, shift)
@@ -800,12 +779,9 @@ class StockDataFrame(pd.DataFrame):
         """
         window = cls.get_only_one_positive_int(windows)
         column_name = '{}_{}_ema'.format(column, window)
-        if len(df[column]) > 0:
-            df[column_name] = df[column].ewm(
-                ignore_na=False, span=window,
-                min_periods=0, adjust=True).mean()
-        else:
-            df[column_name] = []
+        df[column_name] = df[column].ewm(
+            ignore_na=False, span=window,
+            min_periods=0, adjust=True).mean()
 
     @classmethod
     def _get_boll(cls, df):
@@ -895,7 +871,10 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def _get_mfi(cls, df, n_days=None):
-        """ get money flow index as per https://www.investopedia.com/terms/m/mfi.asp
+        """ get money flow index
+
+        The definition of money flow index is available at:
+        https://www.investopedia.com/terms/m/mfi.asp
 
         :param df: data
         :param n_days: number of periods relevant for the indicator
@@ -906,24 +885,18 @@ class StockDataFrame(pd.DataFrame):
             column_name = 'mfi'
         else:
             column_name = 'mfi_{}'.format(n_days)
-        n = int(n_days)
-        assert n > 0, "n_days '{}' could not be parsed " \
-                      "to a positive integer".format(n_days)
+        n = cls.get_only_one_positive_int(n_days)
         df[column_name] = 0.5
-        if len(df) > n and "volume" in df.columns and (df["volume"] > 0).any():
-            typical_price = df[["low", "high", "close"]].sum(axis=1) / 3.0
-            raw_money_flow = (typical_price * df["volume"]).fillna(0.0)
-            higher_rows = ((typical_price - typical_price.shift(
-                1)) >= 0.0).to_numpy()
-            lower_rows = ((typical_price - typical_price.shift(
-                1)) < 0.0).to_numpy()
-            for i, row in enumerate(df.index[n - 1:]):
-                pos_money_flow = raw_money_flow.reindex(
-                    df.index[i: i + n][higher_rows[i: i + n]]).sum()
-                neg_money_flow = raw_money_flow.reindex(
-                    df.index[i: i + n][lower_rows[i: i + n]]).sum()
-                money_flow_ratio = pos_money_flow / (neg_money_flow + 1e-12)
-                df.loc[row, column_name] = 1.0 - 1.0 / (1 + money_flow_ratio)
+        middle = df['middle']
+        money_flow = (middle * df["volume"]).fillna(0.0)
+        shifted = middle.shift(1)
+        delta = (middle - shifted).fillna(0)
+        pos_flow = money_flow.mask(delta < 0, 0)
+        neg_flow = money_flow.mask(delta >= 0, 0)
+        rolling_pos_flow = pos_flow.rolling(window=n).sum()
+        rolling_neg_flow = neg_flow.rolling(window=n).sum()
+        money_flow_ratio = rolling_pos_flow / (rolling_neg_flow + 1e-12)
+        df[column_name] = (1.0 - 1.0 / (1 + money_flow_ratio)).fillna(0.5)
 
     @classmethod
     def _get_kama(cls, df, column, windows, fasts=None, slows=None):
@@ -1126,16 +1099,6 @@ class StockDataFrame(pd.DataFrame):
                 super(StockDataFrame, self).__getitem__(item))
         return result
 
-    def in_date_delta(self, delta_day, anchor=None):
-        if anchor is None:
-            anchor = self.get_today()
-        other_day = get_date_from_diff(anchor, delta_day)
-        if delta_day > 0:
-            start, end = anchor, other_day
-        else:
-            start, end = other_day, anchor
-        return self.retype(self.loc[start:end])
-
     def till(self, end_date):
         return self[self.index <= end_date]
 
@@ -1148,23 +1111,31 @@ class StockDataFrame(pd.DataFrame):
     def copy(self, deep=True):
         return self.retype(super(StockDataFrame, self).copy(deep))
 
+    def _ensure_type(self, obj):
+        """ override the method in pandas, omit the check
+
+        This patch is not the perfect way but could make the lib work.
+        """
+        return obj
+
     @staticmethod
     def retype(value, index_column=None):
         """ if the input is a `DataFrame`, convert it to this class.
 
-        :param index_column: the column that will be used as index,
-                             default to `date`
+        :param index_column: name of the index column, default to `date`
         :param value: value to convert
         :return: this extended class
         """
         if index_column is None:
             index_column = 'date'
 
-        if isinstance(value, pd.DataFrame):
+        if isinstance(value, StockDataFrame):
+            return value
+        elif isinstance(value, pd.DataFrame):
             # use all lower case for column name
             value.columns = map(lambda c: c.lower(), value.columns)
 
             if index_column in value.columns:
                 value.set_index(index_column, inplace=True)
-            value = StockDataFrame(value)
+            return StockDataFrame(value)
         return value
