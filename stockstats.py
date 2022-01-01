@@ -74,6 +74,8 @@ class StockDataFrame(pd.DataFrame):
 
     ATR_SMMA = 14
 
+    VWMA = 14
+
     MFI = 14
 
     CCI = 14
@@ -871,6 +873,30 @@ class StockDataFrame(pd.DataFrame):
             min_periods=1, window=window, center=False).var()
 
     @classmethod
+    def _get_vwma(cls, df, n_days=None):
+        """ get Volume Weighted Moving Average
+
+        The definition is available at:
+        https://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp
+
+        :param df: data
+        :param n_days: number of periods relevant for the indicator
+        :return: None
+        """
+        if n_days is None:
+            n_days = cls.VWMA
+            column_name = 'vwma'
+        else:
+            column_name = 'vwma_{}'.format(n_days)
+        n = cls.get_only_one_positive_int(n_days)
+
+        tp = df['middle']
+        tpv = df['volume'] * tp
+        rolling_tpv = tpv.rolling(window=n, min_periods=0).sum()
+        rolling_vol = df['volume'].rolling(window=n, min_periods=0).sum()
+        df[column_name] = rolling_tpv / rolling_vol
+
+    @classmethod
     def _get_mfi(cls, df, n_days=None):
         """ get money flow index
 
@@ -887,7 +913,6 @@ class StockDataFrame(pd.DataFrame):
         else:
             column_name = 'mfi_{}'.format(n_days)
         n = cls.get_only_one_positive_int(n_days)
-        df[column_name] = 0.5
         middle = df['middle']
         money_flow = (middle * df["volume"]).fillna(0.0)
         shifted = middle.shift(1)
@@ -1048,6 +1073,8 @@ class StockDataFrame(pd.DataFrame):
             cls._get_vr(df)
         elif key in ['dma']:
             cls._get_dma(df)
+        elif key in ['vwma']:
+            cls._get_vwma(df)
         elif key == 'log-ret':
             cls._get_log_ret(df)
         elif key.endswith('_delta'):

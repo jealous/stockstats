@@ -562,15 +562,15 @@ class StockDataFrameTest(TestCase):
         mfi_default = self._stock['mfi']
         for v in mfi_default.iloc[:13]:
             assert_that(v, equal_to(0.5))
-        assert_that(mfi_default.loc[19991201.0], close_to(0.3597, 0.001))
+        assert_that(mfi_default.loc[19991201], close_to(0.3597, 0.001))
 
         # regression tests for custom settings
         mfi_15 = self._stock['mfi_15']
         for v in mfi_15.iloc[:14]:
             assert_that(v, equal_to(0.5))
-        assert_that(mfi_15.loc[19991202.0], close_to(0.3532, 0.001))
-        assert_that(mfi_15.loc[20000417.0], close_to(0.47589, 0.001))
-        assert_that(mfi_15.loc[20000509.0], close_to(0.4636, 0.001))
+        assert_that(mfi_15.loc[19991202], close_to(0.3532, 0.001))
+        assert_that(mfi_15.loc[20000417], close_to(0.47589, 0.001))
+        assert_that(mfi_15.loc[20000509], close_to(0.4636, 0.001))
 
     def test_column_kama(self):
         kama_ref = [107.92, 107.95, 107.70, 107.97, 106.09, 106.03, 107.65,
@@ -582,3 +582,11 @@ class StockDataFrameTest(TestCase):
         assert_that(kama_10.iloc[-1], close_to(111.631, 0.01))
         kama_2 = stock['close_2_kama']
         assert_that(kama_2.iloc[-1], close_to(111.907, 0.01))
+
+    def test_vwma(self):
+        stock = self.get_stock_90day()
+        vwma = stock['vwma']
+        vwma_14 = stock['vwma_14']
+        assert_that(vwma.loc[20110330], close_to(13.312679, 0.001))
+        assert_that(vwma.loc[20110331], close_to(13.350941, 0.001))
+        assert_that(vwma_14.loc[20110331], close_to(vwma.loc[20110331], 0.001))
