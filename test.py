@@ -30,11 +30,11 @@ from unittest import TestCase
 
 import pandas as pd
 from hamcrest import greater_than, assert_that, equal_to, close_to, \
-    contains_exactly, \
-    none, only_contains, is_not
+    contains_exactly, none, is_not
 from numpy import isnan
 
 from stockstats import StockDataFrame as Sdf
+from stockstats import wrap
 
 __author__ = 'Cedric Zhuang'
 
@@ -45,7 +45,7 @@ def get_file(filename):
 
 
 class StockDataFrameTest(TestCase):
-    _stock = Sdf.retype(pd.read_csv(get_file('987654.csv')))
+    _stock = wrap(pd.read_csv(get_file('987654.csv')))
     _supor = Sdf.retype(pd.read_csv(get_file('002032.csv')))
 
     def get_stock_20day(self):
@@ -232,6 +232,11 @@ class StockDataFrameTest(TestCase):
         assert_that(isnan(ema_5.loc[20110107]), equal_to(False))
         assert_that(ema_5.loc[20110110], close_to(12.9668, 0.01))
 
+    def test_ema_of_empty_df(self):
+        s = Sdf.retype(pd.DataFrame())
+        ema = s['close_10_ema']
+        assert_that(len(ema), equal_to(0))
+
     def test_column_macd(self):
         stock = self.get_stock_90day()
         stock.get('macd')
@@ -391,13 +396,6 @@ class StockDataFrameTest(TestCase):
         assert_that(stock.loc[20110128]['log-ret'],
                     close_to(-0.010972, 0.000001))
 
-    def test_in_date_delta(self):
-        stock = self.get_stock_20day()
-        assert_that(stock.in_date_delta(-4, 20110110).index,
-                    only_contains(20110106, 20110107, 20110110))
-        assert_that(stock.in_date_delta(3, 20110110).index,
-                    only_contains(20110110, 20110111, 20110112, 20110113))
-
     def test_rsv_nan_value(self):
         s = Sdf.retype(pd.read_csv(get_file('asml.as.csv')))
         df = Sdf.retype(s)
@@ -424,13 +422,13 @@ class StockDataFrameTest(TestCase):
         assert_that(self._supor.loc[20160817, 'wr_6'], close_to(16.53, 0.01))
 
     def test_get_cci(self):
-        self._supor.get('cci_14')
-        self._supor.get('cci')
-        assert_that(self._supor.loc[20160817, 'cci'], close_to(50, 0.01))
-        assert_that(self._supor.loc[20160817, 'cci_14'], close_to(50, 0.01))
-        assert_that(self._supor.loc[20160816, 'cci_14'], close_to(24.8, 0.01))
-        assert_that(self._supor.loc[20160815, 'cci_14'],
-                    close_to(-26.46, 0.01))
+        stock = self._supor.within(20160701, 20160831)
+        stock.get('cci_14')
+        stock.get('cci')
+        assert_that(stock.loc[20160817, 'cci'], close_to(50, 0.01))
+        assert_that(stock.loc[20160817, 'cci_14'], close_to(50, 0.01))
+        assert_that(stock.loc[20160816, 'cci_14'], close_to(24.8, 0.01))
+        assert_that(stock.loc[20160815, 'cci_14'], close_to(-26.46, 0.01))
 
     def test_get_atr(self):
         self._supor.get('atr_14')
@@ -554,9 +552,9 @@ class StockDataFrameTest(TestCase):
         # was calculated by hand:
         mfi_3_should = [0.5,
                         0.5,
-                        0.5889212827988338,
-                        0.3503902862098872,
-                        0.28557802365509344]
+                        0.67734553,
+                        0.35039028,
+                        0.28557802]
         for i in range(len(mfi_3_should)):
             assert_that(mfi_3_is[i], close_to(mfi_3_should[i], 1e-6))
 
