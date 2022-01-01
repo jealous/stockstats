@@ -76,6 +76,8 @@ class StockDataFrame(pd.DataFrame):
 
     VWMA = 14
 
+    CHOP = 14
+
     MFI = 14
 
     CCI = 14
@@ -485,7 +487,7 @@ class StockDataFrame(pd.DataFrame):
         :param df: data
         :return: None
         """
-        prev_close = df['close_-1_s']
+        prev_close = df['close_-1_s'].fillna(df['close'].iloc[0])
         high = df['high']
         low = df['low']
         c1 = high - low
@@ -508,9 +510,9 @@ class StockDataFrame(pd.DataFrame):
             window = cls.ATR_SMMA
             column_name = 'atr'
         else:
-            window = int(window)
             column_name = 'atr_{}'.format(window)
-        tr_smma_column = 'tr_{}_smma'.format(window)
+        n = cls.get_only_one_positive_int(window)
+        tr_smma_column = 'tr_{}_smma'.format(n)
 
         df[column_name] = df[tr_smma_column]
         cls._drop_columns(df, [tr_smma_column])
@@ -897,6 +899,41 @@ class StockDataFrame(pd.DataFrame):
         df[column_name] = rolling_tpv / rolling_vol
 
     @classmethod
+    def _get_chop(cls, df, n_days=None):
+        """ get Choppiness Index (CHOP)
+
+        See the definition of the index here:
+        https://www.tradingview.com/education/choppinessindex/
+
+        Calculation:
+
+        100 * LOG10( SUM(ATR(1), n) / ( MaxHi(n) - MinLo(n) ) ) / LOG10(n)
+        n = User defined period length.
+        LOG10(n) = base-10 LOG of n
+        ATR(1) = Average True Range (Period of 1)
+        SUM(ATR(1), n) = Sum of the Average True Range over past n bars
+        MaxHi(n) = The highest high over past n bars
+
+        :param df: data
+        :param n_days: number of periods relevant for the indicator
+        :return: None
+        """
+        if n_days is None:
+            n_days = cls.CHOP
+            column_name = 'chop'
+        else:
+            column_name = 'chop_{}'.format(n_days)
+        n = cls.get_only_one_positive_int(n_days)
+        atr = df['atr_1']
+        atr_sum = atr.rolling(window=n, min_periods=0).sum()
+        high = df['high'].rolling(window=n, min_periods=0).max()
+        low = df['low'].rolling(window=n, min_periods=0).min()
+        choppy = atr_sum / (high - low)
+        numerator = np.log10(choppy) * 100
+        denominator = np.log10(n)
+        df[column_name] = numerator / denominator
+
+    @classmethod
     def _get_mfi(cls, df, n_days=None):
         """ get money flow index
 
@@ -1031,14 +1068,6 @@ class StockDataFrame(pd.DataFrame):
             df[key] = different & ~lt_series
         return df[key]
 
-    @staticmethod
-    def init_columns(obj, columns):
-        if isinstance(columns, list):
-            for column in columns:
-                StockDataFrame.__init_column(obj, column)
-        else:
-            StockDataFrame.__init_column(obj, columns)
-
     @classmethod
     def __init_not_exist_column(cls, df, key):
         if key == 'change':
@@ -1075,6 +1104,8 @@ class StockDataFrame(pd.DataFrame):
             cls._get_dma(df)
         elif key in ['vwma']:
             cls._get_vwma(df)
+        elif key in ['chop']:
+            cls._get_chop(df)
         elif key == 'log-ret':
             cls._get_log_ret(df)
         elif key.endswith('_delta'):
@@ -1120,7 +1151,7 @@ class StockDataFrame(pd.DataFrame):
                 super(StockDataFrame, self).__getitem__(item))
         except KeyError:
             try:
-                self.init_columns(self, item)
+                self.__init_column(self, item)
             except AttributeError:
                 log.exception('{} not found.'.format(item))
             result = self.retype(
