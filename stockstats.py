@@ -428,7 +428,8 @@ class StockDataFrame(pd.DataFrame):
     def _get_wr(cls, df, n_days):
         """ Williams Overbought/Oversold Index
 
-        WMS=[(Hn—Ct)/(Hn—Ln)] ×100
+        Definition: https://www.investopedia.com/terms/w/williamsr.asp
+        WMS=[(Hn—Ct)/(Hn—Ln)] × -100
         Ct - the close price
         Hn - N days high
         Ln - N days low
@@ -444,7 +445,7 @@ class StockDataFrame(pd.DataFrame):
         hn = df['high'].rolling(min_periods=1, window=n_days,
                                 center=False).max()
         column_name = 'wr_{}'.format(n_days)
-        df[column_name] = (hn - df['close']) / (hn - ln) * 100
+        df[column_name] = (hn - df['close']) / (hn - ln) * -100
 
     @classmethod
     def _get_cci(cls, df, n_days=None):

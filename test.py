@@ -418,8 +418,8 @@ class StockDataFrameTest(TestCase):
     def test_get_wr(self):
         self._supor.get('wr_10')
         self._supor.get('wr_6')
-        assert_that(self._supor.loc[20160817, 'wr_10'], close_to(13.06, 0.01))
-        assert_that(self._supor.loc[20160817, 'wr_6'], close_to(16.53, 0.01))
+        assert_that(self._supor.loc[20160817, 'wr_10'], close_to(-13.06, 0.01))
+        assert_that(self._supor.loc[20160817, 'wr_6'], close_to(-16.53, 0.01))
 
     def test_get_cci(self):
         stock = self._supor.within(20160701, 20160831)
