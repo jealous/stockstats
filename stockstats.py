@@ -213,10 +213,13 @@ class StockDataFrame(pd.DataFrame):
         """
         shift = cls.to_int(shifts)
         shifted_key = "{}_{}_s".format(column, shift)
-        df[shifted_key] = df[column].shift(-shift)
-        cp = df[shifted_key].copy()
-        StockDataFrame.set_nan(cp, shift)
-        df[shifted_key] = cp
+        col = df[column]
+        ret = col.shift(-shift)
+        if shift < 0:
+            ret.iloc[:-shift] = col.iloc[0]
+        elif shift > 0:
+            ret.iloc[-shift:] = col.iloc[-1]
+        df[shifted_key] = ret
 
     @classmethod
     def _get_log_ret(cls, df):
@@ -487,7 +490,7 @@ class StockDataFrame(pd.DataFrame):
         :param df: data
         :return: None
         """
-        prev_close = df['close_-1_s'].fillna(df['close'].iloc[0])
+        prev_close = df['close_-1_s']
         high = df['high']
         low = df['low']
         c1 = high - low
@@ -770,8 +773,8 @@ class StockDataFrame(pd.DataFrame):
         """
         window = cls.get_only_one_positive_int(windows)
         column_name = '{}_{}_sma'.format(column, window)
-        df[column_name] = df[column].rolling(min_periods=1, window=window,
-                                             center=False).mean()
+        df[column_name] = df[column].rolling(
+            min_periods=1, window=window, center=False).mean()
 
     @classmethod
     def _get_ema(cls, df, column, windows):
@@ -952,7 +955,7 @@ class StockDataFrame(pd.DataFrame):
         n = cls.get_only_one_positive_int(n_days)
         middle = df['middle']
         money_flow = (middle * df["volume"]).fillna(0.0)
-        shifted = middle.shift(1)
+        shifted = df['middle_-1_s']
         delta = (middle - shifted).fillna(0)
         pos_flow = money_flow.mask(delta < 0, 0)
         neg_flow = money_flow.mask(delta >= 0, 0)
@@ -983,26 +986,27 @@ class StockDataFrame(pd.DataFrame):
             slow = cls.get_only_one_positive_int(slows)
             fast = cls.get_only_one_positive_int(fasts)
             column_name = '{}_{}_kama_{}_{}'.format(column, window, fast, slow)
-        if len(df[column]) > window:
-            change = abs(df[column] - df[column].shift(window))
-            volatility = abs(df[column] - df[column].shift(1)). \
-                rolling(window).sum()
-            efficiency_ratio = change / volatility
-            fast_ema_smoothing = 2.0 / (fast + 1)
-            slow_ema_smoothing = 2.0 / (slow + 1)
-            smoothing_2 = fast_ema_smoothing + slow_ema_smoothing
-            efficient_smoothing = efficiency_ratio * smoothing_2
-            smoothing = 2 * (efficient_smoothing + slow_ema_smoothing)
-            df[column_name] = 0.
-            for i in range(window, df.shape[0]):
-                last_kama = df.loc[df.index[i - 1], column_name]
-                summand = smoothing.iloc[i] * (df.loc[df.index[i],
-                                                      column]
-                                               - last_kama)
-                df.loc[df.index[i], column_name] = last_kama + summand
-            df.loc[efficiency_ratio.isnull(), column_name] = np.nan
-        else:
-            df[column_name] = []
+
+        col = df[column]
+        col_window_s = df['{}_-{}_s'.format(column, window)]
+        col_last = df['{}_-1_s'.format(column)]
+        change = (col - col_window_s).abs()
+        volatility = (col - col_last).abs().rolling(window).sum()
+        efficiency_ratio = change / volatility
+        fast_ema_smoothing = 2.0 / (fast + 1)
+        slow_ema_smoothing = 2.0 / (slow + 1)
+        smoothing_2 = fast_ema_smoothing - slow_ema_smoothing
+        efficient_smoothing = efficiency_ratio * smoothing_2
+        smoothing = 2 * (efficient_smoothing + slow_ema_smoothing)
+
+        # start with simple moving average
+        kama = df['{}_{}_sma'.format(column, window)]
+        last_kama = kama.iloc[window-1]
+        for i in range(window, len(kama)):
+            cur = smoothing.iloc[i] * (col.iloc[i] - last_kama) + last_kama
+            kama.iloc[i] = cur
+            last_kama = cur
+        df[column_name] = kama
 
     @staticmethod
     def parse_column_name(name):

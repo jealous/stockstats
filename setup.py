@@ -73,7 +73,7 @@ setup(
     description="DataFrame with inline stock statistics support.",
     license="BSD",
     keywords="stock statistics indicator",
-    url="http://github.com/jealous/stockstats",
+    url="https://github.com/jealous/stockstats",
     py_modules=['stockstats'],
     platforms=['any'],
     long_description=get_long_description(),
