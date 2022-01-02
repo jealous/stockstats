@@ -58,6 +58,10 @@ class StockDataFrame(pd.DataFrame):
     MACD_EMA_LONG = 26
     MACD_EMA_SIGNAL = 9
 
+    PPO_EMA_SHORT = 12
+    PPO_EMA_LONG = 26
+    PPO_EMA_SIGNAL = 9
+
     PDI_SMMA = 14
     MDI_SMMA = 14
     DX_SMMA = 14
@@ -840,6 +844,28 @@ class StockDataFrame(pd.DataFrame):
         cls._drop_columns(df, [ema_short, ema_long, ema_signal])
 
     @classmethod
+    def _get_ppo(cls, df):
+        """ Percentage Price Oscillator
+
+        http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:price_oscillators_ppo
+
+        Percentage Price Oscillator (PPO):
+            {(12-day EMA - 26-day EMA)/26-day EMA} x 100
+
+        Signal Line: 9-day EMA of PPO
+
+        PPO Histogram: PPO - Signal Line
+
+        :param df: data
+        :return: None
+        """
+        ppo_short = df['close_{}_ema'.format(cls.PPO_EMA_SHORT)]
+        ppo_long = df['close_{}_ema'.format(cls.PPO_EMA_LONG)]
+        df['ppo'] = (ppo_short - ppo_long) / ppo_long * 100
+        df['ppos'] = df['ppo_{}_ema'.format(cls.PPO_EMA_SIGNAL)]
+        df['ppoh'] = df['ppo'] - df['ppos']
+
+    @classmethod
     def get_only_one_positive_int(cls, windows):
         if isinstance(windows, int):
             window = windows
@@ -1001,7 +1027,7 @@ class StockDataFrame(pd.DataFrame):
 
         # start with simple moving average
         kama = df['{}_{}_sma'.format(column, window)]
-        last_kama = kama.iloc[window-1]
+        last_kama = kama.iloc[window - 1]
         for i in range(window, len(kama)):
             cur = smoothing.iloc[i] * (col.iloc[i] - last_kama) + last_kama
             kama.iloc[i] = cur
@@ -1084,6 +1110,8 @@ class StockDataFrame(pd.DataFrame):
             cls._get_boll(df)
         elif key in ['macd', 'macds', 'macdh']:
             cls._get_macd(df)
+        elif key in ['ppo', 'ppos', 'ppoh']:
+            cls._get_ppo(df)
         elif key in ['kdjk', 'kdjd', 'kdjj']:
             cls._get_kdj_default(df)
         elif key in ['cr', 'cr-ma1', 'cr-ma2', 'cr-ma3']:
@@ -1155,7 +1183,11 @@ class StockDataFrame(pd.DataFrame):
                 super(StockDataFrame, self).__getitem__(item))
         except KeyError:
             try:
-                self.__init_column(self, item)
+                if isinstance(item, list):
+                    for column in item:
+                        self.__init_column(self, column)
+                else:
+                    self.__init_column(self, item)
             except AttributeError:
                 log.exception('{} not found.'.format(item))
             result = self.retype(

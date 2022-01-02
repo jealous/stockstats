@@ -275,6 +275,13 @@ class StockDataFrameTest(TestCase):
         record = stock.loc[20110225]
         assert_that(record['macdh'], close_to(-0.02805, dt))
 
+    def test_ppo(self):
+        stock = self.get_stock_90day()
+        _ = stock[['ppo', 'ppos', 'ppoh']]
+        assert_that(stock['ppo'].loc[20110331], close_to(1.1190, dt))
+        assert_that(stock['ppos'].loc[20110331], close_to(0.6840, dt))
+        assert_that(stock['ppoh'].loc[20110331], close_to(0.4349, dt))
+
     def test_column_mstd(self):
         stock = self.get_stock_20day()
         mstd_3 = stock['close_3_mstd']
