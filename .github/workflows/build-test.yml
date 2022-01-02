@@ -30,7 +30,7 @@ jobs:
         run: flake8 stockstats.py test.py
       - name: Run Tests
         run: |
-          py.test --cov=./ test.py
+          py.test --cov=stockstats test.py
       - name: Publish Test Results
         if: ${{ matrix.python-version == '3.10' }}
         run: codecov
