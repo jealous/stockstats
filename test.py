@@ -30,7 +30,7 @@ from unittest import TestCase
 
 import pandas as pd
 from hamcrest import greater_than, assert_that, equal_to, close_to, \
-    contains_exactly, none, is_not
+    contains_exactly, none, is_not, raises
 from numpy import isnan
 
 from stockstats import StockDataFrame as Sdf
@@ -67,6 +67,12 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock()
         assert_that(len(stock['volume_delta']), greater_than(1))
         assert_that(stock.loc[20141219]['volume_delta'], equal_to(-63383600))
+
+    def test_must_have_positive_int(self):
+        def do():
+            Sdf.get_only_one_positive_int("-54")
+
+        assert_that(do, raises(IndexError))
 
     def test_multiple_columns(self):
         ret = self.get_stock()
@@ -159,9 +165,10 @@ class StockDataFrameTest(TestCase):
     def test_column_shift_positive(self):
         stock = self.get_stock_20day()
         close_s = stock['close_2_s']
+        print(close_s)
         assert_that(close_s.loc[20110118], equal_to(12.48))
-        assert_that(isnan(close_s.loc[20110119]), equal_to(True))
-        assert_that(isnan(close_s.loc[20110120]), equal_to(True))
+        assert_that(close_s.loc[20110119], equal_to(12.48))
+        assert_that(close_s.loc[20110120], equal_to(12.48))
 
     def test_column_shift_zero(self):
         stock = self.get_stock_20day()
@@ -171,10 +178,11 @@ class StockDataFrameTest(TestCase):
 
     def test_column_shift_negative(self):
         stock = self.get_stock_20day()
-        close_s = stock['close_-1_s']
-        assert_that(isnan(close_s.loc[20110104]), equal_to(True))
-        assert_that(close_s.loc[20110105:20110106],
-                    contains_exactly(12.61, 12.71))
+        close_s = stock['close_-2_s']
+        assert_that(close_s.loc[20110104], equal_to(12.61))
+        assert_that(close_s.loc[20110105], equal_to(12.61))
+        assert_that(close_s.loc[20110106], equal_to(12.61))
+        assert_that(close_s.loc[20110107], equal_to(12.71))
 
     def test_column_rsv(self):
         stock = self.get_stock_20day()
@@ -227,6 +235,7 @@ class StockDataFrameTest(TestCase):
     def test_column_sma(self):
         stock = self.get_stock_20day()
         sma_2 = stock['open_2_sma']
+        assert_that(sma_2.loc[20110104], close_to(12.42, dt))
         assert_that(sma_2.loc[20110105], close_to(12.56, dt))
 
     def test_column_ema(self):
@@ -584,9 +593,9 @@ class StockDataFrameTest(TestCase):
                     111.95, 111.60, 111.39, 112.25]
         stock = Sdf.retype(pd.DataFrame(columns=["close"], data=kama_ref))
         kama_10 = stock['close_10_kama_2_30']
-        assert_that(kama_10.iloc[-1], close_to(111.631, dt))
+        assert_that(kama_10.iloc[-1], close_to(111.638, dt))
         kama_2 = stock['close_2_kama']
-        assert_that(kama_2.iloc[-1], close_to(111.907, dt))
+        assert_that(kama_2.iloc[-1], close_to(111.832, dt))
 
     def test_vwma(self):
         stock = self.get_stock_90day()
