@@ -165,7 +165,6 @@ class StockDataFrameTest(TestCase):
     def test_column_shift_positive(self):
         stock = self.get_stock_20day()
         close_s = stock['close_2_s']
-        print(close_s)
         assert_that(close_s.loc[20110118], equal_to(12.48))
         assert_that(close_s.loc[20110119], equal_to(12.48))
         assert_that(close_s.loc[20110120], equal_to(12.48))
@@ -413,13 +412,26 @@ class StockDataFrameTest(TestCase):
         assert_that(df['rsv_9'][0], equal_to(0.0))
 
     def test_get_rsi(self):
-        self._supor.get('rsi_6')
-        self._supor.get('rsi_12')
-        self._supor.get('rsi_24')
+        rsi = self._supor.get('rsi')
+        rsi_6 = self._supor.get('rsi_6')
+        rsi_12 = self._supor.get('rsi_12')
+        rsi_14 = self._supor.get('rsi_14')
+        rsi_24 = self._supor.get('rsi_24')
         idx = 20160817
-        assert_that(self._supor.loc[idx, 'rsi_6'], near_to(71.3114))
-        assert_that(self._supor.loc[idx, 'rsi_12'], near_to(63.1125))
-        assert_that(self._supor.loc[idx, 'rsi_24'], near_to(61.3064))
+        assert_that(rsi_6.loc[idx], near_to(71.3114))
+        assert_that(rsi_12.loc[idx], near_to(63.1125))
+        assert_that(rsi_24.loc[idx], near_to(61.3064))
+        assert_that(rsi.loc[idx], near_to(rsi_14.loc[idx]))
+
+    def test_get_stoch_rsi(self):
+        stock = self.get_stock_90day()
+        stoch_rsi = stock['stochrsi']
+        stoch_rsi_6 = stock['stochrsi_6']
+        stoch_rsi_14 = stock['stochrsi_14']
+        idx = 20110331
+        assert_that(stoch_rsi.loc[idx], near_to(67.0955))
+        assert_that(stoch_rsi_6.loc[idx], near_to(27.5693))
+        assert_that(stoch_rsi_14.loc[idx], near_to(stoch_rsi.loc[idx]))
 
     def test_get_wr(self):
         self._supor.get('wr_10')
@@ -576,3 +588,10 @@ class StockDataFrameTest(TestCase):
         idx = 20110331
         assert_that(res['close_26_ema'].loc[idx], near_to(13.2488))
         assert_that(res['macd'].loc[idx], near_to(0.1482))
+
+    def test_wave_trend(self):
+        stock = self.get_stock_90day()
+        wt1, wt2 = stock['wt1'], stock['wt2']
+        idx = 20110331
+        assert_that(wt1.loc[idx], near_to(38.9610))
+        assert_that(wt2.loc[idx], near_to(31.6997))
