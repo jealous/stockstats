@@ -85,7 +85,12 @@ class StockDataFrame(pd.DataFrame):
 
     CCI = 14
 
+    RSI = 14
+
     VR = 26
+
+    WAVE_TREND_1 = 10
+    WAVE_TREND_2 = 21
 
     KAMA_SLOW = 34
     KAMA_FAST = 5
@@ -337,7 +342,7 @@ class StockDataFrame(pd.DataFrame):
 
     # noinspection PyUnresolvedReferences
     @classmethod
-    def _get_rsi(cls, df, window):
+    def _get_rsi(cls, df, window=None):
         """ Calculate the RSI (Relative Strength Index) within N periods
 
         calculated based on the formula at:
@@ -347,6 +352,11 @@ class StockDataFrame(pd.DataFrame):
         :param window: number of periods
         :return: None
         """
+        if window is None:
+            window = cls.RSI
+            column_name = 'rsi'
+        else:
+            column_name = 'rsi_{}'.format(window)
         window = cls.get_int_positive(window)
 
         change = cls._delta(df['close'], -1)
@@ -356,9 +366,56 @@ class StockDataFrame(pd.DataFrame):
         n_ema = cls._smma(close_nm, window)
 
         rs_column_name = 'rs_{}'.format(window)
-        rsi_column_name = 'rsi_{}'.format(window)
         df[rs_column_name] = rs = p_ema / n_ema
-        df[rsi_column_name] = 100 - 100 / (1.0 + rs)
+        df[column_name] = 100 - 100 / (1.0 + rs)
+
+    @classmethod
+    def _get_stochrsi(cls, df, window=None):
+        """ Calculate the Stochastic RSI
+
+        calculated based on the formula at:
+        https://www.investopedia.com/terms/s/stochrsi.asp
+
+        :param df: data
+        :param window: number of periods
+        :return: None
+        """
+        if window is None:
+            window = cls.RSI
+            column_name = 'stochrsi'
+        else:
+            column_name = 'stochrsi_{}'.format(window)
+        window = cls.get_int_positive(window)
+
+        rsi = df['rsi_{}'.format(window)]
+        rsi_min = cls._mov_min(rsi, window)
+        rsi_max = cls._mov_max(rsi, window)
+
+        cv = (rsi - rsi_min) / (rsi_max - rsi_min)
+        df[column_name] = cv * 100
+
+    @classmethod
+    def _get_wave_trend(cls, df):
+        """ Calculate LazyBear's Wavetrend
+        Check the algorithm described below:
+        https://medium.com/@samuel.mcculloch/lets-take-a-look-at-wavetrend-with-crosses-lazybear-s-indicator-2ece1737f72f
+
+        n1: period of EMA on typical price
+        n2: period of EMA
+
+        :param df: data frame
+        :return: None
+        """
+        n1 = cls.WAVE_TREND_1
+        n2 = cls.WAVE_TREND_2
+
+        tp = cls._middle(df)
+        esa = cls._ema(tp, n1)
+        d = cls._ema((tp - esa).abs(), n1)
+        ci = (tp - esa) / (0.015 * d)
+        tci = cls._ema(ci, n2)
+        df["wt1"] = tci
+        df["wt2"] = cls._sma(tci, 4)
 
     @classmethod
     def _smma(cls, series, window):
@@ -1108,6 +1165,8 @@ class StockDataFrame(pd.DataFrame):
     def __init_not_exist_column(cls, df, key):
         handlers = {
             ('change',): cls._get_change,
+            ('rsi',): cls._get_rsi,
+            ('stochrsi',): cls._get_stochrsi,
             ('rate',): cls._get_rate,
             ('middle',): cls._get_middle,
             ('boll', 'boll_ub', 'boll_lb'): cls._get_boll,
@@ -1128,6 +1187,7 @@ class StockDataFrame(pd.DataFrame):
             ('chop',): cls._get_chop,
             ('log-ret',): cls._get_log_ret,
             ('mfi',): cls._get_mfi,
+            ('wt1', 'wt2'): cls._get_wave_trend,
         }
         for names, handler in handlers.items():
             if key in names:
