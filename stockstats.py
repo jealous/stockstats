@@ -29,7 +29,6 @@ from __future__ import unicode_literals
 import itertools
 import logging
 import operator
-import random
 import re
 
 import numpy as np
@@ -86,6 +85,8 @@ class StockDataFrame(pd.DataFrame):
 
     CCI = 14
 
+    VR = 26
+
     KAMA_SLOW = 34
     KAMA_FAST = 5
 
@@ -93,15 +94,18 @@ class StockDataFrame(pd.DataFrame):
 
     # End of options
 
-    @staticmethod
-    def _get_change(df):
+    @classmethod
+    def _change(cls, series, window):
+        return series.pct_change(periods=-window).fillna(0.0) * 100
+
+    @classmethod
+    def _get_change(cls, df):
         """ Get the percentage change column
 
         :param df: DataFrame object
         :return: result series
         """
-        df['change'] = df['close'].pct_change() * 100
-        return df['change']
+        df['change'] = cls._change(df['close'], -1)
 
     @staticmethod
     def _get_p(df, column, shifts):
@@ -199,35 +203,51 @@ class StockDataFrame(pd.DataFrame):
 
         :param df: DataFrame object
         :param column: column name of the rate to calculate
-        :param shifts: days to shift, accept one shift only
+        :param shifts: periods to shift, accept one shift only
         :return: None
         """
         shift = cls.to_int(shifts)
         rate_key = '{}_{}_r'.format(column, shift)
-        df[rate_key] = df[column].pct_change(periods=-shift) * 100
+        df[rate_key] = cls._change(df[column], shift)
+
+    @classmethod
+    def _shift(cls, series, window):
+        """ Shift the series
+
+        When window is negative, shift the past period to current.
+        Fill the gap with the first data available.
+
+        When window is positive, shift the future period to current.
+        Fill the gap with last data available.
+
+        :param series: the series to shift
+        :param window: number of periods to shift
+        :return: the shifted series with filled gap
+        """
+        ret = series.shift(-window)
+        if window < 0:
+            ret.iloc[:-window] = series.iloc[0]
+        elif window > 0:
+            ret.iloc[-window:] = series.iloc[-1]
+        return ret
 
     @classmethod
     def _get_s(cls, df, column, shifts):
-        """ Get the column shifted by days
+        """ Get the column shifted by periods
 
         :param df: DataFrame object
         :param column: name of the column to shift
-        :param shifts: days to shift, accept one shift only
+        :param shifts: periods to shift, accept one shift only
         :return: None
         """
         shift = cls.to_int(shifts)
         shifted_key = "{}_{}_s".format(column, shift)
-        col = df[column]
-        ret = col.shift(-shift)
-        if shift < 0:
-            ret.iloc[:-shift] = col.iloc[0]
-        elif shift > 0:
-            ret.iloc[-shift:] = col.iloc[-1]
-        df[shifted_key] = ret
+        df[shifted_key] = cls._shift(df[column], shift)
 
     @classmethod
     def _get_log_ret(cls, df):
-        df['log-ret'] = np.log(df['close'] / df['close_-1_s'])
+        close = df['close']
+        df['log-ret'] = np.log(close / cls._shift(close, -1))
 
     @classmethod
     def _get_c(cls, df, column, shifts):
@@ -240,7 +260,7 @@ class StockDataFrame(pd.DataFrame):
         :return: result series
         """
         column_name = '{}_{}_c'.format(column, shifts)
-        shifts = cls.get_only_one_positive_int(shifts)
+        shifts = cls.get_int_positive(shifts)
         df[column_name] = df[column].rolling(
             center=False,
             window=shifts,
@@ -258,7 +278,7 @@ class StockDataFrame(pd.DataFrame):
         :return: result series
         """
         column_name = '{}_{}_fc'.format(column, shifts)
-        shift = cls.get_only_one_positive_int(shifts)
+        shift = cls.get_int_positive(shifts)
         reversed_series = df[column][::-1]
         reversed_counts = reversed_series.rolling(
             center=False,
@@ -274,18 +294,6 @@ class StockDataFrame(pd.DataFrame):
         threshold = cls.to_float(threshold)
         f = getattr(operator, op)
         df[column_name] = f(df[column], threshold)
-
-    @staticmethod
-    def get_diff_convolve_array(shift):
-        if shift == 0:
-            ret = [1]
-        else:
-            ret = np.zeros(abs(shift) + 1)
-            if shift < 0:
-                ret[[0, -1]] = 1, -1
-            else:
-                ret[[0, -1]] = -1, 1
-        return ret
 
     @classmethod
     def _init_shifted_columns(cls, column, df, shifts):
@@ -309,62 +317,56 @@ class StockDataFrame(pd.DataFrame):
         shift_column_names = cls._init_shifted_columns(column, df, shifts)
         df[column_name] = np.min(df[shift_column_names], axis=1)
 
-    @staticmethod
-    def _get_rsv(df, n_days):
-        """ Calculate the RSV (Raw Stochastic Value) within N days
+    @classmethod
+    def _get_rsv(cls, df, window):
+        """ Calculate the RSV (Raw Stochastic Value) within N periods
 
         This value is essential for calculating KDJs
         Current day is included in N
         :param df: data
-        :param n_days: N days
+        :param window: number of periods
         :return: None
         """
-        n_days = int(n_days)
-        column_name = 'rsv_{}'.format(n_days)
-        low_min = df['low'].rolling(
-            min_periods=1, window=n_days, center=False).min()
-        high_max = df['high'].rolling(
-            min_periods=1, window=n_days, center=False).max()
+        window = cls.get_int_positive(window)
+        column_name = 'rsv_{}'.format(window)
+        low_min = cls._mov_min(df['low'], window)
+        high_max = cls._mov_max(df['high'], window)
 
         cv = (df['close'] - low_min) / (high_max - low_min)
-        df[column_name] = cv.fillna(0).astype('float64') * 100
+        df[column_name] = cv.fillna(0.0) * 100
 
     # noinspection PyUnresolvedReferences
     @classmethod
-    def _get_rsi(cls, df, n_days):
-        """ Calculate the RSI (Relative Strength Index) within N days
+    def _get_rsi(cls, df, window):
+        """ Calculate the RSI (Relative Strength Index) within N periods
 
         calculated based on the formula at:
         https://en.wikipedia.org/wiki/Relative_strength_index
 
         :param df: data
-        :param n_days: N days
+        :param window: number of periods
         :return: None
         """
-        n_days = int(n_days)
-        d = df['close_-1_d']
+        window = cls.get_int_positive(window)
 
-        df['closepm'] = (d + d.abs()) / 2
-        df['closenm'] = (-d + d.abs()) / 2
-        closepm_smma_column = 'closepm_{}_smma'.format(n_days)
-        closenm_smma_column = 'closenm_{}_smma'.format(n_days)
-        p_ema = df[closepm_smma_column]
-        n_ema = df[closenm_smma_column]
+        change = cls._delta(df['close'], -1)
+        close_pm = (change + change.abs()) / 2
+        close_nm = (-change + change.abs()) / 2
+        p_ema = cls._smma(close_pm, window)
+        n_ema = cls._smma(close_nm, window)
 
-        rs_column_name = 'rs_{}'.format(n_days)
-        rsi_column_name = 'rsi_{}'.format(n_days)
+        rs_column_name = 'rs_{}'.format(window)
+        rsi_column_name = 'rsi_{}'.format(window)
         df[rs_column_name] = rs = p_ema / n_ema
         df[rsi_column_name] = 100 - 100 / (1.0 + rs)
 
-        columns_to_remove = ['closepm',
-                             'closenm',
-                             closepm_smma_column,
-                             closenm_smma_column]
-        cls._drop_columns(df, columns_to_remove)
-
-    @staticmethod
-    def _drop_columns(df, columns):
-        df.drop(columns, inplace=True, axis=1)
+    @classmethod
+    def _smma(cls, series, window):
+        return series.ewm(
+            ignore_na=False,
+            alpha=1.0 / window,
+            min_periods=0,
+            adjust=True).mean()
 
     @classmethod
     def _get_smma(cls, df, column, windows):
@@ -374,36 +376,30 @@ class StockDataFrame(pd.DataFrame):
         :param windows: range
         :return: result series
         """
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         column_name = '{}_{}_smma'.format(column, window)
-        smma = df[column].ewm(
-            ignore_na=False, alpha=1.0 / window,
-            min_periods=0, adjust=True).mean()
-        df[column_name] = smma
-        return smma
+        df[column_name] = cls._smma(df[column], window)
 
     @classmethod
     def _get_trix(cls, df, column=None, windows=None):
+        column_name = ""
         if column is None and windows is None:
             column_name = 'trix'
-        else:
-            column_name = '{}_{}_trix'.format(column, windows)
-
         if column is None:
             column = 'close'
         if windows is None:
             windows = cls.TRIX_EMA_WINDOW
-        window = cls.get_only_one_positive_int(windows)
+        if column_name == "":
+            column_name = '{}_{}_trix'.format(column, windows)
 
-        single = '{c}_{w}_ema'.format(c=column, w=window)
-        double = '{c}_{w}_ema_{w}_ema'.format(c=column, w=window)
-        triple = '{c}_{w}_ema_{w}_ema_{w}_ema'.format(c=column, w=window)
-        prev_triple = '{}_-1_s'.format(triple)
-        df[column_name] = ((df[triple] - df[prev_triple]) * 100
-                           / df[prev_triple])
+        window = cls.get_int_positive(windows)
 
-        columns_to_drop = [single, double, triple, prev_triple]
-        cls._drop_columns(df, columns_to_drop)
+        single = cls._ema(df[column], window)
+        double = cls._ema(single, window)
+        triple = cls._ema(double, window)
+        prev_triple = cls._shift(triple, -1)
+        triple_change = cls._delta(triple, -1)
+        df[column_name] = triple_change * 100 / prev_triple
 
     @classmethod
     def _get_tema(cls, df, column=None, windows=None):
@@ -416,50 +412,46 @@ class StockDataFrame(pd.DataFrame):
         :param windows: window of the calculation
         :return: result series
         """
+        column_name = ""
         if column is None and windows is None:
             column_name = 'tema'
-        else:
-            column_name = '{}_{}_tema'.format(column, windows)
-
         if column is None:
             column = 'close'
         if windows is None:
             windows = cls.TEMA_EMA_WINDOW
-        window = cls.get_only_one_positive_int(windows)
+        if column_name == "":
+            column_name = '{}_{}_tema'.format(column, windows)
 
-        single = '{c}_{w}_ema'.format(c=column, w=window)
-        double = '{c}_{w}_ema_{w}_ema'.format(c=column, w=window)
-        triple = '{c}_{w}_ema_{w}_ema_{w}_ema'.format(c=column, w=window)
-        df[column_name] = 3 * df[single] - 3 * df[double] + df[triple]
+        window = cls.get_int_positive(windows)
 
-        cls._drop_columns(df, [single, double, triple])
-        return df[column_name]
+        single = cls._ema(df[column], window)
+        double = cls._ema(single, window)
+        triple = cls._ema(double, window)
+        df[column_name] = 3 * single - 3 * double + triple
 
     @classmethod
-    def _get_wr(cls, df, n_days):
+    def _get_wr(cls, df, window):
         """ Williams Overbought/Oversold Index
 
         Definition: https://www.investopedia.com/terms/w/williamsr.asp
         WMS=[(Hn—Ct)/(Hn—Ln)] × -100
         Ct - the close price
-        Hn - N days high
-        Ln - N days low
+        Hn - N periods high
+        Ln - N periods low
 
         :param df: data
-        :param n_days: N days
+        :param window: number of periods
         :return: None
         """
-        n_days = int(n_days)
-        ln = df['low'].rolling(min_periods=1, window=n_days,
-                               center=False).min()
+        window = cls.get_int_positive(window)
+        ln = cls._mov_min(df['low'], window)
 
-        hn = df['high'].rolling(min_periods=1, window=n_days,
-                                center=False).max()
-        column_name = 'wr_{}'.format(n_days)
+        hn = cls._mov_max(df['high'], window)
+        column_name = 'wr_{}'.format(window)
         df[column_name] = (hn - df['close']) / (hn - ln) * -100
 
     @classmethod
-    def _get_cci(cls, df, n_days=None):
+    def _get_cci(cls, df, window=None):
         """ Commodity Channel Index
 
         CCI = (Typical Price  -  20-period SMA of TP) / (.015 x Mean Deviation)
@@ -467,24 +459,32 @@ class StockDataFrame(pd.DataFrame):
         TP is also implemented as 'middle'.
 
         :param df: data
-        :param n_days: N days window
+        :param window: number of periods
         :return: None
         """
-        if n_days is None:
-            n_days = cls.CCI
+        if window is None:
+            window = cls.CCI
             column_name = 'cci'
         else:
-            column_name = 'cci_{}'.format(n_days)
-        n = cls.get_only_one_positive_int(n_days)
+            column_name = 'cci_{}'.format(window)
+        window = cls.get_int_positive(window)
 
-        middle = 'middle'
-        middle_sma = '{}_{}_sma'.format(middle, n)
-        tp = df[middle]
-        tp_sma = df[middle_sma]
-        rolling = tp.rolling(min_periods=1, center=False, window=n)
+        tp = cls._middle(df)
+        tp_sma = cls._sma(tp, window)
+        rolling = tp.rolling(min_periods=1, center=False, window=window)
         md = rolling.apply(lambda x: np.fabs(x - x.mean()).mean())
 
         df[column_name] = (tp - tp_sma) / (.015 * md)
+
+    @classmethod
+    def _tr(cls, df):
+        prev_close = cls._shift(df['close'], -1)
+        high = df['high']
+        low = df['low']
+        c1 = high - low
+        c2 = (high - prev_close).abs()
+        c3 = (low - prev_close).abs()
+        return pd.concat((c1, c2, c3), axis=1).max(axis=1)
 
     @classmethod
     def _get_tr(cls, df):
@@ -494,20 +494,19 @@ class StockDataFrame(pd.DataFrame):
         :param df: data
         :return: None
         """
-        prev_close = df['close_-1_s']
-        high = df['high']
-        low = df['low']
-        c1 = high - low
-        c2 = np.abs(high - prev_close)
-        c3 = np.abs(low - prev_close)
-        df['tr'] = np.max((c1, c2, c3), axis=0)
+        df['tr'] = cls._tr(df)
+
+    @classmethod
+    def _atr(cls, df, window):
+        tr = cls._tr(df)
+        return cls._smma(tr, window)
 
     @classmethod
     def _get_atr(cls, df, window=None):
         """ Average True Range
 
         The average true range is an N-day smoothed moving average (SMMA) of
-        the true range values.  Default to 14 days.
+        the true range values.  Default to 14 periods.
         https://en.wikipedia.org/wiki/Average_true_range
 
         :param df: data
@@ -518,11 +517,8 @@ class StockDataFrame(pd.DataFrame):
             column_name = 'atr'
         else:
             column_name = 'atr_{}'.format(window)
-        n = cls.get_only_one_positive_int(window)
-        tr_smma_column = 'tr_{}_smma'.format(n)
-
-        df[column_name] = df[tr_smma_column]
-        cls._drop_columns(df, [tr_smma_column])
+        window = cls.get_int_positive(window)
+        df[column_name] = cls._atr(df, window)
 
     @classmethod
     def _get_dma(cls, df):
@@ -539,18 +535,18 @@ class StockDataFrame(pd.DataFrame):
         """ get the default setting for DMI
 
         including:
-        +DI: 14 days SMMA of +DM,
-        -DI: 14 days SMMA of -DM,
+        +DI: 14 periods SMMA of +DM,
+        -DI: 14 periods SMMA of -DM,
         DX: based on +DI and -DI
-        ADX: 6 days SMMA of DX
+        ADX: 6 periods SMMA of DX
         :param df: data
         :return:
         """
         df['pdi'] = cls._get_pdi(df, cls.PDI_SMMA)
         df['mdi'] = cls._get_mdi(df, cls.MDI_SMMA)
         df['dx'] = cls._get_dx(df, cls.DX_SMMA)
-        df['adx'] = df['dx_{}_ema'.format(cls.ADX_EMA)]
-        df['adxr'] = df['adx_{}_ema'.format(cls.ADXR_EMA)]
+        df['adx'] = cls._ema(df['dx'], cls.ADX_EMA)
+        df['adxr'] = cls._ema(df['adx'], cls.ADXR_EMA)
 
     @classmethod
     def _get_um_dm(cls, df):
@@ -573,7 +569,7 @@ class StockDataFrame(pd.DataFrame):
         :param windows: range
         :return:
         """
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         column_name = 'pdm_{}'.format(window)
         um, dm = df['um'], df['dm']
         df['pdm'] = np.where(um > dm, um, 0)
@@ -586,26 +582,23 @@ class StockDataFrame(pd.DataFrame):
     @classmethod
     def _get_vr(cls, df, windows=None):
         if windows is None:
-            window = 26
+            window = cls.VR
             column_name = 'vr'
         else:
-            window = cls.get_only_one_positive_int(windows)
+            window = cls.get_int_positive(windows)
             column_name = 'vr_{}'.format(window)
 
-        df['av'] = np.where(df['change'] > 0, df['volume'], 0)
-        avs = df['av'].rolling(
-            min_periods=1, window=window, center=False).sum()
+        idx = df.index
+        av = pd.Series(np.where(df['change'] > 0, df['volume'], 0), index=idx)
+        avs = cls._mov_sum(av, window)
 
-        df['bv'] = np.where(df['change'] < 0, df['volume'], 0)
-        bvs = df['bv'].rolling(
-            min_periods=1, window=window, center=False).sum()
+        bv = pd.Series(np.where(df['change'] < 0, df['volume'], 0), index=idx)
+        bvs = cls._mov_sum(bv, window)
 
-        df['cv'] = np.where(df['change'] == 0, df['volume'], 0)
-        cvs = df['cv'].rolling(
-            min_periods=1, window=window, center=False).sum()
+        cv = pd.Series(np.where(df['change'] == 0, df['volume'], 0), index=idx)
+        cvs = cls._mov_sum(cv, window)
 
         df[column_name] = (avs + cvs / 2) / (bvs + cvs / 2) * 100
-        cls._drop_columns(df, ['av', 'bv', 'cv'])
 
     @classmethod
     def _get_mdm(cls, df, windows):
@@ -616,7 +609,7 @@ class StockDataFrame(pd.DataFrame):
         :param windows: range
         :return:
         """
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         column_name = 'mdm_{}'.format(window)
         um, dm = df['um'], df['dm']
         df['mdm'] = np.where(dm > um, dm, 0)
@@ -634,7 +627,7 @@ class StockDataFrame(pd.DataFrame):
         :param windows: range
         :return:
         """
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         pdm_column = 'pdm_{}'.format(window)
         tr_column = 'atr_{}'.format(window)
         pdi_column = 'pdi_{}'.format(window)
@@ -643,7 +636,7 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def _get_mdi(cls, df, windows):
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         mdm_column = 'mdm_{}'.format(window)
         tr_column = 'atr_{}'.format(window)
         mdi_column = 'mdi_{}'.format(window)
@@ -652,7 +645,7 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def _get_dx(cls, df, windows):
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         dx_column = 'dx_{}'.format(window)
         mdi_column = 'mdi_{}'.format(window)
         pdi_column = 'pdi_{}'.format(window)
@@ -662,7 +655,7 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def _get_kdj_default(cls, df):
-        """ default KDJ, 9 days
+        """ default KDJ, 9 periods
 
         :param df: k line data frame
         :return: None
@@ -673,37 +666,32 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def _get_cr(cls, df, window=26):
-        ym = df['middle_-1_s']
-        h = df['high']
-        p1_m = df.loc[:, ['middle_-1_s', 'high']].min(axis=1)
-        p2_m = df.loc[:, ['middle_-1_s', 'low']].min(axis=1)
-        p1 = (h - p1_m).rolling(
-            min_periods=1, window=window, center=False).sum()
-        p2 = (ym - p2_m).rolling(
-            min_periods=1, window=window, center=False).sum()
+        middle = cls._middle(df)
+        last_middle = cls._shift(middle, -1)
+        ym = cls._shift(middle, -1)
+        high = df['high']
+        low = df['low']
+        p1_m = pd.concat((last_middle, high), axis=1).min(axis=1)
+        p2_m = pd.concat((last_middle, low), axis=1).min(axis=1)
+        p1 = cls._mov_sum(high - p1_m, window)
+        p2 = cls._mov_sum(ym - p2_m, window)
         df['cr'] = p1 / p2 * 100
-        del df['middle_-1_s']
         df['cr-ma1'] = cls._shifted_cr_sma(df, cls.CR_MA1)
         df['cr-ma2'] = cls._shifted_cr_sma(df, cls.CR_MA2)
         df['cr-ma3'] = cls._shifted_cr_sma(df, cls.CR_MA3)
 
     @classmethod
     def _shifted_cr_sma(cls, df, window):
-        name = cls._temp_name()
-        df[name] = df['cr'].rolling(min_periods=1, window=window,
-                                    center=False).mean()
-        to_shift = '{}_-{}_s'.format(name, int(window / 2.5 + 1))
-        ret = df[to_shift]
-        del df[name], df[to_shift]
-        return ret
+        cr = cls._sma(df['cr'], window)
+        return cls._shift(cr, -int(window / 2.5 + 1))
 
     @classmethod
-    def _temp_name(cls):
-        return 'sdf{}'.format(random.randint(0, int(10e8)))
+    def _middle(cls, df):
+        return (df['close'] + df['high'] + df['low']).divide(3.0)
 
     @classmethod
     def _get_middle(cls, df):
-        df['middle'] = (df['close'] + df['high'] + df['low']) / 3.0
+        df['middle'] = cls._middle(df)
 
     @classmethod
     def _calc_kd(cls, column):
@@ -715,56 +703,72 @@ class StockDataFrame(pd.DataFrame):
             yield k
 
     @classmethod
-    def _get_kdjk(cls, df, n_days):
+    def _get_kdjk(cls, df, window):
         """ Get the K of KDJ
 
         K ＝ 2/3 × (prev. K) +1/3 × (curr. RSV)
         2/3 and 1/3 are the smooth parameters.
         :param df: data
-        :param n_days: calculation range
+        :param window: number of periods
         :return: None
         """
-        rsv_column = 'rsv_{}'.format(n_days)
-        k_column = 'kdjk_{}'.format(n_days)
+        rsv_column = 'rsv_{}'.format(window)
+        k_column = 'kdjk_{}'.format(window)
         df[k_column] = list(cls._calc_kd(df.get(rsv_column)))
 
     @classmethod
-    def _get_kdjd(cls, df, n_days):
+    def _get_kdjd(cls, df, window):
         """ Get the D of KDJ
 
         D = 2/3 × (prev. D) +1/3 × (curr. K)
         2/3 and 1/3 are the smooth parameters.
         :param df: data
-        :param n_days: calculation range
+        :param window: number of periods
         :return: None
         """
-        k_column = 'kdjk_{}'.format(n_days)
-        d_column = 'kdjd_{}'.format(n_days)
+        k_column = 'kdjk_{}'.format(window)
+        d_column = 'kdjd_{}'.format(window)
         df[d_column] = list(cls._calc_kd(df.get(k_column)))
 
     @staticmethod
-    def _get_kdjj(df, n_days):
+    def _get_kdjj(df, window):
         """ Get the J of KDJ
 
         J = 3K-2D
         :param df: data
-        :param n_days: calculation range
+        :param window: number of periods
         :return: None
         """
-        k_column = 'kdjk_{}'.format(n_days)
-        d_column = 'kdjd_{}'.format(n_days)
-        j_column = 'kdjj_{}'.format(n_days)
+        k_column = 'kdjk_{}'.format(window)
+        d_column = 'kdjd_{}'.format(window)
+        j_column = 'kdjj_{}'.format(window)
         df[j_column] = 3 * df[k_column] - 2 * df[d_column]
 
-    @staticmethod
-    def _get_d(df, column, shifts):
+    @classmethod
+    def _delta(cls, series, window):
+        return series.diff(-window).fillna(0.0)
+
+    @classmethod
+    def _get_d(cls, df, column, shifts):
         shift = StockDataFrame.to_int(shifts)
-        shift_column = '{}_{}_s'.format(column, shift)
         column_name = '{}_{}_d'.format(column, shift)
-        df[column_name] = df[column] - df[shift_column]
-        cp = df[column_name].copy()
-        StockDataFrame.set_nan(cp, shift)
-        df[column_name] = cp
+        df[column_name] = cls._delta(df[column], shift)
+
+    @staticmethod
+    def _mov_min(series, size):
+        return series.rolling(min_periods=1, window=size, center=False).min()
+
+    @staticmethod
+    def _mov_max(series, size):
+        return series.rolling(min_periods=1, window=size, center=False).max()
+
+    @staticmethod
+    def _mov_sum(series, size):
+        return series.rolling(min_periods=1, window=size, center=False).sum()
+
+    @staticmethod
+    def _sma(series, size):
+        return series.rolling(min_periods=1, window=size, center=False).mean()
 
     @classmethod
     def _get_sma(cls, df, column, windows):
@@ -775,10 +779,17 @@ class StockDataFrame(pd.DataFrame):
         :param windows: collection of window of simple moving average
         :return: None
         """
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         column_name = '{}_{}_sma'.format(column, window)
-        df[column_name] = df[column].rolling(
-            min_periods=1, window=window, center=False).mean()
+        df[column_name] = cls._sma(df[column], window)
+
+    @classmethod
+    def _ema(cls, series, window):
+        return series.ewm(
+            ignore_na=False,
+            span=window,
+            min_periods=0,
+            adjust=True).mean()
 
     @classmethod
     def _get_ema(cls, df, column, windows):
@@ -789,11 +800,9 @@ class StockDataFrame(pd.DataFrame):
         :param windows: collection of window of exponential moving average
         :return: None
         """
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         column_name = '{}_{}_ema'.format(column, window)
-        df[column_name] = df[column].ewm(
-            ignore_na=False, span=window,
-            min_periods=0, adjust=True).mean()
+        df[column_name] = cls._ema(df[column], window)
 
     @classmethod
     def _get_boll(cls, df):
@@ -808,18 +817,12 @@ class StockDataFrame(pd.DataFrame):
         :param df: data
         :return: None
         """
-        moving_avg = df['close_{}_sma'.format(cls.BOLL_PERIOD)]
-        moving_std = df['close_{}_mstd'.format(cls.BOLL_PERIOD)]
+        moving_avg = cls._sma(df['close'], cls.BOLL_PERIOD)
+        moving_std = cls._mstd(df['close'], cls.BOLL_PERIOD)
         df['boll'] = moving_avg
-        moving_avg = list(map(np.float64, moving_avg))
-        moving_std = list(map(np.float64, moving_std))
-        # noinspection PyTypeChecker
-        df['boll_ub'] = np.add(moving_avg,
-                               np.multiply(cls.BOLL_STD_TIMES, moving_std))
-        # noinspection PyTypeChecker
-        df['boll_lb'] = np.subtract(moving_avg,
-                                    np.multiply(cls.BOLL_STD_TIMES,
-                                                moving_std))
+        width = cls.BOLL_STD_TIMES * moving_std
+        df['boll_ub'] = moving_avg + width
+        df['boll_lb'] = moving_avg - width
 
     @classmethod
     def _get_macd(cls, df):
@@ -833,15 +836,12 @@ class StockDataFrame(pd.DataFrame):
         :param df: data
         :return: None
         """
-        ema_short = 'close_{}_ema'.format(cls.MACD_EMA_SHORT)
-        ema_long = 'close_{}_ema'.format(cls.MACD_EMA_LONG)
-        ema_signal = 'macd_{}_ema'.format(cls.MACD_EMA_SIGNAL)
-        fast = df[ema_short]
-        slow = df[ema_long]
-        df['macd'] = fast - slow
-        df['macds'] = df[ema_signal]
-        df['macdh'] = (df['macd'] - df['macds'])
-        cls._drop_columns(df, [ema_short, ema_long, ema_signal])
+        close = df['close']
+        ema_short = cls._ema(close, cls.MACD_EMA_SHORT)
+        ema_long = cls._ema(close, cls.MACD_EMA_LONG)
+        df['macd'] = ema_short - ema_long
+        df['macds'] = cls._ema(df['macd'], cls.MACD_EMA_SIGNAL)
+        df['macdh'] = df['macd'] - df['macds']
 
     @classmethod
     def _get_ppo(cls, df):
@@ -859,14 +859,15 @@ class StockDataFrame(pd.DataFrame):
         :param df: data
         :return: None
         """
-        ppo_short = df['close_{}_ema'.format(cls.PPO_EMA_SHORT)]
-        ppo_long = df['close_{}_ema'.format(cls.PPO_EMA_LONG)]
+        close = df['close']
+        ppo_short = cls._ema(close, cls.PPO_EMA_SHORT)
+        ppo_long = cls._ema(close, cls.PPO_EMA_LONG)
         df['ppo'] = (ppo_short - ppo_long) / ppo_long * 100
-        df['ppos'] = df['ppo_{}_ema'.format(cls.PPO_EMA_SIGNAL)]
+        df['ppos'] = cls._ema(df['ppo'], cls.PPO_EMA_SIGNAL)
         df['ppoh'] = df['ppo'] - df['ppos']
 
     @classmethod
-    def get_only_one_positive_int(cls, windows):
+    def get_int_positive(cls, windows):
         if isinstance(windows, int):
             window = windows
         else:
@@ -874,6 +875,10 @@ class StockDataFrame(pd.DataFrame):
             if window <= 0:
                 raise IndexError("window must be greater than 0")
         return window
+
+    @classmethod
+    def _mstd(cls, series, window):
+        return series.rolling(min_periods=1, window=window, center=False).std()
 
     @classmethod
     def _get_mstd(cls, df, column, windows):
@@ -884,10 +889,9 @@ class StockDataFrame(pd.DataFrame):
         :param windows: collection of window of moving standard deviation
         :return: None
         """
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         column_name = '{}_{}_mstd'.format(column, window)
-        df[column_name] = df[column].rolling(min_periods=1, window=window,
-                                             center=False).std()
+        df[column_name] = cls._mstd(df[column], window)
 
     @classmethod
     def _get_mvar(cls, df, column, windows):
@@ -898,37 +902,37 @@ class StockDataFrame(pd.DataFrame):
         :param windows: collection of window of moving variance
         :return: None
         """
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         column_name = '{}_{}_mvar'.format(column, window)
         df[column_name] = df[column].rolling(
             min_periods=1, window=window, center=False).var()
 
     @classmethod
-    def _get_vwma(cls, df, n_days=None):
+    def _get_vwma(cls, df, window=None):
         """ get Volume Weighted Moving Average
 
         The definition is available at:
         https://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp
 
         :param df: data
-        :param n_days: number of periods relevant for the indicator
+        :param window: number of periods relevant for the indicator
         :return: None
         """
-        if n_days is None:
-            n_days = cls.VWMA
+        if window is None:
+            window = cls.VWMA
             column_name = 'vwma'
         else:
-            column_name = 'vwma_{}'.format(n_days)
-        n = cls.get_only_one_positive_int(n_days)
+            column_name = 'vwma_{}'.format(window)
+        window = cls.get_int_positive(window)
 
         tp = df['middle']
         tpv = df['volume'] * tp
-        rolling_tpv = tpv.rolling(window=n, min_periods=0).sum()
-        rolling_vol = df['volume'].rolling(window=n, min_periods=0).sum()
+        rolling_tpv = cls._mov_sum(tpv, window)
+        rolling_vol = cls._mov_sum(df['volume'], window)
         df[column_name] = rolling_tpv / rolling_vol
 
     @classmethod
-    def _get_chop(cls, df, n_days=None):
+    def _get_chop(cls, df, window=None):
         """ get Choppiness Index (CHOP)
 
         See the definition of the index here:
@@ -944,51 +948,53 @@ class StockDataFrame(pd.DataFrame):
         MaxHi(n) = The highest high over past n bars
 
         :param df: data
-        :param n_days: number of periods relevant for the indicator
+        :param window: number of periods relevant for the indicator
         :return: None
         """
-        if n_days is None:
-            n_days = cls.CHOP
+        if window is None:
+            window = cls.CHOP
             column_name = 'chop'
         else:
-            column_name = 'chop_{}'.format(n_days)
-        n = cls.get_only_one_positive_int(n_days)
-        atr = df['atr_1']
-        atr_sum = atr.rolling(window=n, min_periods=0).sum()
-        high = df['high'].rolling(window=n, min_periods=0).max()
-        low = df['low'].rolling(window=n, min_periods=0).min()
+            column_name = 'chop_{}'.format(window)
+        window = cls.get_int_positive(window)
+        atr = cls._atr(df, 1)
+        atr_sum = cls._mov_sum(atr, window)
+        high = cls._mov_max(df['high'], window)
+        low = cls._mov_min(df['low'], window)
         choppy = atr_sum / (high - low)
         numerator = np.log10(choppy) * 100
-        denominator = np.log10(n)
+        denominator = np.log10(window)
         df[column_name] = numerator / denominator
 
     @classmethod
-    def _get_mfi(cls, df, n_days=None):
+    def _get_mfi(cls, df, window=None):
         """ get money flow index
 
         The definition of money flow index is available at:
         https://www.investopedia.com/terms/m/mfi.asp
 
         :param df: data
-        :param n_days: number of periods relevant for the indicator
+        :param window: number of periods relevant for the indicator
         :return: None
         """
-        if n_days is None:
-            n_days = cls.MFI
+        if window is None:
+            window = cls.MFI
             column_name = 'mfi'
         else:
-            column_name = 'mfi_{}'.format(n_days)
-        n = cls.get_only_one_positive_int(n_days)
-        middle = df['middle']
+            column_name = 'mfi_{}'.format(window)
+        window = cls.get_int_positive(window)
+        middle = cls._middle(df)
         money_flow = (middle * df["volume"]).fillna(0.0)
-        shifted = df['middle_-1_s']
+        shifted = cls._shift(middle, -1)
         delta = (middle - shifted).fillna(0)
         pos_flow = money_flow.mask(delta < 0, 0)
         neg_flow = money_flow.mask(delta >= 0, 0)
-        rolling_pos_flow = pos_flow.rolling(window=n).sum()
-        rolling_neg_flow = neg_flow.rolling(window=n).sum()
+        rolling_pos_flow = cls._mov_sum(pos_flow, window)
+        rolling_neg_flow = cls._mov_sum(neg_flow, window)
         money_flow_ratio = rolling_pos_flow / (rolling_neg_flow + 1e-12)
-        df[column_name] = (1.0 - 1.0 / (1 + money_flow_ratio)).fillna(0.5)
+        mfi = (1.0 - 1.0 / (1 + money_flow_ratio))
+        mfi.iloc[:window] = 0.5
+        df[column_name] = mfi
 
     @classmethod
     def _get_kama(cls, df, column, windows, fasts=None, slows=None):
@@ -1004,20 +1010,20 @@ class StockDataFrame(pd.DataFrame):
         :param slows: slowest EMA constant
         :return: None
         """
-        window = cls.get_only_one_positive_int(windows)
+        window = cls.get_int_positive(windows)
         if slows is None or fasts is None:
             slow, fast = cls.KAMA_SLOW, cls.KAMA_FAST
             column_name = "{}_{}_kama".format(column, window)
         else:
-            slow = cls.get_only_one_positive_int(slows)
-            fast = cls.get_only_one_positive_int(fasts)
+            slow = cls.get_int_positive(slows)
+            fast = cls.get_int_positive(fasts)
             column_name = '{}_{}_kama_{}_{}'.format(column, window, fast, slow)
 
         col = df[column]
-        col_window_s = df['{}_-{}_s'.format(column, window)]
-        col_last = df['{}_-1_s'.format(column)]
+        col_window_s = cls._shift(col, -window)
+        col_last = cls._shift(col, -1)
         change = (col - col_window_s).abs()
-        volatility = (col - col_last).abs().rolling(window).sum()
+        volatility = cls._mov_sum((col - col_last).abs(), window)
         efficiency_ratio = change / volatility
         fast_ema_smoothing = 2.0 / (fast + 1)
         slow_ema_smoothing = 2.0 / (slow + 1)
@@ -1026,7 +1032,7 @@ class StockDataFrame(pd.DataFrame):
         smoothing = 2 * (efficient_smoothing + slow_ema_smoothing)
 
         # start with simple moving average
-        kama = df['{}_{}_sma'.format(column, window)]
+        kama = cls._sma(col, window)
         last_kama = kama.iloc[window - 1]
         for i in range(window, len(kama)):
             cur = smoothing.iloc[i] * (col.iloc[i] - last_kama) + last_kama
@@ -1100,47 +1106,35 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def __init_not_exist_column(cls, df, key):
-        if key == 'change':
-            cls._get_change(df)
-        elif key == 'rate':
-            cls._get_rate(df)
-        elif key == 'middle':
-            cls._get_middle(df)
-        elif key in ['boll', 'boll_ub', 'boll_lb']:
-            cls._get_boll(df)
-        elif key in ['macd', 'macds', 'macdh']:
-            cls._get_macd(df)
-        elif key in ['ppo', 'ppos', 'ppoh']:
-            cls._get_ppo(df)
-        elif key in ['kdjk', 'kdjd', 'kdjj']:
-            cls._get_kdj_default(df)
-        elif key in ['cr', 'cr-ma1', 'cr-ma2', 'cr-ma3']:
-            cls._get_cr(df)
-        elif key in ['cci']:
-            cls._get_cci(df)
-        elif key in ['tr']:
-            cls._get_tr(df)
-        elif key in ['atr']:
-            cls._get_atr(df)
-        elif key in ['um', 'dm']:
-            cls._get_um_dm(df)
-        elif key in ['pdi', 'mdi', 'dx', 'adx', 'adxr']:
-            cls._get_dmi(df)
-        elif key in ['trix']:
-            cls._get_trix(df)
-        elif key in ['tema']:
-            cls._get_tema(df)
-        elif key in ['vr']:
-            cls._get_vr(df)
-        elif key in ['dma']:
-            cls._get_dma(df)
-        elif key in ['vwma']:
-            cls._get_vwma(df)
-        elif key in ['chop']:
-            cls._get_chop(df)
-        elif key == 'log-ret':
-            cls._get_log_ret(df)
-        elif key.endswith('_delta'):
+        handlers = {
+            ('change',): cls._get_change,
+            ('rate',): cls._get_rate,
+            ('middle',): cls._get_middle,
+            ('boll', 'boll_ub', 'boll_lb'): cls._get_boll,
+            ('macd', 'macds', 'macdh'): cls._get_macd,
+            ('ppo', 'ppos', 'ppoh'): cls._get_ppo,
+            ('kdjk', 'kdjd', 'kdjj'): cls._get_kdj_default,
+            ('cr', 'cr-ma1', 'cr-ma2', 'cr-ma3'): cls._get_cr,
+            ('cci',): cls._get_cci,
+            ('tr',): cls._get_tr,
+            ('atr',): cls._get_atr,
+            ('um', 'dm'): cls._get_um_dm,
+            ('pdi', 'mdi', 'dx', 'adx', 'adxr'): cls._get_dmi,
+            ('trix',): cls._get_trix,
+            ('tema',): cls._get_tema,
+            ('vr',): cls._get_vr,
+            ('dma',): cls._get_dma,
+            ('vwma',): cls._get_vwma,
+            ('chop',): cls._get_chop,
+            ('log-ret',): cls._get_log_ret,
+            ('mfi',): cls._get_mfi,
+        }
+        for names, handler in handlers.items():
+            if key in names:
+                handler(df)
+                return
+
+        if key.endswith('_delta'):
             cls._get_delta(df, key)
         elif cls.is_cross_columns(key):
             cls._get_cross(df, key)
