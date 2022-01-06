@@ -61,7 +61,7 @@ def read_requirements(filename):
 
 
 def get_long_description():
-    filename = 'README.rst'
+    filename = 'README.md'
     return read(filename)
 
 
@@ -80,10 +80,8 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: Implementation :: CPython",
         "Natural Language :: English",
         "Intended Audience :: Developers",
@@ -91,8 +89,9 @@ setup(
         "Operating System :: OS Independent",
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
-        "License :: OSI Approved :: Apache Software License",
+        "License :: OSI Approved :: BSD License",
     ],
     install_requires=read_requirements('requirements.txt'),
-    tests_require=read_requirements('test-requirements.txt')
+    tests_require=read_requirements('test-requirements.txt'),
+    long_description_content_type='text/markdown',
 )

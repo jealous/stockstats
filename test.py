@@ -69,7 +69,8 @@ class StockDataFrameTest(TestCase):
         assert_that(len(stock['volume_delta']), greater_than(1))
         assert_that(stock.loc[20141219]['volume_delta'], equal_to(-63383600))
 
-    def test_must_have_positive_int(self):
+    @staticmethod
+    def test_must_have_positive_int():
         def do():
             Sdf.get_int_positive("-54")
 
@@ -82,18 +83,19 @@ class StockDataFrameTest(TestCase):
 
     def test_column_le_count(self):
         stock = self.get_stock_20day()
-        c = 'close_13.01_le_5_c'
-        stock.get(c)
-        assert_that(stock.loc[20110117][c], equal_to(1))
-        assert_that(stock.loc[20110119][c], equal_to(3))
+        stock['res'] = stock['close'] <= 13.01
+        count = stock.get('res_5_c')
+        assert_that(count.loc[20110117], equal_to(1))
+        assert_that(count.loc[20110119], equal_to(3))
 
     def test_column_ge_future_count(self):
         stock = self.get_stock_20day()
-        c = stock['close_12.8_ge_5_fc']
-        assert_that(c.loc[20110119], equal_to(1))
-        assert_that(c.loc[20110117], equal_to(1))
-        assert_that(c.loc[20110113], equal_to(3))
-        assert_that(c.loc[20110111], equal_to(4))
+        stock['res'] = stock['close'] >= 12.8
+        count = stock['res_5_fc']
+        assert_that(count.loc[20110119], equal_to(1))
+        assert_that(count.loc[20110117], equal_to(1))
+        assert_that(count.loc[20110113], equal_to(3))
+        assert_that(count.loc[20110111], equal_to(4))
 
     def test_column_delta(self):
         stock = self.get_stock_20day()
@@ -126,10 +128,18 @@ class StockDataFrameTest(TestCase):
         assert_that(open_r.loc[20110119], equal_to(0.0))
         assert_that(open_r.loc[20110120], equal_to(0.0))
 
+    def test_change(self):
+        stock = self.get_stock_20day()
+        change = stock['change']
+        assert_that(change.loc[20110107], near_to(4.4198))
+
     def test_middle(self):
         stock = self.get_stock_20day()
         middle = stock['middle']
-        assert_that(middle.loc[20110104], near_to(12.53))
+        tp = stock['tp']
+        idx = 20110104
+        assert_that(middle.loc[idx], near_to(12.53))
+        assert_that(tp.loc[idx], equal_to(middle.loc[idx]))
 
     def test_cr(self):
         stock = self.get_stock_90day()
@@ -375,14 +385,6 @@ class StockDataFrameTest(TestCase):
         shifts = Sdf.to_ints('3, -3~-1, 5, -2~-1')
         assert_that(shifts, contains_exactly(-3, -2, -1, 3, 5))
 
-    def test_to_floats(self):
-        floats = Sdf.to_floats('1.3, 4, -12.5, 4.0')
-        assert_that(floats, contains_exactly(-12.5, 1.3, 4))
-
-    def test_to_float(self):
-        number = Sdf.to_float('12.3')
-        assert_that(number, equal_to(12.3))
-
     def test_is_cross_columns(self):
         assert_that(Sdf.is_cross_columns('a_x_b'), equal_to(True))
         assert_that(Sdf.is_cross_columns('a_xu_b'), equal_to(True))
@@ -406,9 +408,10 @@ class StockDataFrameTest(TestCase):
         stock.get('log-ret')
         assert_that(stock.loc[20110128]['log-ret'], near_to(-0.010972))
 
-    def test_rsv_nan_value(self):
-        s = Sdf.retype(pd.read_csv(get_file('asml.as.csv')))
-        df = Sdf.retype(s)
+    @staticmethod
+    def test_rsv_nan_value():
+        s = wrap(pd.read_csv(get_file('asml.as.csv')))
+        df = wrap(s)
         assert_that(df['rsv_9'][0], equal_to(0.0))
 
     def test_get_rsi(self):
@@ -434,11 +437,13 @@ class StockDataFrameTest(TestCase):
         assert_that(stoch_rsi_14.loc[idx], near_to(stoch_rsi.loc[idx]))
 
     def test_get_wr(self):
-        self._supor.get('wr_10')
-        self._supor.get('wr_6')
+        wr = self._supor.get('wr')
+        wr_6 = self._supor.get('wr_6')
+        wr_14 = self._supor.get('wr_14')
         idx = 20160817
-        assert_that(self._supor.loc[idx, 'wr_10'], near_to(-13.0573))
-        assert_that(self._supor.loc[idx, 'wr_6'], near_to(-16.5322))
+        assert_that(wr_14.loc[idx], near_to(-49.1620))
+        assert_that(wr_6.loc[idx], near_to(-16.5322))
+        assert_that(wr.loc[idx], equal_to(wr_14.loc[idx]))
 
     def test_get_cci(self):
         stock = self._supor.within(20160701, 20160831)
