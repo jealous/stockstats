@@ -27,8 +27,6 @@
 from __future__ import unicode_literals
 
 import itertools
-import logging
-import operator
 import re
 
 import numpy as np
@@ -36,16 +34,18 @@ import pandas as pd
 
 __author__ = 'Cedric Zhuang'
 
-log = logging.getLogger(__name__)
-
 
 def wrap(df, index_column=None):
+    """ wraps a pandas DataFrame to StockDataFrame
+
+    :param df: pandas DataFrame
+    :param index_column: the name of the index column, default to ``date``
+    :return: an object of StockDataFrame
+    """
     return StockDataFrame.retype(df, index_column)
 
 
 class StockDataFrame(pd.DataFrame):
-    OPERATORS = ['le', 'ge', 'lt', 'gt', 'eq', 'ne']
-
     # Start of options.
     KDJ_PARAM = (2.0 / 3.0, 1.0 / 3.0)
     KDJ_WINDOW = 9
@@ -89,6 +89,8 @@ class StockDataFrame(pd.DataFrame):
 
     VR = 26
 
+    WR = 14
+
     WAVE_TREND_1 = 10
     WAVE_TREND_2 = 21
 
@@ -112,8 +114,8 @@ class StockDataFrame(pd.DataFrame):
         """
         df['change'] = cls._change(df['close'], -1)
 
-    @staticmethod
-    def _get_p(df, column, shifts):
+    @classmethod
+    def _get_p(cls, df, column, shifts):
         """ get the permutation of specified range
 
         example:
@@ -132,7 +134,7 @@ class StockDataFrame(pd.DataFrame):
         column_name = '{}_{}_p'.format(column, shifts)
         # initialize the column if not
         df.get(column)
-        shifts = StockDataFrame.to_ints(shifts)[::-1]
+        shifts = cls.to_ints(shifts)[::-1]
         indices = None
         count = 0
         for shift in shifts:
@@ -145,13 +147,12 @@ class StockDataFrame(pd.DataFrame):
             count += 1
         if indices is not None:
             cp = indices.copy()
-            StockDataFrame.set_nan(cp, shifts)
+            cls.set_nan(cp, shifts)
             df[column_name] = cp
 
     @classmethod
     def to_ints(cls, shifts):
-        items = map(cls._process_shifts_segment,
-                    shifts.split(','))
+        items = map(cls._process_shifts_segment, shifts.split(','))
         return sorted(list(set(itertools.chain(*items))))
 
     @classmethod
@@ -160,18 +161,6 @@ class StockDataFrame(pd.DataFrame):
         if len(numbers) != 1:
             raise IndexError("only accept 1 number.")
         return numbers[0]
-
-    @staticmethod
-    def to_floats(shifts):
-        floats = map(float, shifts.split(','))
-        return sorted(list(set(floats)))
-
-    @classmethod
-    def to_float(cls, shifts):
-        floats = cls.to_floats(shifts)
-        if len(floats) != 1:
-            raise IndexError('only accept 1 float.')
-        return floats[0]
 
     @staticmethod
     def _process_shifts_segment(shift_segment):
@@ -258,7 +247,7 @@ class StockDataFrame(pd.DataFrame):
     def _get_c(cls, df, column, shifts):
         """ get the count of column in range (shifts)
 
-        example: kdjj_0_le_20_c
+        example: change_20_c
         :param df: stock data
         :param column: column name
         :param shifts: range to count, only to previous
@@ -276,7 +265,7 @@ class StockDataFrame(pd.DataFrame):
     def _get_fc(cls, df, column, shifts):
         """ get the count of column in range of future (shifts)
 
-        example: kdjj_0_le_20_fc
+        example: change_20_fc
         :param df: stock data
         :param column: column name
         :param shifts: range to count, only to future
@@ -292,13 +281,6 @@ class StockDataFrame(pd.DataFrame):
         counts = reversed_counts[::-1]
         df[column_name] = counts
         return counts
-
-    @classmethod
-    def _get_op(cls, df, column, threshold, op):
-        column_name = '{}_{}_{}'.format(column, threshold, op)
-        threshold = cls.to_float(threshold)
-        f = getattr(operator, op)
-        df[column_name] = f(df[column], threshold)
 
     @classmethod
     def _init_shifted_columns(cls, column, df, shifts):
@@ -340,7 +322,6 @@ class StockDataFrame(pd.DataFrame):
         cv = (df['close'] - low_min) / (high_max - low_min)
         df[column_name] = cv.fillna(0.0) * 100
 
-    # noinspection PyUnresolvedReferences
     @classmethod
     def _get_rsi(cls, df, window=None):
         """ Calculate the RSI (Relative Strength Index) within N periods
@@ -409,7 +390,7 @@ class StockDataFrame(pd.DataFrame):
         n1 = cls.WAVE_TREND_1
         n2 = cls.WAVE_TREND_2
 
-        tp = cls._middle(df)
+        tp = cls._tp(df)
         esa = cls._ema(tp, n1)
         d = cls._ema((tp - esa).abs(), n1)
         ci = (tp - esa) / (0.015 * d)
@@ -430,6 +411,7 @@ class StockDataFrame(pd.DataFrame):
         """ get smoothed moving average.
 
         :param df: data
+        :param column: the column to calculate
         :param windows: range
         :return: result series
         """
@@ -439,6 +421,14 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def _get_trix(cls, df, column=None, windows=None):
+        """ Triple Exponential Average
+
+        https://www.investopedia.com/articles/technical/02/092402.asp
+        :param df: data
+        :param column: the column to calculate
+        :param windows: range
+        :return: result series
+        """
         column_name = ""
         if column is None and windows is None:
             column_name = 'trix'
@@ -487,7 +477,7 @@ class StockDataFrame(pd.DataFrame):
         df[column_name] = 3 * single - 3 * double + triple
 
     @classmethod
-    def _get_wr(cls, df, window):
+    def _get_wr(cls, df, window=None):
         """ Williams Overbought/Oversold Index
 
         Definition: https://www.investopedia.com/terms/w/williamsr.asp
@@ -500,11 +490,16 @@ class StockDataFrame(pd.DataFrame):
         :param window: number of periods
         :return: None
         """
+        if window is None:
+            window = cls.WR
+            column_name = 'wr'
+        else:
+            column_name = 'wr_{}'.format(window)
+
         window = cls.get_int_positive(window)
         ln = cls._mov_min(df['low'], window)
 
         hn = cls._mov_max(df['high'], window)
-        column_name = 'wr_{}'.format(window)
         df[column_name] = (hn - df['close']) / (hn - ln) * -100
 
     @classmethod
@@ -526,7 +521,7 @@ class StockDataFrame(pd.DataFrame):
             column_name = 'cci_{}'.format(window)
         window = cls.get_int_positive(window)
 
-        tp = cls._middle(df)
+        tp = cls._tp(df)
         tp_sma = cls._sma(tp, window)
         rolling = tp.rolling(min_periods=1, center=False, window=window)
         md = rolling.apply(lambda x: np.fabs(x - x.mean()).mean())
@@ -546,6 +541,8 @@ class StockDataFrame(pd.DataFrame):
     @classmethod
     def _get_tr(cls, df):
         """ True Range of the trading
+
+         TR is a measure of volatility of a High-Low-Close series
 
         tr = max[(high - low), abs(high - close_prev), abs(low - close_prev)]
         :param df: data
@@ -579,7 +576,7 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def _get_dma(cls, df):
-        """ Different of Moving Average
+        """ Difference of Moving Average
 
         default to 10 and 50.
         :param df: data
@@ -723,7 +720,18 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def _get_cr(cls, df, window=26):
-        middle = cls._middle(df)
+        """ Energy Index (Intermediate Willingness Index)
+
+        https://support.futunn.com/en/topic167/?lang=en-us
+        Use the relationship between the highest price, the lowest price and
+        yesterday's middle price to reflect the market's willingness to buy
+        and sell.
+
+        :param df: data
+        :param window: window of the moving sum
+        :return: None
+        """
+        middle = cls._tp(df)
         last_middle = cls._shift(middle, -1)
         ym = cls._shift(middle, -1)
         high = df['high']
@@ -732,23 +740,27 @@ class StockDataFrame(pd.DataFrame):
         p2_m = pd.concat((last_middle, low), axis=1).min(axis=1)
         p1 = cls._mov_sum(high - p1_m, window)
         p2 = cls._mov_sum(ym - p2_m, window)
-        df['cr'] = p1 / p2 * 100
-        df['cr-ma1'] = cls._shifted_cr_sma(df, cls.CR_MA1)
-        df['cr-ma2'] = cls._shifted_cr_sma(df, cls.CR_MA2)
-        df['cr-ma3'] = cls._shifted_cr_sma(df, cls.CR_MA3)
+        df['cr'] = cr = p1 / p2 * 100
+        df['cr-ma1'] = cls._shifted_cr_sma(cr, cls.CR_MA1)
+        df['cr-ma2'] = cls._shifted_cr_sma(cr, cls.CR_MA2)
+        df['cr-ma3'] = cls._shifted_cr_sma(cr, cls.CR_MA3)
 
     @classmethod
-    def _shifted_cr_sma(cls, df, window):
-        cr = cls._sma(df['cr'], window)
-        return cls._shift(cr, -int(window / 2.5 + 1))
+    def _shifted_cr_sma(cls, cr, window):
+        cr_sma = cls._sma(cr, window)
+        return cls._shift(cr_sma, -int(window / 2.5 + 1))
 
     @classmethod
-    def _middle(cls, df):
+    def _tp(cls, df):
         return (df['close'] + df['high'] + df['low']).divide(3.0)
 
     @classmethod
+    def _get_tp(cls, df):
+        df['tp'] = cls._tp(df)
+
+    @classmethod
     def _get_middle(cls, df):
-        df['middle'] = cls._middle(df)
+        df['middle'] = cls._tp(df)
 
     @classmethod
     def _calc_kd(cls, column):
@@ -904,7 +916,7 @@ class StockDataFrame(pd.DataFrame):
     def _get_ppo(cls, df):
         """ Percentage Price Oscillator
 
-        http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:price_oscillators_ppo
+        https://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:price_oscillators_ppo
 
         Percentage Price Oscillator (PPO):
             {(12-day EMA - 26-day EMA)/26-day EMA} x 100
@@ -982,8 +994,7 @@ class StockDataFrame(pd.DataFrame):
             column_name = 'vwma_{}'.format(window)
         window = cls.get_int_positive(window)
 
-        tp = df['middle']
-        tpv = df['volume'] * tp
+        tpv = df['volume'] * cls._tp(df)
         rolling_tpv = cls._mov_sum(tpv, window)
         rolling_vol = cls._mov_sum(df['volume'], window)
         df[column_name] = rolling_tpv / rolling_vol
@@ -1040,7 +1051,7 @@ class StockDataFrame(pd.DataFrame):
         else:
             column_name = 'mfi_{}'.format(window)
         window = cls.get_int_positive(window)
-        middle = cls._middle(df)
+        middle = cls._tp(df)
         money_flow = (middle * df["volume"]).fillna(0.0)
         shifted = cls._shift(middle, -1)
         delta = (middle - shifted).fillna(0)
@@ -1057,8 +1068,7 @@ class StockDataFrame(pd.DataFrame):
     def _get_kama(cls, df, column, windows, fasts=None, slows=None):
         """ get Kaufman's Adaptive Moving Average.
         Implemented after
-        'https://school.stockcharts.com/doku.php?id=technical_
-         indicators:kaufman_s_adaptive_moving_average'
+        https://school.stockcharts.com/doku.php?id=technical_indicators:kaufman_s_adaptive_moving_average
 
         :param df: data
         :param column: column to calculate
@@ -1169,6 +1179,7 @@ class StockDataFrame(pd.DataFrame):
             ('stochrsi',): cls._get_stochrsi,
             ('rate',): cls._get_rate,
             ('middle',): cls._get_middle,
+            ('tp',): cls._get_tp,
             ('boll', 'boll_ub', 'boll_lb'): cls._get_boll,
             ('macd', 'macds', 'macdh'): cls._get_macd,
             ('ppo', 'ppos', 'ppoh'): cls._get_ppo,
@@ -1188,6 +1199,7 @@ class StockDataFrame(pd.DataFrame):
             ('log-ret',): cls._get_log_ret,
             ('mfi',): cls._get_mfi,
             ('wt1', 'wt2'): cls._get_wave_trend,
+            ('wr',): cls._get_wr,
         }
         for names, handler in handlers.items():
             if key in names:
@@ -1208,12 +1220,8 @@ class StockDataFrame(pd.DataFrame):
                 getattr(cls, func_name)(df, c, r, s, f)
             elif len(ret) == 3:
                 c, r, t = ret
-                if t in cls.OPERATORS:
-                    # support all kinds of compare operators
-                    cls._get_op(df, c, r, t)
-                else:
-                    func_name = '_get_{}'.format(t)
-                    getattr(cls, func_name)(df, c, r)
+                func_name = '_get_{}'.format(t)
+                getattr(cls, func_name)(df, c, r)
             elif len(ret) == 2:
                 c, r = ret
                 func_name = '_get_{}'.format(c)
@@ -1233,8 +1241,7 @@ class StockDataFrame(pd.DataFrame):
 
     def __getitem__(self, item):
         try:
-            result = self.retype(
-                super(StockDataFrame, self).__getitem__(item))
+            result = wrap(super(StockDataFrame, self).__getitem__(item))
         except KeyError:
             try:
                 if isinstance(item, list):
@@ -1243,9 +1250,8 @@ class StockDataFrame(pd.DataFrame):
                 else:
                     self.__init_column(self, item)
             except AttributeError:
-                log.exception('{} not found.'.format(item))
-            result = self.retype(
-                super(StockDataFrame, self).__getitem__(item))
+                pass
+            result = wrap(super(StockDataFrame, self).__getitem__(item))
         return result
 
     def till(self, end_date):
@@ -1258,7 +1264,7 @@ class StockDataFrame(pd.DataFrame):
         return self.start_from(start_date).till(end_date)
 
     def copy(self, deep=True):
-        return self.retype(super(StockDataFrame, self).copy(deep))
+        return wrap(super(StockDataFrame, self).copy(deep))
 
     def _ensure_type(self, obj):
         """ override the method in pandas, omit the check
