@@ -45,7 +45,7 @@ Supported statistics/indicators are:
     * ADXR: Smoothed Moving Average of ADX
 * TRIX: Triple Exponential Moving Average
 * TEMA: Another Triple Exponential Moving Average
-* VR: Volatility Volume Ratio
+* VR: Volume Variation Index
 * MFI: Money Flow Index
 * VWMA: Volume Weighted Moving Average
 * CHOP: Choppiness Index
@@ -53,6 +53,7 @@ Supported statistics/indicators are:
 * PPO: Percentage Price Oscillator
 * StochRSI: Stochastic RSI
 * WT: LazyBear's Wave Trend
+* Supertrend: with the Upper Band and Lower Band
 
 ## Installation
 
@@ -232,22 +233,19 @@ date
 [2813 rows x 3 columns]
 ```
 
-#### RSI - Relative Strength Index
+#### [RSI - Relative Strength Index](https://en.wikipedia.org/wiki/Relative_strength_index)
 
-RSI stands
-for [Relative Strength Index](https://en.wikipedia.org/wiki/Relative_strength_index)
-
-It has a configurable window. The default window size is 14 which is
+RSI has a configurable window. The default window size is 14 which is
 configurable through `StockDataFrame.RSI`. e.g.
 
 * `df['rsi']`: 14 periods RSI
 * `df['rsi_6']`: 6 periods RSI
 
-#### Log Return of the Close
+#### [Log Return of the Close](https://en.wikipedia.org/wiki/Rate_of_return)
 
 Logarithmic return = ln( close / last close)
 
-From [wiki](https://en.wikipedia.org/wiki/Rate_of_return):
+From wiki:
 
 > For example, if a stock is priced at 3.570 USD per share at the close on
 > one day, and at 3.575 USD per share at the close the next day, then the
@@ -327,10 +325,10 @@ Examples:
 RSV is essential for calculating KDJ. It takes a window parameter.
 Use `df['rsv']` or `df['rsv_6']` to access it.
 
-#### RSI - Relative Strength Index
+#### [RSI - Relative Strength Index](https://en.wikipedia.org/wiki/Relative_strength_index)
 
-[RSI](https://en.wikipedia.org/wiki/Relative_strength_index) chart the current
-and historical strength or weakness of a stock. It takes a window parameter.
+RSI chart the current and historical strength or weakness of a stock. It takes 
+a window parameter.
 
 The default window is 14. Use `StockDataFrame.RSI` to tune it.
 
@@ -339,11 +337,10 @@ Examples:
 * `df['rsi']`: retrieve the RSI of 14 periods
 * `df['rsi_6']`: retrieve the RSI of 6 periods
 
-#### Stochastic RSI
+#### [Stochastic RSI](https://www.investopedia.com/terms/s/stochrsi.asp)
 
-[Stochastic RSI](https://www.investopedia.com/terms/s/stochrsi.asp) gives
-traders an idea of whether the current RSI value is overbought or oversold. It
-takes a window parameter.
+Stochastic RSI gives traders an idea of whether the current RSI value is 
+overbought or oversold. It takes a window parameter.
 
 The default window is 14. Use `StockDataFrame.RSI` to tune it.
 
@@ -352,11 +349,9 @@ Examples:
 * `df['stochrsi']`: retrieve the Stochastic RSI of 14 periods
 * `df['stochrsi_6']`: retrieve the Stochastic RSI of 6 periods
 
-#### WT - Wave Trend
+#### [WT - Wave Trend](https://medium.com/@samuel.mcculloch/lets-take-a-look-at-wavetrend-with-crosses-lazybear-s-indicator-2ece1737f72f)
 
-Retrieve
-the [LazyBear's Wave Trend](https://medium.com/@samuel.mcculloch/lets-take-a-look-at-wavetrend-with-crosses-lazybear-s-indicator-2ece1737f72f)
-with `df['wt1']` and `df['wt2']`.
+Retrieve the LazyBear's Wave Trend with `df['wt1']` and `df['wt2']`.
 
 Wave trend uses two parameters. You can tune them with
 `StockDataFrame.WAVE_TREND_1` and `StockDataFrame.WAVE_TREND_2`.
@@ -368,10 +363,10 @@ It takes two parameters, column and window.
 For example, use `df['close_7_smma']` to retrieve the 7 periods smoothed moving
 average of the close price.
 
-#### TRIX - Triple Exponential Average
+#### [TRIX - Triple Exponential Average](https://www.investopedia.com/articles/technical/02/092402.asp)
 
-[Trix, the triple exponential average](https://www.investopedia.com/articles/technical/02/092402.asp)
-, is used to identify oversold and overbought markets.
+The triple exponential average is used to identify oversold and overbought 
+markets.
 
 The algorithm is:
 
@@ -391,12 +386,9 @@ Examples:
 * `df['trix']` stands for 12 periods Trix for the close price.
 * `df['middle_10_trix']` stands for the 10 periods Trix for the typical price.
 
-#### TEMA - Another Triple Exponential Average
+#### [TEMA - Another Triple Exponential Average](https://www.forextraders.com/forex-education/forex-technical-analysis/triple-exponential-moving-average-the-tema-indicator/)
 
-Tema is another implementation for the triple exponential moving average. You
-can find the
-algorithm [here](https://www.forextraders.com/forex-education/forex-technical-analysis/triple-exponential-moving-average-the-tema-indicator/)
-.
+Tema is another implementation for the triple exponential moving average.
 
 ```
 TEMA=(3 x EMA) - (3 x EMA of EMA) + (EMA of EMA of EMA)
@@ -412,9 +404,19 @@ Examples:
 * `df['tema']` stands for 12 periods TEMA for the close price.
 * `df['middle_10_tema']` stands for the 10 periods TEMA for the typical price.
 
-#### WR - Williams Overbought/Oversold Index
+#### [VR - Volume Variation Index](https://help.eaglesmarkets.com/hc/en-us/articles/900002867026-Summary-of-volume-variation-index)
 
-[Williams Overbought/Oversold index](https://www.investopedia.com/terms/w/williamsr.asp)
+It is the strength index of trading volume.
+
+It has a default window of 26. Change it with `StockDataFrame.VR`.
+
+Examples:
+* `df['vr']` retrieves the 26 periods VR.
+* `df['vr_6']` retrieves the 6 periods VR.
+
+#### [WR - Williams Overbought/Oversold Index](https://www.investopedia.com/terms/w/williamsr.asp)
+
+Williams Overbought/Oversold index
 is a type of momentum indicator that moves between 0 and -100 and measures
 overbought and oversold levels.
 
@@ -426,11 +428,9 @@ Examples:
 * `df['wr']` retrieves the 14 periods WR.
 * `df['wr_6']` retrieves the 6 periods WR.
 
-#### CCI - Commodity Channel Index
+#### [CCI - Commodity Channel Index](https://www.investopedia.com/terms/c/commoditychannelindex.asp)
 
-CCI stands
-for [Commodity Channel Index](https://www.investopedia.com/terms/c/commoditychannelindex.asp)
-.
+CCI stands for Commodity Channel Index.
 
 It requires a window parameter. The default window is 14. Use
 `StockDataFrame.CCI` to change it.
@@ -445,9 +445,9 @@ Examples:
 TR is a measure of volatility of a High-Low-Close series. It is used for
 calculating the ATR.
 
-#### ATR - Average True Range
+#### [ATR - Average True Range](https://en.wikipedia.org/wiki/Average_true_range)
 
-The [Average True Range](https://en.wikipedia.org/wiki/Average_true_range) is an
+The Average True Range is an
 N-period smoothed moving average (SMMA) of the true range value.  
 Default to 14 periods.
 
@@ -458,14 +458,27 @@ Example:
 * `df['atr']` retrieves the 14 periods ATR.
 * `df['atr_5']` retrieves the 5 periods ATR.
 
+#### [Supertrend](https://economictimes.indiatimes.com/markets/stocks/news/how-to-use-supertrend-indicator-to-find-buying-and-selling-opportunities-in-market/articleshow/54492970.cms)
+
+Supertrend indicates the current trend.  
+We use the [algorithm described here](https://medium.com/codex/step-by-step-implementation-of-the-supertrend-indicator-in-python-656aa678c111).
+It includes 3 lines:
+* `df['supertrend']` is the trend line.
+* `df['supertrend_ub']` is the upper band of the trend
+* `df['supertrend_lb']` is the lower band of the trend
+
+It has 2 parameters:
+* `StockDataFrame.SUPERTREND_MUL` is the multiplier of the band, default to 3.
+* `StockDataFrame.SUPERTREND_WINDOW` is the window size, default to 14.
+
 #### DMA - Difference of Moving Average
 
 `df['dma']` retreives the difference of 10 periods SMA of the close price and
 the 50 periods SMA of the close price.
 
-#### DMI - Directional Movement Index
+#### [DMI - Directional Movement Index](https://www.investopedia.com/terms/d/dmi.asp)
 
-The [directional movement index (DMI)](https://www.investopedia.com/terms/d/dmi.asp)
+The directional movement index (DMI)
 identifies in which direction the price of an asset is moving.
 
 It has several lines:
@@ -484,9 +497,12 @@ It has several parameters.
 * `StockDataFrame.ADX_EMA` - window for ADX
 * `StockDataFrame.ADXR_EMA` - window for ADXR
 
-#### KDJ Indicator
+#### [KDJ Indicator](https://en.wikipedia.org/wiki/Stochastic_oscillator)
 
-It consists of three lines:
+The stochastic oscillator is a momentum indicator that uses support and 
+resistance levels.
+
+It includes three lines:
 * `df['kdfk']` - K series
 * `df['kdfd']` - D series
 * `df['kdfj']` - J series
@@ -497,9 +513,9 @@ Use `df['kdjk_6']` to retrieve the K series of 6 periods.
 KDJ also has two configurable parameter named `StockDataFrame.KDJ_PARAM`.
 The default value is `(2.0/3.0, 1.0/3.0)`
 
-#### CR - Energy Index
+#### [CR - Energy Index](https://support.futunn.com/en/topic167/?lang=en-us)
 
-The [Energy Index (Intermediate Willingness Index)](https://support.futunn.com/en/topic167/?lang=en-us)
+The Energy Index (Intermediate Willingness Index)
 uses the relationship between the highest price, the lowest price and
 yesterday's middle price to reflect the market's willingness to buy
 and sell.
@@ -510,12 +526,12 @@ It contains 4 lines:
 * `df['cr-ma2']` - `StockDataFrame.CR_MA2` periods of the CR moving average
 * `df['cr-ma3']` - `StockDataFrame.CR_MA3` periods of the CR moving average
 
-#### Typical Price
+#### [Typical Price](https://en.wikipedia.org/wiki/Typical_price)
 
 It's the average of `high`, `low` and `close`.
 Use `df['middle']` to access this value.
 
-#### Bollinger Bands
+#### [Bollinger Bands](https://en.wikipedia.org/wiki/Bollinger_Bands)
 
 The Bollinger bands includes three lines
 * `df['boll']` is the baseline
@@ -526,7 +542,7 @@ The default period of the Bollinger Band can be changed with
 `StockDataFrame.BOLL_PERIOD`.  The width of the bands can be turned with
 `StockDataFrame.BOLL_STD_TIMES`.  The default value is 2.
 
-#### MACD - Moving Average Convergence Divergence
+#### [MACD - Moving Average Convergence Divergence](https://en.wikipedia.org/wiki/MACD)
 
 We use the close price to calculate the MACD lines.
 * `df['macd']` is the difference between two exponential moving average.
@@ -540,10 +556,9 @@ value are 12 and 26
 The period of the signal line can be tuned with 
 `StockDataFrame.MACD_EMA_SIGNAL`. The default value is 9.
 
-#### PPO - Percentage Price Oscillator
+#### [PPO - Percentage Price Oscillator](https://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:price_oscillators_ppo)
 
-The [Percentage Price Oscillator](https://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:price_oscillators_ppo)
-includes three lines.
+The Percentage Price Oscillator includes three lines.
 
 * `df['ppo']` derives from the difference of 2 exponential moving average.
 * `df['ppos]` is the signal line.
@@ -556,17 +571,21 @@ value are 12 and 26
 The period of the signal line can be tuned with 
 `StockDataFrame.PPO_EMA_SIGNAL`. The default value is 9.
 
-#### Moving Standard Deviation
+#### [Simple Moving Average](https://www.investopedia.com/terms/m/mean.asp)
+
+Follow the pattern `<columnName>_<window>_sma` to retrieve simple moving average.
+
+#### [Moving Standard Deviation](https://www.investopedia.com/terms/s/standarddeviation.asp)
 
 Follow the pattern `<columnName>_<window>_mstd` to retrieve the moving STD.
 
-#### Moving Variance
+#### [Moving Variance](https://www.investopedia.com/terms/v/variance.asp)
 
 Follow the pattern `<columnName>_<window>_mvar` to retrieve the moving VAR.
 
-#### Volume Weighted Moving Average
+#### [Volume Weighted Moving Average](https://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp)
 
-It's the [moving average weighted by volume](https://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp).
+It's the moving average weighted by volume.
 
 It has a parameter for window size.  The default window is 14.  Change it with
 `StockDataFrame.VWMA`.
@@ -575,10 +594,9 @@ Examples:
 * `df['vwma']` retrieves the 14 periods VWMA
 * `df['vwma_6']` retrieves the 6 periods VWMA
 
-#### CHOP - Choppiness Index
+#### [CHOP - Choppiness Index](https://www.tradingview.com/education/choppinessindex/)
 
-The [Choppiness Index](https://www.tradingview.com/education/choppinessindex/) 
-determines if the market is choppy.
+The Choppiness Index determines if the market is choppy.
 
 It has a parameter for window size.  The default window is 14.  Change it with
 `StockDataFrame.CHOP`.
@@ -587,9 +605,9 @@ Examples:
 * `df['chop']` retrieves the 14 periods CHOP
 * `df['chop_6']` retrieves the 6 periods CHOP
 
-#### MFI - Money Flow Index
+#### [MFI - Money Flow Index](https://www.investopedia.com/terms/m/mfi.asp)
 
-The [Money Flow Index](https://www.investopedia.com/terms/m/mfi.asp)
+The Money Flow Index
 identifies overbought or oversold signals in an asset.
 
 It has a parameter for window size.  The default window is 14.  Change it with
@@ -599,10 +617,10 @@ Examples:
 * `df['mfi']` retrieves the 14 periods MFI
 * `df['mfi_6']` retrieves the 6 periods MFI
 
-#### KAMA - Kaufman's Adaptive Moving Average
+#### [KAMA - Kaufman's Adaptive Moving Average](https://school.stockcharts.com/doku.php?id=technical_indicators:kaufman_s_adaptive_moving_average)
 
-[Kaufman's Adaptive Moving Average](https://school.stockcharts.com/doku.php?id=technical_indicators:kaufman_s_adaptive_moving_average)
-is designed to account for market noise or volatility.
+Kaufman's Adaptive Moving Average is designed to account for market noise or 
+volatility.
 
 It has 2 optional parameter and 2 required parameter
 * fast - optional, the parameter for fast EMA smoothing, default to 5
