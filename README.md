@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/jealous/stockstats/branch/master/graph/badge.svg?token=IFMD1pVJ7T)](https://codecov.io/gh/jealous/stockstats)
 [![pypi](https://img.shields.io/pypi/v/stockstats.svg)](https://pypi.python.org/pypi/stockstats)
 
-VERSION: 0.4.0
+VERSION: 0.4.1
 
 ## Introduction
 
@@ -125,6 +125,9 @@ date
 20160817  62536480.0  40.45  40.59  39.12  1567600 
 ```
 
+Use `unwrap` to convert it back to a `pandas.DataFrame`.
+Note that `unwrap` won't reset the columns and the index.
+
 ### Access the Data
 
 `StockDataFrame` is a subclass of `pandas.DataFrame`. All the functions
@@ -170,6 +173,13 @@ For example:
 
 Normally, these statistics have default windows.  
 Check their document for detail.
+
+#### Initialize all indicators with shortcuts
+
+Some indicators, such as: KDJ, BOLL, MFI, have shortcuts.  Use `df.init_all()`
+to initialize the series of all these indicators.
+
+This operation generates lots of columns.  Please use it with caution.
 
 ### Statistics/Indicators
 
