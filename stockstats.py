@@ -82,6 +82,9 @@ class StockDataFrame(pd.DataFrame):
 
     ATR_SMMA = 14
 
+    SUPERTREND_MUL = 3
+    SUPERTREND_WINDOW = 14
+
     VWMA = 14
 
     CHOP = 14
@@ -522,6 +525,81 @@ class StockDataFrame(pd.DataFrame):
         """
         self['tr'] = self._tr()
 
+    def _get_supertrend(self, window=None):
+        """ Supertrend
+
+        Supertrend indicator shows trend direction.
+        It provides buy or sell indicators.
+        https://medium.com/codex/step-by-step-implementation-of-the-supertrend-indicator-in-python-656aa678c111
+
+        :param window: number of periods
+        :return: None
+        """
+        if window is None:
+            window = self.SUPERTREND_WINDOW
+        window = self.get_int_positive(window)
+
+        high = self['high']
+        low = self['low']
+        close = self['close']
+        m_atr = self.SUPERTREND_MUL * self._atr(window)
+        hl_avg = (high + low) / 2.0
+        # basic upper band
+        b_ub = hl_avg + m_atr
+        # basic lower band
+        b_lb = hl_avg - m_atr
+
+        size = len(close)
+        ub = np.empty(size, dtype=np.float64)
+        lb = np.empty(size, dtype=np.float64)
+        st = np.empty(size, dtype=np.float64)
+
+        for i in range(size):
+            if i == 0:
+                ub[i] = b_ub.iloc[i]
+                lb[i] = b_lb.iloc[i]
+                if close.iloc[i] <= ub[i]:
+                    st[i] = ub[i]
+                else:
+                    st[i] = lb[i]
+                continue
+
+            last_close = close.iloc[i - 1]
+            curr_close = close.iloc[i]
+            last_ub = ub[i - 1]
+            last_lb = lb[i - 1]
+            last_st = st[i - 1]
+            curr_b_ub = b_ub.iloc[i]
+            curr_b_lb = b_lb.iloc[i]
+
+            # calculate current upper band
+            if curr_b_ub < last_ub or last_close > last_ub:
+                ub[i] = curr_b_ub
+            else:
+                ub[i] = last_ub
+
+            # calculate current lower band
+            if curr_b_lb > last_lb or last_close < last_lb:
+                lb[i] = curr_b_lb
+            else:
+                lb[i] = last_lb
+
+            # calculate supertrend
+            if last_st == last_ub:
+                if curr_close <= ub[i]:
+                    st[i] = ub[i]
+                else:
+                    st[i] = lb[i]
+            elif last_st == last_lb:
+                if curr_close > lb[i]:
+                    st[i] = lb[i]
+                else:
+                    st[i] = ub[i]
+
+        self['supertrend_ub'] = ub
+        self['supertrend_lb'] = lb
+        self['supertrend'] = st
+
     def _atr(self, window):
         tr = self._tr()
         return self._smma(tr, window)
@@ -533,6 +611,7 @@ class StockDataFrame(pd.DataFrame):
         the true range values.  Default to 14 periods.
         https://en.wikipedia.org/wiki/Average_true_range
 
+        :param window: number of periods
         :return: None
         """
         if window is None:
@@ -584,7 +663,6 @@ class StockDataFrame(pd.DataFrame):
 
         If window is not 1, calculate the SMMA of +DM
 
-        :param self: data
         :param windows: range
         :return:
         """
@@ -1126,6 +1204,9 @@ class StockDataFrame(pd.DataFrame):
             ('mfi',): self._get_mfi,
             ('wt1', 'wt2'): self._get_wave_trend,
             ('wr',): self._get_wr,
+            ('supertrend',
+             'supertrend_lb',
+             'supertrend_ub'): self._get_supertrend,
         }
 
     def __init_not_exist_column(self, key):

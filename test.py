@@ -624,3 +624,19 @@ class StockDataFrameTest(TestCase):
         stock.init_all()
         columns = stock.columns
         assert_that(columns, has_items('macd', 'kdjj', 'mfi', 'boll'))
+
+    def test_supertrend(self):
+        stock = self.get_stock_90day()
+        st = stock['supertrend']
+        st_ub = stock['supertrend_ub']
+        st_lb = stock['supertrend_lb']
+
+        idx = 20110302
+        assert_that(st[idx], near_to(13.3430))
+        assert_that(st_ub[idx], near_to(13.3430))
+        assert_that(st_lb[idx], near_to(12.2541))
+
+        idx = 20110331
+        assert_that(st[idx], near_to(12.9021))
+        assert_that(st_ub[idx], near_to(14.6457))
+        assert_that(st_lb[idx], near_to(12.9021))
