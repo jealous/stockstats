@@ -15,7 +15,7 @@ Supported statistics/indicators are:
 
 * change (in percent)
 * delta
-* permutation (zero based)
+* permutation (zero-based)
 * log return
 * max in range
 * min in range
@@ -61,7 +61,7 @@ Supported statistics/indicators are:
 
 ## Compatibility
 
-The build checks the compatibility for the last two major release of python3 and
+The build checks the compatibility for the last two major releases of python3 and
 the last release of python2.
 
 ## License
@@ -73,14 +73,14 @@ the last release of python2.
 ### Initialization
 
 `StockDataFrame` works as a wrapper for the `pandas.DataFrame`. You need to
-Initialize the `StockDataFrame` with `wrap` or `retype`.
+Initialize the `StockDataFrame` with `wrap` or `StockDataFrame.retype`.
 
 ``` python
 import pandas as pd
-from stockstats import StockDataFrame
+from stockstats import wrap
 
-df = pd.read_csv('stock.csv')
-stock = StockDataFrame.wrap(df)
+data = pd.read_csv('stock.csv')
+df = wrap(data)
 ```
 
 Formalize your data. This package takes for granted that your data is sorted by
@@ -137,56 +137,54 @@ of `pandas.DataFrame` should work the same as before.
 #### Retrieve the data with symbol
 
 We allow the user to access the statistics directly with some specified column
-name, such as: `kdjk`, `macd`, `rsi`.
+name, such as `kdjk`, `macd`, `rsi`.
 
-Note that the value of these columns are calculated the first time you access
-them from the data frame. You need to delete those columns first if you want the
-lib to re-evaluate the value.
+The values of these columns are calculated the first time you access
+them from the data frame. Please delete those columns first if you want the
+lib to re-evaluate them.
 
 #### Retrieve the Series
 
-If you need the `Series`, you can use `macd = stock['macd']`
-or `rsi = stock.get('rsi')`.
+Use `macd = stock['macd']` or `rsi = stock.get('rsi')` to retrieve the `Series`.
 
 #### Retrieve the symbol with 2 arguments
 
-For some statistics, we allow the user to supply the column name and the window,
-such as: delta, shift, simple moving average, etc. You can use the following
-patter to calculate them: `<columnName>_<windowSize>_<statistics>`
+Some statistics need the column name and the window size,
+such as delta, shift, simple moving average, etc. Use this patter to retrieve
+them: `<columnName>_<windowSize>_<statistics>`
 
-Here are some examples for the pattern:
+Examples:
 
 * 5 periods simple moving average of the high price: `high_5_sma`
 * 10 periods exponential moving average of the close: `close_10_ema`
-* 1 period delta of the high price: `high_-1_d`
-  The `-` symbol stands for looking backwards.
+* 1 period delta of the high price: `high_-1_d`.
+  The minus symbol means looking backward.
 
-#### Retrieve the symbol with 1 arguments
+#### Retrieve the symbol with 1 argument
 
-Some statistics allows the user to specify the window but not the column. Use
-following patter to specify your window: `<statistics>_<windowSize>`
+Some statistics require the window size but not the column name. Use
+this patter to specify your window: `<statistics>_<windowSize>`
 
-For example:
+Examples:
 
 * 6 periods RSI: `rsi_6`
 * 10 periods CCI: `cci_10`
 * 13 periods ATR: `atr_13`
 
-Normally, these statistics have default windows.  
-Check their document for detail.
+Some of them have default windows.  Check their document for detail.
 
 #### Initialize all indicators with shortcuts
 
-Some indicators, such as: KDJ, BOLL, MFI, have shortcuts.  Use `df.init_all()`
-to initialize the series of all these indicators.
+Some indicators, such as KDJ, BOLL, MFI, have shortcuts.  Use `df.init_all()`
+to initialize all these indicators.
 
 This operation generates lots of columns.  Please use it with caution.
 
 ### Statistics/Indicators
 
-Some statistics has configurable parameters. They are class level fields. Change
-of these fields are global. And they won't affect the existing results. Removing
-existing results to trigger the re-calculation of these columns.
+Some statistics have configurable parameters. They are class-level fields. Change
+of these fields is global. And they won't affect the existing results. Removing
+existing columns so that they will be re-evaluated the next time you access them.
 
 #### Change of the Close
 
@@ -198,10 +196,9 @@ Using pattern `<column>_<window>_d` to retrieve the delta between different peri
 
 You can also use `<column>_delta` as a shortcut to `<column>_-1_d` 
 
-
-For example:
+Examples:
 * `df['close_-1_d']` retrieves the close price delta between current and prev. period.
-* `df['close_delta']` is the save as `df['close_-1_d']`
+* `df['close_delta']` is the same as `df['close_-1_d']`
 * `df['high_2_d']` retrieves the high price delta between current and 2 days later
 
 #### Shift Periods
@@ -255,11 +252,11 @@ Use `df['log-ret']` to access this column.
 
 #### Count of Non-Zero Value
 
-Count non-zero value of a specific range. It requires a column and a window.
+Count non-zero values of a specific range. It requires a column and a window.
 
 Examples:
 
-* count how many typical price are larger than close in the past 10 periods
+* Count how many typical prices are larger than close in the past 10 periods
 
 ``` python
 In [22]: tp = df['middle']                             
@@ -358,7 +355,7 @@ Wave trend uses two parameters. You can tune them with
 
 #### SMMA - Smoothed Moving Average
 
-It takes two parameters, column and window.
+It requires column and window.
 
 For example, use `df['close_7_smma']` to retrieve the 7 periods smoothed moving
 average of the close price.
@@ -376,7 +373,7 @@ TripleEMA = EMA of EMA of EMA
 LastTripleEMA =  TripleEMA of the last period
 ```
 
-It takes two parameters, column and window. By default, the column is `close`,
+It requires column and window. By default, the column is `close`,
 the window is 12.
 
 Use `StockDataFrame.TRIX_EMA_WINDOW` to change the default window.
@@ -406,7 +403,7 @@ Examples:
 
 #### [VR - Volume Variation Index](https://help.eaglesmarkets.com/hc/en-us/articles/900002867026-Summary-of-volume-variation-index)
 
-It is the strength index of trading volume.
+It is the strength index of the trading volume.
 
 It has a default window of 26. Change it with `StockDataFrame.VR`.
 
@@ -442,7 +439,7 @@ Examples:
 
 #### TR - True Range of Trading
 
-TR is a measure of volatility of a High-Low-Close series. It is used for
+TR is a measure of the volatility of a High-Low-Close series. It is used for
 calculating the ATR.
 
 #### [ATR - Average True Range](https://en.wikipedia.org/wiki/Average_true_range)
@@ -473,7 +470,7 @@ It has 2 parameters:
 
 #### DMA - Difference of Moving Average
 
-`df['dma']` retreives the difference of 10 periods SMA of the close price and
+`df['dma']` retrieves the difference of 10 periods SMA of the close price and
 the 50 periods SMA of the close price.
 
 #### [DMI - Directional Movement Index](https://www.investopedia.com/terms/d/dmi.asp)
@@ -510,7 +507,7 @@ It includes three lines:
 The default window is 9.  Use `StockDataFrame.KDJ_WINDOW` to change it.
 Use `df['kdjk_6']` to retrieve the K series of 6 periods.
 
-KDJ also has two configurable parameter named `StockDataFrame.KDJ_PARAM`.
+KDJ also has two configurable parameters named `StockDataFrame.KDJ_PARAM`.
 The default value is `(2.0/3.0, 1.0/3.0)`
 
 #### [CR - Energy Index](https://support.futunn.com/en/topic167/?lang=en-us)
@@ -545,7 +542,7 @@ The default period of the Bollinger Band can be changed with
 #### [MACD - Moving Average Convergence Divergence](https://en.wikipedia.org/wiki/MACD)
 
 We use the close price to calculate the MACD lines.
-* `df['macd']` is the difference between two exponential moving average.
+* `df['macd']` is the difference between two exponential moving averages.
 * `df['macds]` is the signal line.
 * `df['macdh']` is he histogram line.
 
@@ -573,7 +570,7 @@ The period of the signal line can be tuned with
 
 #### [Simple Moving Average](https://www.investopedia.com/terms/m/mean.asp)
 
-Follow the pattern `<columnName>_<window>_sma` to retrieve simple moving average.
+Follow the pattern `<columnName>_<window>_sma` to retrieve a simple moving average.
 
 #### [Moving Standard Deviation](https://www.investopedia.com/terms/s/standarddeviation.asp)
 
@@ -622,7 +619,7 @@ Examples:
 Kaufman's Adaptive Moving Average is designed to account for market noise or 
 volatility.
 
-It has 2 optional parameter and 2 required parameter
+It has 2 optional parameters and 2 required parameters
 * fast - optional, the parameter for fast EMA smoothing, default to 5
 * slow - optional, the parameter for slow EMA smoothing, default to 34
 * column - required, the column to calculate
@@ -645,9 +642,9 @@ Use the pattern `<A>_xd_<B>` to check when A crosses down B.
 Use the pattern `<A>_x_<B>` to check when A crosses B.
 
 Examples:
-* `kdjk_x_kdjd` returns a series marks the cross of KDJK and KDJD
-* `kdjk_xu_kdjd` returns a series marks where KDJK crosses up KDJD
-* `kdjk_xd_kdjd` returns a series marks where KDJD crosses down KDJD
+* `kdjk_x_kdjd` returns a series that marks the cross of KDJK and KDJD
+* `kdjk_xu_kdjd` returns a series that marks where KDJK crosses up KDJD
+* `kdjk_xd_kdjd` returns a series that marks where KDJD crosses down KDJD
 
 ## Issues
 
@@ -664,4 +661,4 @@ cryptowatch, tradingview, etc.
 
 ## Contact author:
 
-- Cedric Zhuang <jealous@163.com>
+* Cedric Zhuang <jealous@163.com>
