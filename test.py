@@ -30,11 +30,11 @@ from unittest import TestCase
 
 import pandas as pd
 from hamcrest import greater_than, assert_that, equal_to, close_to, \
-    contains_exactly, none, is_not, raises
+    contains_exactly, none, is_not, raises, has_items, instance_of
 from numpy import isnan
 
 from stockstats import StockDataFrame as Sdf
-from stockstats import wrap
+from stockstats import wrap, unwrap
 
 __author__ = 'Cedric Zhuang'
 
@@ -69,10 +69,9 @@ class StockDataFrameTest(TestCase):
         assert_that(len(stock['volume_delta']), greater_than(1))
         assert_that(stock.loc[20141219]['volume_delta'], equal_to(-63383600))
 
-    @staticmethod
-    def test_must_have_positive_int():
+    def test_must_have_positive_int(self):
         def do():
-            Sdf.get_int_positive("-54")
+            self._supor.get_int_positive("-54")
 
         assert_that(do, raises(IndexError))
 
@@ -258,7 +257,8 @@ class StockDataFrameTest(TestCase):
         assert_that(ema_5.loc[20110107], near_to(12.9026))
         assert_that(ema_5.loc[20110110], near_to(12.9668))
 
-    def test_ema_of_empty_df(self):
+    @staticmethod
+    def test_ema_of_empty_df():
         s = Sdf.retype(pd.DataFrame())
         ema = s['close_10_ema']
         assert_that(len(ema), equal_to(0))
@@ -321,71 +321,81 @@ class StockDataFrameTest(TestCase):
         with self.assertRaises(KeyError):
             _ = stock["close_1_foo_3_4"]
 
-    def test_parse_column_name_1(self):
+    @staticmethod
+    def test_parse_column_name_1():
         c, r, t = Sdf.parse_column_name('amount_-5~-1_p')
         assert_that(c, equal_to('amount'))
         assert_that(r, equal_to('-5~-1'))
         assert_that(t, equal_to('p'))
 
-    def test_parse_column_name_2(self):
+    @staticmethod
+    def test_parse_column_name_2():
         c, r, t = Sdf.parse_column_name('open_+2~4_d')
         assert_that(c, equal_to('open'))
         assert_that(r, equal_to('+2~4'))
         assert_that(t, equal_to('d'))
 
-    def test_parse_column_name_stacked(self):
+    @staticmethod
+    def test_parse_column_name_stacked():
         c, r, t = Sdf.parse_column_name('open_-1_d_-1~-3_p')
         assert_that(c, equal_to('open_-1_d'))
         assert_that(r, equal_to('-1~-3'))
         assert_that(t, equal_to('p'))
 
-    def test_parse_column_name_3(self):
+    @staticmethod
+    def test_parse_column_name_3():
         c, r, t = Sdf.parse_column_name('close_-3,-1,+2_p')
         assert_that(c, equal_to('close'))
         assert_that(r, equal_to('-3,-1,+2'))
         assert_that(t, equal_to('p'))
 
-    def test_parse_column_name_max(self):
+    @staticmethod
+    def test_parse_column_name_max():
         c, r, t = Sdf.parse_column_name('close_-3,-1,+2_max')
         assert_that(c, equal_to('close'))
         assert_that(r, equal_to('-3,-1,+2'))
         assert_that(t, equal_to('max'))
 
-    def test_parse_column_name_float(self):
+    @staticmethod
+    def test_parse_column_name_float():
         c, r, t = Sdf.parse_column_name('close_12.32_le')
         assert_that(c, equal_to('close'))
         assert_that(r, equal_to('12.32'))
         assert_that(t, equal_to('le'))
 
-    def test_parse_column_name_stacked_xu(self):
+    @staticmethod
+    def test_parse_column_name_stacked_xu():
         c, r, t = Sdf.parse_column_name('cr-ma2_xu_cr-ma1_20_c')
         assert_that(c, equal_to('cr-ma2_xu_cr-ma1'))
         assert_that(r, equal_to('20'))
         assert_that(t, equal_to('c'))
 
-    def test_parse_column_name_rsv(self):
+    @staticmethod
+    def test_parse_column_name_rsv():
         c, r = Sdf.parse_column_name('rsv_9')
         assert_that(c, equal_to('rsv'))
         assert_that(r, equal_to('9'))
 
-    def test_parse_column_name_no_match(self):
+    @staticmethod
+    def test_parse_column_name_no_match():
         ret = Sdf.parse_column_name('no match')
         assert_that(len(ret), equal_to(1))
         assert_that(ret[0], none())
 
     def test_to_int_split(self):
-        shifts = Sdf.to_ints('5,1,3, -2')
+        shifts = self._supor.to_ints('5,1,3, -2')
         assert_that(shifts, contains_exactly(-2, 1, 3, 5))
 
     def test_to_int_continue(self):
-        shifts = Sdf.to_ints('3, -3~-1, 5')
+        shifts = self._supor.to_ints('3, -3~-1, 5')
         assert_that(shifts, contains_exactly(-3, -2, -1, 3, 5))
 
     def test_to_int_dedup(self):
-        shifts = Sdf.to_ints('3, -3~-1, 5, -2~-1')
+        shifts = self._supor.to_ints('3, -3~-1, 5, -2~-1')
         assert_that(shifts, contains_exactly(-3, -2, -1, 3, 5))
 
-    def test_is_cross_columns(self):
+    @staticmethod
+    def test_is_cross_columns():
         assert_that(Sdf.is_cross_columns('a_x_b'), equal_to(True))
         assert_that(Sdf.is_cross_columns('a_xu_b'), equal_to(True))
         assert_that(Sdf.is_cross_columns('a_xd_b'), equal_to(True))
@@ -395,11 +405,13 @@ class StockDataFrameTest(TestCase):
         assert_that(Sdf.is_cross_columns('_xu_b'), equal_to(False))
         assert_that(Sdf.is_cross_columns('_xd_'), equal_to(False))
 
-    def test_parse_cross_column(self):
+    @staticmethod
+    def test_parse_cross_column():
         assert_that(Sdf.parse_cross_column('a_x_b'),
                     contains_exactly('a', 'x', 'b'))
 
-    def test_parse_cross_column_xu(self):
+    @staticmethod
+    def test_parse_cross_column_xu():
         assert_that(Sdf.parse_cross_column('a_xu_b'),
                     contains_exactly('a', 'xu', 'b'))
 
@@ -413,6 +425,12 @@ class StockDataFrameTest(TestCase):
         s = wrap(pd.read_csv(get_file('asml.as.csv')))
         df = wrap(s)
         assert_that(df['rsv_9'][0], equal_to(0.0))
+
+    def test_unwrap(self):
+        _ = self._supor['boll']
+        df = unwrap(self._supor)
+        assert_that(df, instance_of(pd.DataFrame))
+        assert_that(df['boll'].loc[20160817], near_to(39.6120))
 
     def test_get_rsi(self):
         rsi = self._supor.get('rsi')
@@ -600,3 +618,9 @@ class StockDataFrameTest(TestCase):
         idx = 20110331
         assert_that(wt1.loc[idx], near_to(38.9610))
         assert_that(wt2.loc[idx], near_to(31.6997))
+
+    def test_init_all(self):
+        stock = self.get_stock_90day()
+        stock.init_all()
+        columns = stock.columns
+        assert_that(columns, has_items('macd', 'kdjj', 'mfi', 'boll'))
