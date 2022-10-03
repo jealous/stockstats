@@ -45,11 +45,9 @@ def wrap(df, index_column=None, lowerCase=True):
     """
     return StockDataFrame.retype(df, index_column, lowerCase)
 
-
 def unwrap(sdf):
     """ convert a StockDataFrame back to a pandas DataFrame """
     return pd.DataFrame(sdf)
-
 
 class StockDataFrame(pd.DataFrame):
     # Start of options.
@@ -1248,7 +1246,7 @@ class StockDataFrame(pd.DataFrame):
 
     def __getitem__(self, item):
         try:
-            result = wrap(super(StockDataFrame, self).__getitem__(item))
+            result = wrap(super(StockDataFrame, self).__getitem__(item), lowerCase=False)
         except KeyError:
             try:
                 if isinstance(item, list):
@@ -1258,7 +1256,7 @@ class StockDataFrame(pd.DataFrame):
                     self.__init_column(item)
             except AttributeError:
                 pass
-            result = wrap(super(StockDataFrame, self).__getitem__(item))
+            result = wrap(super(StockDataFrame, self).__getitem__(item), lowerCase=False)
         return result
 
     def till(self, end_date):
