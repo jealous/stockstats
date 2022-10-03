@@ -31,18 +31,19 @@ import re
 
 import numpy as np
 import pandas as pd
+import copy
 
 __author__ = 'Cedric Zhuang'
 
 
-def wrap(df, index_column=None):
+def wrap(df, index_column=None, lowerCase=True):
     """ wraps a pandas DataFrame to StockDataFrame
 
     :param df: pandas DataFrame
     :param index_column: the name of the index column, default to ``date``
     :return: an object of StockDataFrame
     """
-    return StockDataFrame.retype(df, index_column)
+    return StockDataFrame.retype(df, index_column, lowerCase)
 
 
 def unwrap(sdf):
@@ -1270,7 +1271,7 @@ class StockDataFrame(pd.DataFrame):
         return self.start_from(start_date).till(end_date)
 
     def copy(self, deep=True):
-        return wrap(super(StockDataFrame, self).copy(deep))
+        return wrap(super(StockDataFrame, self).copy(deep), lowerCase=False)
 
     def _ensure_type(self, obj):
         """ override the method in pandas, omit the check
@@ -1280,7 +1281,7 @@ class StockDataFrame(pd.DataFrame):
         return obj
 
     @staticmethod
-    def retype(value, index_column=None):
+    def retype(value, index_column=None, lowerCase=True):
         """ if the input is a `DataFrame`, convert it to this class.
 
         :param index_column: name of the index column, default to `date`
@@ -1290,11 +1291,13 @@ class StockDataFrame(pd.DataFrame):
         if index_column is None:
             index_column = 'date'
 
+        print(type(value))
         if isinstance(value, StockDataFrame):
             return value
         elif isinstance(value, pd.DataFrame):
-            # use all lower case for column name
-            value.columns = map(lambda c: c.lower(), value.columns)
+            if lowerCase:
+                # use all lower case for column name
+                value.columns = map(lambda c: c.lower(), value.columns)
 
             if index_column in value.columns:
                 value.set_index(index_column, inplace=True)
