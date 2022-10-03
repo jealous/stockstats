@@ -31,24 +31,23 @@ import re
 
 import numpy as np
 import pandas as pd
+import copy
 
 __author__ = 'Cedric Zhuang'
 
 
-def wrap(df, index_column=None):
+def wrap(df, index_column=None, lowerCase=True):
     """ wraps a pandas DataFrame to StockDataFrame
 
     :param df: pandas DataFrame
     :param index_column: the name of the index column, default to ``date``
     :return: an object of StockDataFrame
     """
-    return StockDataFrame.retype(df, index_column)
-
+    return StockDataFrame.retype(df, index_column, lowerCase)
 
 def unwrap(sdf):
     """ convert a StockDataFrame back to a pandas DataFrame """
     return pd.DataFrame(sdf)
-
 
 class StockDataFrame(pd.DataFrame):
     # Start of options.
@@ -1247,7 +1246,7 @@ class StockDataFrame(pd.DataFrame):
 
     def __getitem__(self, item):
         try:
-            result = wrap(super(StockDataFrame, self).__getitem__(item))
+            result = wrap(super(StockDataFrame, self).__getitem__(item), lowerCase=False)
         except KeyError:
             try:
                 if isinstance(item, list):
@@ -1257,7 +1256,7 @@ class StockDataFrame(pd.DataFrame):
                     self.__init_column(item)
             except AttributeError:
                 pass
-            result = wrap(super(StockDataFrame, self).__getitem__(item))
+            result = wrap(super(StockDataFrame, self).__getitem__(item), lowerCase=False)
         return result
 
     def till(self, end_date):
@@ -1270,7 +1269,7 @@ class StockDataFrame(pd.DataFrame):
         return self.start_from(start_date).till(end_date)
 
     def copy(self, deep=True):
-        return wrap(super(StockDataFrame, self).copy(deep))
+        return wrap(super(StockDataFrame, self).copy(deep), lowerCase=False)
 
     def _ensure_type(self, obj):
         """ override the method in pandas, omit the check
@@ -1280,7 +1279,7 @@ class StockDataFrame(pd.DataFrame):
         return obj
 
     @staticmethod
-    def retype(value, index_column=None):
+    def retype(value, index_column=None, lowerCase=True):
         """ if the input is a `DataFrame`, convert it to this class.
 
         :param index_column: name of the index column, default to `date`
@@ -1293,8 +1292,9 @@ class StockDataFrame(pd.DataFrame):
         if isinstance(value, StockDataFrame):
             return value
         elif isinstance(value, pd.DataFrame):
-            # use all lower case for column name
-            value.columns = map(lambda c: c.lower(), value.columns)
+            if lowerCase:
+                # use all lower case for column name
+                value.columns = map(lambda c: c.lower(), value.columns)
 
             if index_column in value.columns:
                 value.set_index(index_column, inplace=True)
