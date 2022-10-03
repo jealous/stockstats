@@ -1291,7 +1291,6 @@ class StockDataFrame(pd.DataFrame):
         if index_column is None:
             index_column = 'date'
 
-        print(type(value))
         if isinstance(value, StockDataFrame):
             return value
         elif isinstance(value, pd.DataFrame):
