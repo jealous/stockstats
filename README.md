@@ -500,8 +500,8 @@ The stochastic oscillator is a momentum indicator that uses support and
 resistance levels.
 
 It includes three lines:
-* `df['kdfk']` - K series
-* `df['kdfd']` - D series
+* `df['kdjk']` - K series
+* `df['kdjd']` - D series
 * `df['kdfj']` - J series
 
 The default window is 9.  Use `StockDataFrame.KDJ_WINDOW` to change it.
