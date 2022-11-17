@@ -30,7 +30,8 @@ from unittest import TestCase
 
 import pandas as pd
 from hamcrest import greater_than, assert_that, equal_to, close_to, \
-    contains_exactly, none, is_not, raises, has_items, instance_of
+    contains_exactly, none, is_not, raises, has_items, instance_of, \
+    not_, has_item, has_length
 from numpy import isnan
 
 from stockstats import StockDataFrame as Sdf
@@ -46,6 +47,10 @@ def get_file(filename):
 
 def near_to(value):
     return close_to(value, 1e-3)
+
+
+def not_has(item):
+    return not_(has_item(item))
 
 
 class StockDataFrameTest(TestCase):
@@ -139,6 +144,14 @@ class StockDataFrameTest(TestCase):
         idx = 20110104
         assert_that(middle.loc[idx], near_to(12.53))
         assert_that(tp.loc[idx], equal_to(middle.loc[idx]))
+
+    def test_typical_price_with_amount(self):
+        stock = self._supor[:20]
+        tp = stock['tp']
+        assert_that(tp[20040817], near_to(11.541))
+
+        middle = stock['middle']
+        assert_that(middle[20040817], near_to(11.541))
 
     def test_cr(self):
         stock = self.get_stock_90day()
@@ -465,6 +478,7 @@ class StockDataFrameTest(TestCase):
 
     def test_get_cci(self):
         stock = self._supor.within(20160701, 20160831)
+        stock.drop('amount', axis=1, inplace=True)
         stock.get('cci_14')
         stock.get('cci')
         assert_that(stock.loc[20160817, 'cci'], near_to(50))
@@ -640,3 +654,59 @@ class StockDataFrameTest(TestCase):
         assert_that(st[idx], near_to(12.9021))
         assert_that(st_ub[idx], near_to(14.6457))
         assert_that(st_lb[idx], near_to(12.9021))
+
+    def test_drop_column_inplace(self):
+        stock = self._supor[:20]
+        stock.columns.name = 'Luke'
+        ret = stock.drop_column(['open', 'close'], inplace=True)
+
+        assert_that(ret.columns.name, equal_to('Luke'))
+        assert_that(ret.keys(), has_items('high', 'low'))
+        assert_that(ret.keys(), not_has('open'))
+        assert_that(ret.keys(), not_has('close'))
+        assert_that(stock.keys(), has_items('high', 'low'))
+        assert_that(stock.keys(), not_has('open'))
+        assert_that(stock.keys(), not_has('close'))
+
+    def test_drop_column(self):
+        stock = self._supor[:20]
+        stock.columns.name = 'Luke'
+        ret = stock.drop_column(['open', 'close'])
+
+        assert_that(ret.columns.name, equal_to('Luke'))
+        assert_that(ret.keys(), has_items('high', 'low'))
+        assert_that(ret.keys(), not_has('open'))
+        assert_that(ret.keys(), not_has('close'))
+        assert_that(stock.keys(), has_items('high', 'low', 'open', 'close'))
+
+    def test_drop_head_inplace(self):
+        stock = self._supor[:20]
+        ret = stock.drop_head(9, inplace=True)
+        assert_that(ret, has_length(11))
+        assert_that(ret.iloc[0].name, equal_to(20040830))
+        assert_that(stock, has_length(11))
+        assert_that(stock.iloc[0].name, equal_to(20040830))
+
+    def test_drop_head(self):
+        stock = self._supor[:20]
+        ret = stock.drop_head(9)
+        assert_that(ret, has_length(11))
+        assert_that(ret.iloc[0].name, equal_to(20040830))
+        assert_that(stock, has_length(20))
+        assert_that(stock.iloc[0].name, equal_to(20040817))
+
+    def test_drop_tail_inplace(self):
+        stock = self._supor[:20]
+        ret = stock.drop_tail(9, inplace=True)
+        assert_that(ret, has_length(11))
+        assert_that(ret.iloc[-1].name, equal_to(20040831))
+        assert_that(stock, has_length(11))
+        assert_that(stock.iloc[-1].name, equal_to(20040831))
+
+    def test_drop_tail(self):
+        stock = self._supor[:20]
+        ret = stock.drop_tail(9)
+        assert_that(ret, has_length(11))
+        assert_that(ret.iloc[-1].name, equal_to(20040831))
+        assert_that(stock, has_length(20))
+        assert_that(stock.iloc[-1].name, equal_to(20040913))

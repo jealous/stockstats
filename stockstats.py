@@ -485,7 +485,10 @@ class StockDataFrame(pd.DataFrame):
         """ Commodity Channel Index
 
         CCI = (Typical Price  -  20-period SMA of TP) / (.015 x Mean Deviation)
-        Typical Price (TP) = (High + Low + Close)/3
+        * when amount is not available:
+          Typical Price (TP) = (High + Low + Close)/3
+        * when amount is available:
+          Typical Price (TP) = Amount / Volume
         TP is also implemented as 'middle'.
 
         :param window: number of periods
@@ -786,6 +789,8 @@ class StockDataFrame(pd.DataFrame):
         return self._shift(cr_sma, -int(window / 2.5 + 1))
 
     def _tp(self):
+        if 'amount' in self:
+            return self['amount'] / self['volume']
         return (self['close'] + self['high'] + self['low']).divide(3.0)
 
     def _get_tp(self):
@@ -1175,6 +1180,41 @@ class StockDataFrame(pd.DataFrame):
         for handler in self.handler.values():
             handler()
 
+    def drop_column(self, names=None, inplace=False):
+        """ drop column by the name
+
+        multiple names can be supplied in a list
+        :return: StockDataFrame
+        """
+        if self.empty:
+            return self
+        ret = self.drop(names, axis=1, inplace=inplace)
+        if inplace is True:
+            return self
+        return wrap(ret)
+
+    def drop_tail(self, n, inplace=False):
+        """ drop n rows from the tail
+
+        :return: StockDataFrame
+        """
+        tail = self.tail(n).index
+        ret = self.drop(tail, inplace=inplace)
+        if inplace is True:
+            return self
+        return wrap(ret)
+
+    def drop_head(self, n, inplace=False):
+        """ drop n rows from the beginning
+
+        :return: StockDataFrame
+        """
+        head = self.head(n).index
+        ret = self.drop(head, inplace=inplace)
+        if inplace is True:
+            return self
+        return wrap(ret)
+
     @property
     def handler(self):
         return {
@@ -1272,7 +1312,8 @@ class StockDataFrame(pd.DataFrame):
     def copy(self, deep=True):
         return wrap(super(StockDataFrame, self).copy(deep))
 
-    def _ensure_type(self, obj):
+    @staticmethod
+    def _ensure_type(obj):
         """ override the method in pandas, omit the check
 
         This patch is not the perfect way but could make the lib work.
@@ -1293,10 +1334,13 @@ class StockDataFrame(pd.DataFrame):
         if isinstance(value, StockDataFrame):
             return value
         elif isinstance(value, pd.DataFrame):
+            name = value.columns.name
             # use all lower case for column name
             value.columns = map(lambda c: c.lower(), value.columns)
 
             if index_column in value.columns:
                 value.set_index(index_column, inplace=True)
-            return StockDataFrame(value)
+            ret = StockDataFrame(value)
+            ret.columns.name = name
+            return ret
         return value

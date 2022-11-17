@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/jealous/stockstats/branch/master/graph/badge.svg?token=IFMD1pVJ7T)](https://codecov.io/gh/jealous/stockstats)
 [![pypi](https://img.shields.io/pypi/v/stockstats.svg)](https://pypi.python.org/pypi/stockstats)
 
-VERSION: 0.4.1
+VERSION: 0.5.0
 
 ## Introduction
 
@@ -263,7 +263,7 @@ In [22]: tp = df['middle']
                                                        
 In [23]: df['res'] = df['middle'] > df['close']        
                                                        
-In [24]: df[['middle', 'close', 'res', 'res_-10_c']]    
+In [24]: df[['middle', 'close', 'res', 'res_10_c']]    
 Out[24]:                                               
              middle  close    res  res_10_c            
 date                                                   
@@ -502,7 +502,7 @@ resistance levels.
 It includes three lines:
 * `df['kdjk']` - K series
 * `df['kdjd']` - D series
-* `df['kdfj']` - J series
+* `df['kdjj']` - J series
 
 The default window is 9.  Use `StockDataFrame.KDJ_WINDOW` to change it.
 Use `df['kdjk_6']` to retrieve the K series of 6 periods.
@@ -527,6 +527,9 @@ It contains 4 lines:
 
 It's the average of `high`, `low` and `close`.
 Use `df['middle']` to access this value.
+
+When `amount` is available, `middle = amount / volume`
+This should be more accurate because amount represents the total cash flow. 
 
 #### [Bollinger Bands](https://en.wikipedia.org/wiki/Bollinger_Bands)
 
