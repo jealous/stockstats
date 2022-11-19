@@ -759,7 +759,7 @@ class StockDataFrame(pd.DataFrame):
         self['kdjd'] = self['kdjd_{}'.format(self.KDJ_WINDOW)]
         self['kdjj'] = self['kdjj_{}'.format(self.KDJ_WINDOW)]
 
-    def _get_cr(self, window=26):
+    def _get_cr(self, windows=None):
         """ Energy Index (Intermediate Willingness Index)
 
         https://support.futunn.com/en/topic167/?lang=en-us
@@ -767,9 +767,14 @@ class StockDataFrame(pd.DataFrame):
         yesterday's middle price to reflect the market's willingness to buy
         and sell.
 
-        :param window: window of the moving sum
+        :param windows: window of the moving sum
         :return: None
         """
+        if windows is None:
+            window = 26
+        else:
+            window = self.get_int_positive(windows)
+
         middle = self._tp()
         last_middle = self._shift(middle, -1)
         ym = self._shift(middle, -1)
@@ -779,10 +784,22 @@ class StockDataFrame(pd.DataFrame):
         p2_m = pd.concat((last_middle, low), axis=1).min(axis=1)
         p1 = self._mov_sum(high - p1_m, window)
         p2 = self._mov_sum(ym - p2_m, window)
-        self['cr'] = cr = p1 / p2 * 100
-        self['cr-ma1'] = self._shifted_cr_sma(cr, self.CR_MA1)
-        self['cr-ma2'] = self._shifted_cr_sma(cr, self.CR_MA2)
-        self['cr-ma3'] = self._shifted_cr_sma(cr, self.CR_MA3)
+
+        if windows is None:
+            cr = 'cr'
+            cr_ma1 = 'cr-ma1'
+            cr_ma2 = 'cr-ma2'
+            cr_ma3 = 'cr-ma3'
+        else:
+            cr = 'cr_{}'.format(window)
+            cr_ma1 = 'cr_{}-ma1'.format(window)
+            cr_ma2 = 'cr_{}-ma2'.format(window)
+            cr_ma3 = 'cr_{}-ma3'.format(window)
+
+        self[cr] = cr = p1 / p2 * 100
+        self[cr_ma1] = self._shifted_cr_sma(cr, self.CR_MA1)
+        self[cr_ma2] = self._shifted_cr_sma(cr, self.CR_MA2)
+        self[cr_ma3] = self._shifted_cr_sma(cr, self.CR_MA3)
 
     def _shifted_cr_sma(self, cr, window):
         cr_sma = self._sma(cr, window)
@@ -1108,7 +1125,10 @@ class StockDataFrame(pd.DataFrame):
 
         # start with simple moving average
         kama = self._sma(col, window)
-        last_kama = kama.iloc[window - 1]
+        if len(kama) >= window:
+            last_kama = kama.iloc[window - 1]
+        else:
+            last_kama = 0.0
         for i in range(window, len(kama)):
             cur = smoothing.iloc[i] * (col.iloc[i] - last_kama) + last_kama
             kama.iloc[i] = cur

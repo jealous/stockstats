@@ -161,6 +161,12 @@ class StockDataFrameTest(TestCase):
         assert_that(stock['cr-ma2'].loc[20110331], near_to(117.1488))
         assert_that(stock['cr-ma3'].loc[20110331], near_to(111.5195))
 
+        stock.get('cr_26')
+        assert_that(stock['cr_26'].loc[20110331], near_to(178.1714))
+        assert_that(stock['cr_26-ma1'].loc[20110331], near_to(120.0364))
+        assert_that(stock['cr_26-ma2'].loc[20110331], near_to(117.1488))
+        assert_that(stock['cr_26-ma3'].loc[20110331], near_to(111.5195))
+
     def test_column_permutation(self):
         stock = self.get_stock_20day()
         amount_p = stock['volume_-1_d_-3,-2,-1_p']
