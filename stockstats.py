@@ -916,7 +916,7 @@ class StockDataFrame(pd.DataFrame):
         column_name = '{}_{}_ema'.format(column, window)
         self[column_name] = self._ema(self[column], window)
 
-    def _get_boll(self):
+    def _get_boll(self, window=None):
         """ Get Bollinger bands.
 
         boll_ub means the upper band of the Bollinger bands
@@ -927,12 +927,23 @@ class StockDataFrame(pd.DataFrame):
         K = BOLL_STD_TIMES
         :return: None
         """
-        moving_avg = self._sma(self['close'], self.BOLL_PERIOD)
-        moving_std = self._mstd(self['close'], self.BOLL_PERIOD)
-        self['boll'] = moving_avg
+        if window is None:
+            n = self.BOLL_PERIOD
+            boll = 'boll'
+            boll_ub = 'boll_ub'
+            boll_lb = 'boll_lb'
+        else:
+            n = self.get_int_positive(window)
+            boll = 'boll_{}'.format(n)
+            boll_ub = 'boll_ub_{}'.format(n)
+            boll_lb = 'boll_lb_{}'.format(n)
+        moving_avg = self._sma(self['close'], n)
+        moving_std = self._mstd(self['close'], n)
+
+        self[boll] = moving_avg
         width = self.BOLL_STD_TIMES * moving_std
-        self['boll_ub'] = moving_avg + width
-        self['boll_lb'] = moving_avg - width
+        self[boll_ub] = moving_avg + width
+        self[boll_lb] = moving_avg - width
 
     def _get_macd(self):
         """ Moving Average Convergence Divergence

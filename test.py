@@ -323,6 +323,16 @@ class StockDataFrameTest(TestCase):
         assert_that(boll_ub.loc[idx], near_to(10.1310))
         assert_that(boll_lb.loc[idx], near_to(9.4759))
 
+    def test_bollinger_with_window(self):
+        stock = self.get_stock().within(20140930, 20141211)
+        _ = stock['boll_20']
+        idx = 20141103
+        assert_that(stock['boll_20'].loc[idx], near_to(9.8035))
+        assert_that(stock['boll_ub_20'].loc[idx], near_to(10.1310))
+        assert_that(stock['boll_lb_20'].loc[idx], near_to(9.4759))
+        _ = stock['boll_5']
+        assert_that(stock['boll_ub_5'].loc[idx], near_to(10.44107))
+
     def test_bollinger_empty(self):
         stock = self.get_stock().within(18800101, 18900101)
         s = stock['boll_ub']

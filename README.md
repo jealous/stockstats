@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/jealous/stockstats/branch/master/graph/badge.svg?token=IFMD1pVJ7T)](https://codecov.io/gh/jealous/stockstats)
 [![pypi](https://img.shields.io/pypi/v/stockstats.svg)](https://pypi.python.org/pypi/stockstats)
 
-VERSION: 0.5.1
+VERSION: 0.5.2
 
 ## Introduction
 
@@ -537,6 +537,10 @@ The Bollinger bands includes three lines
 * `df['boll']` is the baseline
 * `df['boll_ub']` is the upper band
 * `df['boll_lb']` is the lower band
+
+The default window of boll is defined by `BOLL_PERIOD`.  The default value is 20.
+You can also supply your window with `df['boll_10']`.  It will also
+generate the `boll_ub_10` and `boll_lb_10` column.
 
 The default period of the Bollinger Band can be changed with
 `StockDataFrame.BOLL_PERIOD`.  The width of the bands can be turned with
