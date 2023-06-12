@@ -55,6 +55,7 @@ Supported statistics/indicators are:
 * WT: LazyBear's Wave Trend
 * Supertrend: with the Upper Band and Lower Band
 * Aroon: Aroon Oscillator
+* Z: Z-Score
 
 ## Installation
 
@@ -670,6 +671,27 @@ Examples:
 * `df['aroon']` returns Aroon oscillator with a window of 25
 * `df['aroon_14']` returns Aroon oscillator with a window of 14
 
+#### [Z-Score](https://www.investopedia.com/terms/z/zscore.asp)
+
+Z-score is a statistical measurement that describes a value's relationship to 
+the mean of a group of values. 
+
+There is no default column name or window for Z-Score.
+
+The statistical formula for a value's z-score is calculated using
+the following formula:
+
+```z = ( x - μ ) / σ```
+
+Where:
+
+* `z` = Z-score
+* `x` = the value being evaluated
+* `μ` = the mean
+* `σ` = the standard deviation
+
+Examples:
+* `df['close_75_z']` returns the Z-Score of close price with a window of 75
 
 ## Issues
 
