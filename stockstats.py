@@ -604,6 +604,18 @@ class StockDataFrame(pd.DataFrame):
         self['supertrend'] = st
 
     def _get_aroon(self, window=None):
+        """ Aroon Oscillator
+
+        The Aroon Oscillator measures the strength of a trend and
+        the likelihood that it will continue.
+
+        The default window is 25.
+
+        * Aroon Oscillator = Aroon Up - Aroon Down
+        * Aroon Up = 100 * (n - periods since n-period high) / n
+        * Aroon Down = 100 * (n - periods since n-period low) / n
+        * n = window size
+        """
         if window is None:
             window = 25
             column_name = 'aroon'
@@ -627,6 +639,37 @@ class StockDataFrame(pd.DataFrame):
         aroon_up = _window_pct(high_since)
         aroon_down = _window_pct(low_since)
         self[column_name] = aroon_up - aroon_down
+
+    def _get_z(self, column, window):
+        """ Z score
+
+        Z-score is a statistical measurement that describes a value's
+        relationship to the mean of a group of values.
+
+        The statistical formula for a value's z-score is calculated using
+        the following formula:
+
+        z = ( x - μ ) / σ
+
+        Where:
+
+        * z = Z-score
+        * x = the value being evaluated
+        * μ = the mean
+        * σ = the standard deviation
+        """
+        window = self.get_int_positive(window)
+        column_name = '{}_{}_z'.format(column, window)
+        col = self[column]
+        mean = col.rolling(
+            min_periods=1,
+            window=window,
+            center=False).mean()
+        std = col.rolling(
+            min_periods=1,
+            window=window,
+            center=False).std()
+        self[column_name] = ((col - mean) / std).fillna(0.0)
 
     def _atr(self, window):
         tr = self._tr()

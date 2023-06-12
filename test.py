@@ -738,3 +738,10 @@ class StockDataFrameTest(TestCase):
         _ = stock['aroon_5']
         assert_that(stock.loc[20040924, 'aroon_5'], equal_to(40))
         assert_that(stock.loc[20041020, 'aroon_5'], equal_to(-80))
+
+    def test_close_z(self):
+        stock = self._supor[:100]
+        _ = stock['close_14_z']
+        assert_that(stock.loc[20040817, 'close_14_z'], equal_to(0))
+        assert_that(stock.loc[20040915, 'close_14_z'], near_to(2.005))
+        assert_that(stock.loc[20041014, 'close_14_z'], near_to(-2.014))
