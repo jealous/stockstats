@@ -726,3 +726,15 @@ class StockDataFrameTest(TestCase):
         assert_that(ret.iloc[-1].name, equal_to(20040831))
         assert_that(stock, has_length(20))
         assert_that(stock.iloc[-1].name, equal_to(20040913))
+
+    def test_aroon(self):
+        stock = self._supor[:50]
+        _ = stock['aroon']
+        assert_that(stock.loc[20040924, 'aroon'], equal_to(28))
+
+        _ = stock['aroon_25']
+        assert_that(stock.loc[20040924, 'aroon_25'], equal_to(28))
+
+        _ = stock['aroon_5']
+        assert_that(stock.loc[20040924, 'aroon_5'], equal_to(40))
+        assert_that(stock.loc[20041020, 'aroon_5'], equal_to(-80))

@@ -603,6 +603,31 @@ class StockDataFrame(pd.DataFrame):
         self['supertrend_lb'] = lb
         self['supertrend'] = st
 
+    def _get_aroon(self, window=None):
+        if window is None:
+            window = 25
+            column_name = 'aroon'
+        else:
+            window = self.get_int_positive(window)
+            column_name = 'aroon_{}'.format(window)
+
+        def _window_pct(s):
+            n = float(window)
+            return (n - (n - (s + 1))) / n * 100
+
+        high_since = self['high'].rolling(
+            min_periods=1,
+            window=window,
+            center=False).apply(np.argmax)
+        low_since = self['low'].rolling(
+            min_periods=1,
+            window=window,
+            center=False).apply(np.argmin)
+
+        aroon_up = _window_pct(high_since)
+        aroon_down = _window_pct(low_since)
+        self[column_name] = aroon_up - aroon_down
+
     def _atr(self, window):
         tr = self._tr()
         return self._smma(tr, window)
@@ -1278,6 +1303,7 @@ class StockDataFrame(pd.DataFrame):
             ('supertrend',
              'supertrend_lb',
              'supertrend_ub'): self._get_supertrend,
+            ('aroon',): self._get_aroon,
         }
 
     def __init_not_exist_column(self, key):

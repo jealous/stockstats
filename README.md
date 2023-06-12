@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/jealous/stockstats/branch/master/graph/badge.svg?token=IFMD1pVJ7T)](https://codecov.io/gh/jealous/stockstats)
 [![pypi](https://img.shields.io/pypi/v/stockstats.svg)](https://pypi.python.org/pypi/stockstats)
 
-VERSION: 0.5.2
+VERSION: 0.5.3
 
 ## Introduction
 
@@ -54,6 +54,7 @@ Supported statistics/indicators are:
 * StochRSI: Stochastic RSI
 * WT: LazyBear's Wave Trend
 * Supertrend: with the Upper Band and Lower Band
+* Aroon: Aroon Oscillator
 
 ## Installation
 
@@ -652,6 +653,23 @@ Examples:
 * `kdjk_x_kdjd` returns a series that marks the cross of KDJK and KDJD
 * `kdjk_xu_kdjd` returns a series that marks where KDJK crosses up KDJD
 * `kdjk_xd_kdjd` returns a series that marks where KDJD crosses down KDJD
+
+#### [Aroon Oscillator](https://www.investopedia.com/terms/a/aroonoscillator.asp)
+
+The Aroon Oscillator measures the strength of a trend and 
+the likelihood that it will continue.
+
+The default window is 25.
+
+* Aroon Oscillator = Aroon Up - Aroon Down
+* Aroon Up = 100 * (n - periods since n-period high) / n
+* Aroon Down = 100 * (n - periods since n-period low) / n
+* n = window size
+
+Examples:
+* `df['aroon']` returns Aroon oscillator with a window of 25
+* `df['aroon_14']` returns Aroon oscillator with a window of 14
+
 
 ## Issues
 
