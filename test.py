@@ -671,6 +671,16 @@ class StockDataFrameTest(TestCase):
         assert_that(st_ub[idx], near_to(14.6457))
         assert_that(st_lb[idx], near_to(12.9021))
 
+    def test_ao(self):
+        stock = self.get_stock_90day()
+        ao = stock['ao']
+        ao1 = stock['ao_5,34']
+        ao2 = stock['ao_5,10']
+        idx = 20110302
+        assert_that(ao[idx], near_to(-0.112))
+        assert_that(ao1[idx], equal_to(ao[idx]))
+        assert_that(ao2[idx], near_to(-0.071))
+
     def test_drop_column_inplace(self):
         stock = self._supor[:20]
         stock.columns.name = 'Luke'

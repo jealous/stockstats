@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/jealous/stockstats/branch/master/graph/badge.svg?token=IFMD1pVJ7T)](https://codecov.io/gh/jealous/stockstats)
 [![pypi](https://img.shields.io/pypi/v/stockstats.svg)](https://pypi.python.org/pypi/stockstats)
 
-VERSION: 0.5.3
+VERSION: 0.5.4
 
 ## Introduction
 
@@ -56,6 +56,7 @@ Supported statistics/indicators are:
 * Supertrend: with the Upper Band and Lower Band
 * Aroon: Aroon Oscillator
 * Z: Z-Score
+* AO: Awesome Oscillator
 
 ## Installation
 
@@ -692,6 +693,22 @@ Where:
 
 Examples:
 * `df['close_75_z']` returns the Z-Score of close price with a window of 75
+
+#### [Awesome Oscillator](https://www.ifcm.co.uk/ntx-indicators/awesome-oscillator)
+
+The AO indicator is a good indicator for measuring the market dynamics,
+it reflects specific changes in the driving force of the market, which
+helps to identify the strength of the trend, including the points of
+its formation and reversal.
+
+Awesome Oscillator Formula
+
+* MEDIAN PRICE = (HIGH+LOW)/2
+* AO = SMA(MEDIAN PRICE, 5)-SMA(MEDIAN PRICE, 34)
+
+Examples:
+* `df['ao']` returns the Awesome Oscillator with default windows (5, 34)
+* `df['ao_3,10']` returns the Awesome Oscillator with a window of 3 and 10
 
 ## Issues
 
