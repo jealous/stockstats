@@ -105,6 +105,9 @@ class StockDataFrame(pd.DataFrame):
     KAMA_SLOW = 34
     KAMA_FAST = 5
 
+    AO_SLOW = 34
+    AO_FAST = 5
+
     MULTI_SPLIT_INDICATORS = ("kama",)
 
     # End of options
@@ -548,32 +551,33 @@ class StockDataFrame(pd.DataFrame):
         m_atr = self.SUPERTREND_MUL * self._atr(window)
         hl_avg = (high + low) / 2.0
         # basic upper band
-        b_ub = hl_avg + m_atr
+        b_ub = list(hl_avg + m_atr)
         # basic lower band
-        b_lb = hl_avg - m_atr
+        b_lb = list(hl_avg - m_atr)
 
         size = len(close)
         ub = np.empty(size, dtype=np.float64)
         lb = np.empty(size, dtype=np.float64)
         st = np.empty(size, dtype=np.float64)
+        close = list(close)
 
         for i in range(size):
             if i == 0:
-                ub[i] = b_ub.iloc[i]
-                lb[i] = b_lb.iloc[i]
-                if close.iloc[i] <= ub[i]:
+                ub[i] = b_ub[i]
+                lb[i] = b_lb[i]
+                if close[i] <= ub[i]:
                     st[i] = ub[i]
                 else:
                     st[i] = lb[i]
                 continue
 
-            last_close = close.iloc[i - 1]
-            curr_close = close.iloc[i]
+            last_close = close[i - 1]
+            curr_close = close[i]
             last_ub = ub[i - 1]
             last_lb = lb[i - 1]
             last_st = st[i - 1]
-            curr_b_ub = b_ub.iloc[i]
-            curr_b_lb = b_lb.iloc[i]
+            curr_b_ub = b_ub[i]
+            curr_b_lb = b_lb[i]
 
             # calculate current upper band
             if curr_b_ub < last_ub or last_close > last_ub:
@@ -1170,6 +1174,35 @@ class StockDataFrame(pd.DataFrame):
         mfi.iloc[:window] = 0.5
         self[column_name] = mfi
 
+    def _get_ao(self, windows=None):
+        """ get awesome oscillator
+
+        The AO indicator is a good indicator for measuring the market dynamics,
+        it reflects specific changes in the driving force of the market, which
+        helps to identify the strength of the trend, including the points of
+        its formation and reversal.
+
+
+        Awesome Oscillator Formula
+        * MEDIAN PRICE = (HIGH+LOW)/2
+        * AO = SMA(MEDIAN PRICE, 5)-SMA(MEDIAN PRICE, 34)
+
+        https://www.ifcm.co.uk/ntx-indicators/awesome-oscillator
+        """
+        if windows is None:
+            fast = self.AO_FAST
+            slow = self.AO_SLOW
+            column_name = 'ao'
+        else:
+            n0, n1 = self.to_ints(windows)
+            fast = min(n0, n1)
+            slow = max(n0, n1)
+            column_name = 'ao_{},{}'.format(fast, slow)
+
+        median_price = (self['high'] + self['low']) * 0.5
+        ao = self._sma(median_price, fast) - self._sma(median_price, slow)
+        self[column_name] = ao
+
     def _get_kama(self, column, windows, fasts=None, slows=None):
         """ get Kaufman's Adaptive Moving Average.
         Implemented after
@@ -1200,17 +1233,18 @@ class StockDataFrame(pd.DataFrame):
         slow_ema_smoothing = 2.0 / (slow + 1)
         smoothing_2 = fast_ema_smoothing - slow_ema_smoothing
         efficient_smoothing = efficiency_ratio * smoothing_2
-        smoothing = 2 * (efficient_smoothing + slow_ema_smoothing)
+        smoothing = list(2 * (efficient_smoothing + slow_ema_smoothing))
 
         # start with simple moving average
-        kama = self._sma(col, window)
+        kama = list(self._sma(col, window))
+        col_list = list(col)
         if len(kama) >= window:
-            last_kama = kama.iloc[window - 1]
+            last_kama = kama[window - 1]
         else:
             last_kama = 0.0
         for i in range(window, len(kama)):
-            cur = smoothing.iloc[i] * (col.iloc[i] - last_kama) + last_kama
-            kama.iloc[i] = cur
+            cur = smoothing[i] * (col_list[i] - last_kama) + last_kama
+            kama[i] = cur
             last_kama = cur
         self[column_name] = kama
 
@@ -1347,6 +1381,7 @@ class StockDataFrame(pd.DataFrame):
              'supertrend_lb',
              'supertrend_ub'): self._get_supertrend,
             ('aroon',): self._get_aroon,
+            ('ao',): self._get_ao,
         }
 
     def __init_not_exist_column(self, key):
