@@ -99,6 +99,8 @@ class StockDataFrame(pd.DataFrame):
 
     WR = 14
 
+    CMO = 14
+
     WAVE_TREND_1 = 10
     WAVE_TREND_2 = 21
 
@@ -728,9 +730,9 @@ class StockDataFrame(pd.DataFrame):
 
         initialize up move and down move
         """
-        hd = self['high_delta']
+        hd = self._col_delta('high')
         self['um'] = (hd + hd.abs()) / 2
-        ld = -self['low_delta']
+        ld = -self._col_delta('low')
         self['dm'] = (ld + ld.abs()) / 2
 
     def _get_pdm(self, windows):
@@ -1215,6 +1217,37 @@ class StockDataFrame(pd.DataFrame):
         divisor = self['high'] - self['low']
         self['bop'] = dividend / divisor
 
+    def _get_cmo(self, window=None):
+        """ get Chande Momentum Oscillator
+
+        The Chande Momentum Oscillator (CMO) is a technical momentum
+        indicator developed by Tushar Chande.
+        https://www.investopedia.com/terms/c/chandemomentumoscillator.asp
+
+        CMO = 100 * ((sH - sL) / (sH + sL))
+
+        where:
+        * sH=the sum of higher closes over N periods
+        * sL=the sum of lower closes of N periods
+        """
+        if window is None:
+            window = self.CMO
+            column_name = 'cmo'
+        else:
+            window = self.get_int_positive(window)
+            column_name = 'cmo_{}'.format(window)
+
+        close_diff = self['close'].diff()
+        up = close_diff.clip(lower=0)
+        down = close_diff.clip(upper=0).abs()
+        sum_up = self._mov_sum(up, window)
+        sum_down = self._mov_sum(down, window)
+        dividend = sum_up - sum_down
+        divisor = sum_up + sum_down
+        res = 100 * dividend / divisor
+        res.iloc[0] = 0
+        self[column_name] = res
+
     def _get_kama(self, column, windows, fasts=None, slows=None):
         """ get Kaufman's Adaptive Moving Average.
         Implemented after
@@ -1297,6 +1330,9 @@ class StockDataFrame(pd.DataFrame):
         :return: None
         """
         self['rate'] = self['close'].pct_change() * 100
+
+    def _col_delta(self, col):
+        return self[col].diff()
 
     def _get_delta(self, key):
         key_to_delta = key.replace('_delta', '')
@@ -1395,6 +1431,7 @@ class StockDataFrame(pd.DataFrame):
             ('aroon',): self._get_aroon,
             ('ao',): self._get_ao,
             ('bop',): self._get_bop,
+            ('cmo',): self._get_cmo,
         }
 
     def __init_not_exist_column(self, key):

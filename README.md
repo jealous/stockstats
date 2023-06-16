@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/jealous/stockstats/branch/master/graph/badge.svg?token=IFMD1pVJ7T)](https://codecov.io/gh/jealous/stockstats)
 [![pypi](https://img.shields.io/pypi/v/stockstats.svg)](https://pypi.python.org/pypi/stockstats)
 
-VERSION: 0.5.4
+VERSION: 0.5.5
 
 ## Introduction
 
@@ -724,6 +724,30 @@ BOP = (close - open) / (high - low)
 
 Example:
 * `df['bop']` returns the Balance of Power
+
+#### [Chande Momentum Oscillator] (https://www.investopedia.com/terms/c/chandemomentumoscillator.asp)
+
+The Chande Momentum Oscillator (CMO) is a technical momentum 
+indicator developed by Tushar Chande.
+
+The formula calculates the difference between the sum of recent 
+gains and the sum of recent losses and then divides the result 
+by the sum of all price movements over the same period.
+
+The default window is 14.
+
+Formular:
+```
+CMO = 100 * ((sH - sL) / (sH + sL))
+```
+
+where:
+* sH=the sum of higher closes over N periods
+* sL=the sum of lower closes of N periods
+
+Examples:
+* `df['cmo']` returns the CMO with a window of 14
+* `df['cmo_5']` returns the CMO with a window of 5
 
 ## Issues
 

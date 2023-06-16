@@ -687,6 +687,19 @@ class StockDataFrameTest(TestCase):
         assert_that(bop[20110104], near_to(0.5))
         assert_that(bop[20110106], near_to(-0.207))
 
+    def test_cmo(self):
+        stock = self.get_stock_30day()
+        cmo = stock['cmo']
+        assert_that(cmo[20110104], equal_to(0))
+        assert_that(cmo[20110126], near_to(7.023))
+        assert_that(cmo[20110127], near_to(-16.129))
+
+        cmo_14 = stock['cmo_14']
+        assert_that(cmo_14[20110126], near_to(7.023))
+
+        cmo_5 = stock['cmo_5']
+        assert_that(cmo_5[20110126], near_to(7.895))
+
     def test_drop_column_inplace(self):
         stock = self._supor[:20]
         stock.columns.name = 'Luke'
