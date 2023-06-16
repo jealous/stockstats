@@ -1203,6 +1203,18 @@ class StockDataFrame(pd.DataFrame):
         ao = self._sma(median_price, fast) - self._sma(median_price, slow)
         self[column_name] = ao
 
+    def _get_bop(self):
+        """ get balance of power
+
+        The Balance of Power indicator measures the strength of the bulls.
+        https://school.stockcharts.com/doku.php?id=technical_indicators:balance_of_power
+
+        BOP = (close - open) / (high - low)
+        """
+        dividend = self['close'] - self['open']
+        divisor = self['high'] - self['low']
+        self['bop'] = dividend / divisor
+
     def _get_kama(self, column, windows, fasts=None, slows=None):
         """ get Kaufman's Adaptive Moving Average.
         Implemented after
@@ -1210,8 +1222,8 @@ class StockDataFrame(pd.DataFrame):
 
         :param column: column to calculate
         :param windows: collection of window of exponential moving average
-        :param fasts: fastest EMA constant
-        :param slows: slowest EMA constant
+        :param fasts: faster EMA constant
+        :param slows: slower EMA constant
         :return: None
         """
         window = self.get_int_positive(windows)
@@ -1382,6 +1394,7 @@ class StockDataFrame(pd.DataFrame):
              'supertrend_ub'): self._get_supertrend,
             ('aroon',): self._get_aroon,
             ('ao',): self._get_ao,
+            ('bop',): self._get_bop,
         }
 
     def __init_not_exist_column(self, key):
