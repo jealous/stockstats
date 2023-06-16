@@ -57,6 +57,7 @@ Supported statistics/indicators are:
 * Aroon: Aroon Oscillator
 * Z: Z-Score
 * AO: Awesome Oscillator
+* BOP: Balance of Power
 
 ## Installation
 
@@ -682,7 +683,9 @@ There is no default column name or window for Z-Score.
 The statistical formula for a value's z-score is calculated using
 the following formula:
 
-```z = ( x - μ ) / σ```
+```
+z = ( x - μ ) / σ
+```
 
 Where:
 
@@ -709,6 +712,18 @@ Awesome Oscillator Formula
 Examples:
 * `df['ao']` returns the Awesome Oscillator with default windows (5, 34)
 * `df['ao_3,10']` returns the Awesome Oscillator with a window of 3 and 10
+
+#### [Balance of Power](https://school.stockcharts.com/doku.php?id=technical_indicators:balance_of_power)
+
+Balance of Power (BOP) measures the strength of the bulls vs. bears.
+
+Formular:
+```
+BOP = (close - open) / (high - low)
+```
+
+Example:
+* `df['bop']` returns the Balance of Power
 
 ## Issues
 
