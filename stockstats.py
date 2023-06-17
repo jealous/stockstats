@@ -110,6 +110,8 @@ class StockDataFrame(pd.DataFrame):
     AO_SLOW = 34
     AO_FAST = 5
 
+    COPPOCK_PERIODS = (10, 11, 14)
+
     MULTI_SPLIT_INDICATORS = ("kama",)
 
     # End of options
@@ -245,21 +247,19 @@ class StockDataFrame(pd.DataFrame):
         close = self['close']
         self['log-ret'] = np.log(close / self._shift(close, -1))
 
-    def _get_c(self, column, shifts):
+    def _get_c(self, column, window):
         """ get the count of column in range (shifts)
 
         example: change_20_c
 
         :param column: column name
-        :param shifts: range to count, only to previous
+        :param window: range to count, only to previous
         :return: result series
         """
-        column_name = '{}_{}_c'.format(column, shifts)
-        shifts = self.get_int_positive(shifts)
-        self[column_name] = self[column].rolling(
-            center=False,
-            window=shifts,
-            min_periods=0).apply(np.count_nonzero)
+        column_name = '{}_{}_c'.format(column, window)
+        window = self.get_int_positive(window)
+        self[column_name] = self._rolling(
+            self[column], window).apply(np.count_nonzero, raw=True)
         return self[column_name]
 
     def _get_fc(self, column, shifts):
@@ -274,10 +274,8 @@ class StockDataFrame(pd.DataFrame):
         column_name = '{}_{}_fc'.format(column, shifts)
         shift = self.get_int_positive(shifts)
         reversed_series = self[column][::-1]
-        reversed_counts = reversed_series.rolling(
-            center=False,
-            window=shift,
-            min_periods=0).apply(np.count_nonzero)
+        reversed_counts = self._rolling(
+            reversed_series, shift).apply(np.count_nonzero, raw=True)
         counts = reversed_counts[::-1]
         self[column_name] = counts
         return counts
@@ -312,8 +310,8 @@ class StockDataFrame(pd.DataFrame):
         """
         window = self.get_int_positive(window)
         column_name = 'rsv_{}'.format(window)
-        low_min = self._mov_min(self['low'], window)
-        high_max = self._mov_max(self['high'], window)
+        low_min = self.mov_min(self['low'], window)
+        high_max = self.mov_max(self['high'], window)
 
         cv = (self['close'] - low_min) / (high_max - low_min)
         self[column_name] = cv.fillna(0.0) * 100
@@ -361,8 +359,8 @@ class StockDataFrame(pd.DataFrame):
         window = self.get_int_positive(window)
 
         rsi = self['rsi_{}'.format(window)]
-        rsi_min = self._mov_min(rsi, window)
-        rsi_max = self._mov_max(rsi, window)
+        rsi_min = self.mov_min(rsi, window)
+        rsi_max = self.mov_max(rsi, window)
 
         cv = (rsi - rsi_min) / (rsi_max - rsi_min)
         self[column_name] = cv * 100
@@ -381,12 +379,12 @@ class StockDataFrame(pd.DataFrame):
         n2 = self.WAVE_TREND_2
 
         tp = self._tp()
-        esa = self._ema(tp, n1)
-        d = self._ema((tp - esa).abs(), n1)
+        esa = self.ema(tp, n1)
+        d = self.ema((tp - esa).abs(), n1)
         ci = (tp - esa) / (0.015 * d)
-        tci = self._ema(ci, n2)
+        tci = self.ema(ci, n2)
         self["wt1"] = tci
-        self["wt2"] = self._sma(tci, 4)
+        self["wt2"] = self.sma(tci, 4)
 
     @staticmethod
     def _smma(series, window):
@@ -428,9 +426,9 @@ class StockDataFrame(pd.DataFrame):
 
         window = self.get_int_positive(windows)
 
-        single = self._ema(self[column], window)
-        double = self._ema(single, window)
-        triple = self._ema(double, window)
+        single = self.ema(self[column], window)
+        double = self.ema(single, window)
+        triple = self.ema(double, window)
         prev_triple = self._shift(triple, -1)
         triple_change = self._delta(triple, -1)
         self[column_name] = triple_change * 100 / prev_triple
@@ -457,9 +455,9 @@ class StockDataFrame(pd.DataFrame):
 
         window = self.get_int_positive(windows)
 
-        single = self._ema(self[column], window)
-        double = self._ema(single, window)
-        triple = self._ema(double, window)
+        single = self.ema(self[column], window)
+        double = self.ema(single, window)
+        triple = self.ema(double, window)
         self[column_name] = 3 * single - 3 * double + triple
 
     def _get_wr(self, window=None):
@@ -481,9 +479,9 @@ class StockDataFrame(pd.DataFrame):
             column_name = 'wr_{}'.format(window)
 
         window = self.get_int_positive(window)
-        ln = self._mov_min(self['low'], window)
+        ln = self.mov_min(self['low'], window)
 
-        hn = self._mov_max(self['high'], window)
+        hn = self.mov_max(self['high'], window)
         self[column_name] = (hn - self['close']) / (hn - ln) * -100
 
     def _get_cci(self, window=None):
@@ -507,11 +505,9 @@ class StockDataFrame(pd.DataFrame):
         window = self.get_int_positive(window)
 
         tp = self._tp()
-        tp_sma = self._sma(tp, window)
-        rolling = tp.rolling(min_periods=1, center=False, window=window)
-        md = rolling.apply(lambda x: np.fabs(x - x.mean()).mean())
-
-        self[column_name] = (tp - tp_sma) / (.015 * md)
+        tp_sma = self.sma(tp, window)
+        mad = self._mad(tp, window)
+        self[column_name] = (tp - tp_sma) / (.015 * mad)
 
     def _tr(self):
         prev_close = self._shift(self['close'], -1)
@@ -633,14 +629,10 @@ class StockDataFrame(pd.DataFrame):
             n = float(window)
             return (n - (n - (s + 1))) / n * 100
 
-        high_since = self['high'].rolling(
-            min_periods=1,
-            window=window,
-            center=False).apply(np.argmax)
-        low_since = self['low'].rolling(
-            min_periods=1,
-            window=window,
-            center=False).apply(np.argmin)
+        high_since = self._rolling(
+            self['high'], window).apply(np.argmax, raw=True)
+        low_since = self._rolling(
+            self['low'], window).apply(np.argmin, raw=True)
 
         aroon_up = _window_pct(high_since)
         aroon_down = _window_pct(low_since)
@@ -667,14 +659,8 @@ class StockDataFrame(pd.DataFrame):
         window = self.get_int_positive(window)
         column_name = '{}_{}_z'.format(column, window)
         col = self[column]
-        mean = col.rolling(
-            min_periods=1,
-            window=window,
-            center=False).mean()
-        std = col.rolling(
-            min_periods=1,
-            window=window,
-            center=False).std()
+        mean = self.sma(col, window)
+        std = self.mov_std(col, window)
         self[column_name] = ((col - mean) / std).fillna(0.0)
 
     def _atr(self, window):
@@ -722,8 +708,8 @@ class StockDataFrame(pd.DataFrame):
         self['pdi'] = self._get_pdi(self.PDI_SMMA)
         self['mdi'] = self._get_mdi(self.MDI_SMMA)
         self['dx'] = self._get_dx(self.DX_SMMA)
-        self['adx'] = self._ema(self['dx'], self.ADX_EMA)
-        self['adxr'] = self._ema(self['adx'], self.ADXR_EMA)
+        self['adx'] = self.ema(self['dx'], self.ADX_EMA)
+        self['adxr'] = self.ema(self['adx'], self.ADXR_EMA)
 
     def _get_um_dm(self):
         """ Up move and down move
@@ -764,15 +750,15 @@ class StockDataFrame(pd.DataFrame):
         idx = self.index
         gt_zero = np.where(self['change'] > 0, self['volume'], 0)
         av = pd.Series(gt_zero, index=idx)
-        avs = self._mov_sum(av, window)
+        avs = self.mov_sum(av, window)
 
         lt_zero = np.where(self['change'] < 0, self['volume'], 0)
         bv = pd.Series(lt_zero, index=idx)
-        bvs = self._mov_sum(bv, window)
+        bvs = self.mov_sum(bv, window)
 
         eq_zero = np.where(self['change'] == 0, self['volume'], 0)
         cv = pd.Series(eq_zero, index=idx)
-        cvs = self._mov_sum(cv, window)
+        cvs = self.mov_sum(cv, window)
 
         self[column_name] = (avs + cvs / 2) / (bvs + cvs / 2) * 100
 
@@ -856,8 +842,8 @@ class StockDataFrame(pd.DataFrame):
         low = self['low']
         p1_m = pd.concat((last_middle, high), axis=1).min(axis=1)
         p2_m = pd.concat((last_middle, low), axis=1).min(axis=1)
-        p1 = self._mov_sum(high - p1_m, window)
-        p2 = self._mov_sum(ym - p2_m, window)
+        p1 = self.mov_sum(high - p1_m, window)
+        p2 = self.mov_sum(ym - p2_m, window)
 
         if windows is None:
             cr = 'cr'
@@ -876,7 +862,7 @@ class StockDataFrame(pd.DataFrame):
         self[cr_ma3] = self._shifted_cr_sma(cr, self.CR_MA3)
 
     def _shifted_cr_sma(self, cr, window):
-        cr_sma = self._sma(cr, window)
+        cr_sma = self.sma(cr, window)
         return self._shift(cr_sma, -int(window / 2.5 + 1))
 
     def _tp(self):
@@ -944,21 +930,52 @@ class StockDataFrame(pd.DataFrame):
         column_name = '{}_{}_d'.format(column, shift)
         self[column_name] = self._delta(self[column], shift)
 
-    @staticmethod
-    def _mov_min(series, size):
-        return series.rolling(min_periods=1, window=size, center=False).min()
+    @classmethod
+    def mov_min(cls, series, size):
+        return cls._rolling(series, size).min()
+
+    @classmethod
+    def mov_max(cls, series, size):
+        return cls._rolling(series, size).max()
+
+    @classmethod
+    def mov_sum(cls, series, size):
+        return cls._rolling(series, size).sum()
+
+    @classmethod
+    def sma(cls, series, size):
+        return cls._rolling(series, size).mean()
 
     @staticmethod
-    def _mov_max(series, size):
-        return series.rolling(min_periods=1, window=size, center=False).max()
+    def roc(series, size):
+        ret = series.diff(size) / series.shift(size)
+        ret.iloc[:size] = 0
+        return ret * 100
 
-    @staticmethod
-    def _mov_sum(series, size):
-        return series.rolling(min_periods=1, window=size, center=False).sum()
+    @classmethod
+    def _mad(cls, series, window):
+        """ Mean Absolute Deviation
 
-    @staticmethod
-    def _sma(series, size):
-        return series.rolling(min_periods=1, window=size, center=False).mean()
+        :param series: Series
+        :param window: number of periods
+        :return: Series
+        """
+
+        def f(x):
+            return np.fabs(x - x.mean()).mean()
+
+        return cls._rolling(series, window).apply(f, raw=True)
+
+    def _get_mad(self, column, window):
+        """ get mean absolute deviation
+
+        :param column: column to calculate
+        :param window: number of periods
+        :return: None
+        """
+        window = self.get_int_positive(window)
+        column_name = '{}_{}_mad'.format(column, window)
+        self[column_name] = self._mad(self[column], window)
 
     def _get_sma(self, column, windows):
         """ get simple moving average
@@ -969,15 +986,61 @@ class StockDataFrame(pd.DataFrame):
         """
         window = self.get_int_positive(windows)
         column_name = '{}_{}_sma'.format(column, window)
-        self[column_name] = self._sma(self[column], window)
+        self[column_name] = self.sma(self[column], window)
+
+    def _get_roc(self, column, window):
+        """get Rate of Change (ROC) of a column
+
+        The Price Rate of Change (ROC) is a momentum-based technical indicator
+        that measures the percentage change in price between the current price
+        and the price a certain number of periods ago.
+
+        https://www.investopedia.com/terms/p/pricerateofchange.asp
+
+        Formular:
+
+        ROC = (PriceP - PricePn) / PricePn * 100
+
+        Where:
+        * PriceP: the price of the current period
+        * PricePn: the price of the n periods ago
+
+        :param column: column to calculate
+        :param window: window of Rate of Change (ROC)
+        :return: None
+        """
+        window = self.get_int_positive(window)
+        column_name = '{}_{}_roc'.format(column, window)
+        self[column_name] = self.roc(self[column], window)
 
     @staticmethod
-    def _ema(series, window):
+    def ema(series, window):
         return series.ewm(
             ignore_na=False,
             span=window,
             min_periods=0,
             adjust=True).mean()
+
+    @staticmethod
+    def _rolling(series, window):
+        return series.rolling(window, min_periods=1, center=False)
+
+    @classmethod
+    def linear_wma(cls, series, window):
+        total_weight = 0.5 * window * (window + 1)
+        weights = np.arange(1, window + 1) / total_weight
+
+        def linear(w):
+            def _compute(x):
+                try:
+                    return np.dot(x, w)
+                except ValueError:
+                    return 0.0
+
+            return _compute
+
+        rolling = cls._rolling(series, window)
+        return rolling.apply(linear(weights), raw=True)
 
     def _get_ema(self, column, windows):
         """ get exponential moving average
@@ -988,7 +1051,7 @@ class StockDataFrame(pd.DataFrame):
         """
         window = self.get_int_positive(windows)
         column_name = '{}_{}_ema'.format(column, window)
-        self[column_name] = self._ema(self[column], window)
+        self[column_name] = self.ema(self[column], window)
 
     def _get_boll(self, window=None):
         """ Get Bollinger bands.
@@ -1011,8 +1074,8 @@ class StockDataFrame(pd.DataFrame):
             boll = 'boll_{}'.format(n)
             boll_ub = 'boll_ub_{}'.format(n)
             boll_lb = 'boll_lb_{}'.format(n)
-        moving_avg = self._sma(self['close'], n)
-        moving_std = self._mstd(self['close'], n)
+        moving_avg = self.sma(self['close'], n)
+        moving_std = self.mov_std(self['close'], n)
 
         self[boll] = moving_avg
         width = self.BOLL_STD_TIMES * moving_std
@@ -1031,10 +1094,10 @@ class StockDataFrame(pd.DataFrame):
         :return: None
         """
         close = self['close']
-        ema_short = self._ema(close, self.MACD_EMA_SHORT)
-        ema_long = self._ema(close, self.MACD_EMA_LONG)
+        ema_short = self.ema(close, self.MACD_EMA_SHORT)
+        ema_long = self.ema(close, self.MACD_EMA_LONG)
         self['macd'] = ema_short - ema_long
-        self['macds'] = self._ema(self['macd'], self.MACD_EMA_SIGNAL)
+        self['macds'] = self.ema(self['macd'], self.MACD_EMA_SIGNAL)
         self['macdh'] = self['macd'] - self['macds']
 
     def _get_ppo(self):
@@ -1052,11 +1115,39 @@ class StockDataFrame(pd.DataFrame):
         :return: None
         """
         close = self['close']
-        ppo_short = self._ema(close, self.PPO_EMA_SHORT)
-        ppo_long = self._ema(close, self.PPO_EMA_LONG)
+        ppo_short = self.ema(close, self.PPO_EMA_SHORT)
+        ppo_long = self.ema(close, self.PPO_EMA_LONG)
         self['ppo'] = (ppo_short - ppo_long) / ppo_long * 100
-        self['ppos'] = self._ema(self['ppo'], self.PPO_EMA_SIGNAL)
+        self['ppos'] = self.ema(self['ppo'], self.PPO_EMA_SIGNAL)
         self['ppoh'] = self['ppo'] - self['ppos']
+
+    def _get_coppock(self, windows=None):
+        """ Get Coppock Curve
+
+        Coppock Curve is a momentum indicator that signals
+        long-term trend reversals.
+
+        https://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve
+
+        :param windows: collection of window of Coppock Curve
+        :return: None
+        """
+        if windows is None:
+            window = self.COPPOCK_PERIODS[0]
+            fast = self.COPPOCK_PERIODS[1]
+            slow = self.COPPOCK_PERIODS[2]
+            column_name = 'coppock'
+        else:
+            periods = self.to_ints(windows)
+            window = periods[0]
+            fast = periods[1]
+            slow = periods[2]
+            column_name = 'coppock_{}'.format(windows)
+
+        fast_roc = self.roc(self['close'], fast)
+        slow_roc = self.roc(self['close'], slow)
+        roc_ema = self.linear_wma(fast_roc + slow_roc, window)
+        self[column_name] = roc_ema
 
     def get_int_positive(self, windows):
         if isinstance(windows, int):
@@ -1067,9 +1158,9 @@ class StockDataFrame(pd.DataFrame):
                 raise IndexError("window must be greater than 0")
         return window
 
-    @staticmethod
-    def _mstd(series, window):
-        return series.rolling(min_periods=1, window=window, center=False).std()
+    @classmethod
+    def mov_std(cls, series, window):
+        return cls._rolling(series, window).std()
 
     def _get_mstd(self, column, windows):
         """ get moving standard deviation
@@ -1080,7 +1171,11 @@ class StockDataFrame(pd.DataFrame):
         """
         window = self.get_int_positive(windows)
         column_name = '{}_{}_mstd'.format(column, window)
-        self[column_name] = self._mstd(self[column], window)
+        self[column_name] = self.mov_std(self[column], window)
+
+    @classmethod
+    def mov_var(cls, series, window):
+        return cls._rolling(series, window).var()
 
     def _get_mvar(self, column, windows):
         """ get moving variance
@@ -1091,8 +1186,7 @@ class StockDataFrame(pd.DataFrame):
         """
         window = self.get_int_positive(windows)
         column_name = '{}_{}_mvar'.format(column, window)
-        self[column_name] = self[column].rolling(
-            min_periods=1, window=window, center=False).var()
+        self[column_name] = self.mov_var(self[column], window)
 
     def _get_vwma(self, window=None):
         """ get Volume Weighted Moving Average
@@ -1111,8 +1205,8 @@ class StockDataFrame(pd.DataFrame):
         window = self.get_int_positive(window)
 
         tpv = self['volume'] * self._tp()
-        rolling_tpv = self._mov_sum(tpv, window)
-        rolling_vol = self._mov_sum(self['volume'], window)
+        rolling_tpv = self.mov_sum(tpv, window)
+        rolling_vol = self.mov_sum(self['volume'], window)
         self[column_name] = rolling_tpv / rolling_vol
 
     def _get_chop(self, window=None):
@@ -1140,9 +1234,9 @@ class StockDataFrame(pd.DataFrame):
             column_name = 'chop_{}'.format(window)
         window = self.get_int_positive(window)
         atr = self._atr(1)
-        atr_sum = self._mov_sum(atr, window)
-        high = self._mov_max(self['high'], window)
-        low = self._mov_min(self['low'], window)
+        atr_sum = self.mov_sum(atr, window)
+        high = self.mov_max(self['high'], window)
+        low = self.mov_min(self['low'], window)
         choppy = atr_sum / (high - low)
         numerator = np.log10(choppy) * 100
         denominator = np.log10(window)
@@ -1169,8 +1263,8 @@ class StockDataFrame(pd.DataFrame):
         delta = (middle - shifted).fillna(0)
         pos_flow = money_flow.mask(delta < 0, 0)
         neg_flow = money_flow.mask(delta >= 0, 0)
-        rolling_pos_flow = self._mov_sum(pos_flow, window)
-        rolling_neg_flow = self._mov_sum(neg_flow, window)
+        rolling_pos_flow = self.mov_sum(pos_flow, window)
+        rolling_neg_flow = self.mov_sum(neg_flow, window)
         money_flow_ratio = rolling_pos_flow / (rolling_neg_flow + 1e-12)
         mfi = (1.0 - 1.0 / (1 + money_flow_ratio))
         mfi.iloc[:window] = 0.5
@@ -1202,7 +1296,7 @@ class StockDataFrame(pd.DataFrame):
             column_name = 'ao_{},{}'.format(fast, slow)
 
         median_price = (self['high'] + self['low']) * 0.5
-        ao = self._sma(median_price, fast) - self._sma(median_price, slow)
+        ao = self.sma(median_price, fast) - self.sma(median_price, slow)
         self[column_name] = ao
 
     def _get_bop(self):
@@ -1240,8 +1334,8 @@ class StockDataFrame(pd.DataFrame):
         close_diff = self['close'].diff()
         up = close_diff.clip(lower=0)
         down = close_diff.clip(upper=0).abs()
-        sum_up = self._mov_sum(up, window)
-        sum_down = self._mov_sum(down, window)
+        sum_up = self.mov_sum(up, window)
+        sum_down = self.mov_sum(down, window)
         dividend = sum_up - sum_down
         divisor = sum_up + sum_down
         res = 100 * dividend / divisor
@@ -1272,7 +1366,7 @@ class StockDataFrame(pd.DataFrame):
         col_window_s = self._shift(col, -window)
         col_last = self._shift(col, -1)
         change = (col - col_window_s).abs()
-        volatility = self._mov_sum((col - col_last).abs(), window)
+        volatility = self.mov_sum((col - col_last).abs(), window)
         efficiency_ratio = change / volatility
         fast_ema_smoothing = 2.0 / (fast + 1)
         slow_ema_smoothing = 2.0 / (slow + 1)
@@ -1281,7 +1375,7 @@ class StockDataFrame(pd.DataFrame):
         smoothing = list(2 * (efficient_smoothing + slow_ema_smoothing))
 
         # start with simple moving average
-        kama = list(self._sma(col, window))
+        kama = list(self.sma(col, window))
         col_list = list(col)
         if len(kama) >= window:
             last_kama = kama[window - 1]
@@ -1432,6 +1526,7 @@ class StockDataFrame(pd.DataFrame):
             ('ao',): self._get_ao,
             ('bop',): self._get_bop,
             ('cmo',): self._get_cmo,
+            ('coppock',): self._get_coppock,
         }
 
     def __init_not_exist_column(self, key):
