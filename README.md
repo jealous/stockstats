@@ -25,6 +25,7 @@ Supported statistics/indicators are:
 * cross: including upward cross and downward cross
 * SMA: Simple Moving Average
 * EMA: Exponential Moving Average
+* ROC: Rate of Change
 * MSTD: Moving Standard Deviation
 * MVAR: Moving Variance
 * RSV: Raw Stochastic Value
@@ -58,6 +59,9 @@ Supported statistics/indicators are:
 * Z: Z-Score
 * AO: Awesome Oscillator
 * BOP: Balance of Power
+* MAD: Mean Absolute Deviation
+* ROC: Rate of Change
+* Coppock: Coppock Curve
 
 ## Installation
 
@@ -363,6 +367,43 @@ It requires column and window.
 
 For example, use `df['close_7_smma']` to retrieve the 7 periods smoothed moving
 average of the close price.
+
+#### [ROC - Rate of Change](https://www.investopedia.com/terms/p/pricerateofchange.asp)
+
+The Price Rate of Change (ROC) is a momentum-based technical indicator 
+that measures the percentage change in price between the current price 
+and the price a certain number of periods ago.
+
+Formular:
+
+ROC = (PriceP - PricePn) / PricePn * 100
+
+Where:
+* PriceP: the price of the current period
+* PricePn: the price of the n periods ago
+
+You need a column name and a period to calculate ROC.
+
+Examples:
+* `df['close_10_roc']`: the ROC of the close price in 10 periods
+* `df['high_5_roc']`: the ROC of the high price in 5 periods
+
+#### [MAD - Mean Absolute Deviation](https://www.khanacademy.org/math/statistics-probability/summarizing-quantitative-data/other-measures-of-spread/a/mean-absolute-deviation-mad-review)
+
+The mean absolute deviation of a dataset is the average
+distance between each data point and the mean. It gives 
+us an idea about the variability in a dataset.
+
+Formular:
+1. Calculate the mean.
+2. Calculate how far away each data point is from the 
+   mean using positive distances. These are called 
+   absolute deviations.
+3. Add those deviations together.
+4. Divide the sum by the number of data points.
+
+Example:
+* `df['close_10_mad']`: the MAD of the close price in 10 periods
 
 #### [TRIX - Triple Exponential Average](https://www.investopedia.com/articles/technical/02/092402.asp)
 
@@ -748,6 +789,22 @@ where:
 Examples:
 * `df['cmo']` returns the CMO with a window of 14
 * `df['cmo_5']` returns the CMO with a window of 5
+
+#### [Coppock Curve](https://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve)
+
+Coppock Curve is a momentum indicator that signals
+long-term trend reversals.
+
+Formular:
+
+Coppock Curve = 10-period WMA of (14-period RoC + 11-period RoC)
+WMA = Weighted Moving Average
+RoC = Rate-of-Change
+
+Examples:
+* `df['coppock']` returns the Coppock Curve with default windows
+* `df['coppock_5,10,15']` returns the Coppock Curve with WMA window 5,
+  fast window 10, slow window 15. 
 
 ## Issues
 

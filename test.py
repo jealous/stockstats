@@ -34,7 +34,7 @@ from hamcrest import greater_than, assert_that, equal_to, close_to, \
     not_, has_item, has_length
 from numpy import isnan
 
-from stockstats import StockDataFrame as Sdf
+from stockstats import StockDataFrame as Sdf, StockDataFrame
 from stockstats import wrap, unwrap
 
 __author__ = 'Cedric Zhuang'
@@ -57,13 +57,13 @@ class StockDataFrameTest(TestCase):
     _stock = wrap(pd.read_csv(get_file('987654.csv')))
     _supor = Sdf.retype(pd.read_csv(get_file('002032.csv')))
 
-    def get_stock_20day(self):
+    def get_stock_20days(self):
         return self.get_stock().within(20110101, 20110120)
 
-    def get_stock_30day(self):
+    def get_stock_30days(self):
         return self.get_stock().within(20110101, 20110130)
 
-    def get_stock_90day(self):
+    def get_stock_90days(self):
         return self.get_stock().within(20110101, 20110331)
 
     def get_stock(self):
@@ -86,14 +86,14 @@ class StockDataFrameTest(TestCase):
         assert_that(ret.columns, contains_exactly('open', 'close'))
 
     def test_column_le_count(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         stock['res'] = stock['close'] <= 13.01
         count = stock.get('res_5_c')
         assert_that(count.loc[20110117], equal_to(1))
         assert_that(count.loc[20110119], equal_to(3))
 
     def test_column_ge_future_count(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         stock['res'] = stock['close'] >= 12.8
         count = stock['res_5_fc']
         assert_that(count.loc[20110119], equal_to(1))
@@ -102,43 +102,43 @@ class StockDataFrameTest(TestCase):
         assert_that(count.loc[20110111], equal_to(4))
 
     def test_column_delta(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         open_d = stock['open_-1_d']
         assert_that(open_d.loc[20110104], equal_to(0.0))
         assert_that(open_d.loc[20110120], near_to(0.07))
 
     def test_column_delta_p2(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         open_d = stock['open_2_d']
         assert_that(open_d.loc[20110104], near_to(-0.31))
         assert_that(open_d.loc[20110119], equal_to(0.0))
         assert_that(open_d.loc[20110118], near_to(-0.2))
 
     def test_column_rate_minus_2(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         open_r = stock['open_-2_r']
         assert_that(open_r.loc[20110105], equal_to(0.0))
         assert_that(open_r.loc[20110106], near_to(2.495))
 
     def test_column_rate_prev(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         rate = stock['rate']
         assert_that(rate.loc[20110107], near_to(4.4198))
 
     def test_column_rate_plus2(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         open_r = stock['open_2_r']
         assert_that(open_r.loc[20110118], near_to(-1.566))
         assert_that(open_r.loc[20110119], equal_to(0.0))
         assert_that(open_r.loc[20110120], equal_to(0.0))
 
     def test_change(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         change = stock['change']
         assert_that(change.loc[20110107], near_to(4.4198))
 
     def test_middle(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         middle = stock['middle']
         tp = stock['tp']
         idx = 20110104
@@ -154,7 +154,7 @@ class StockDataFrameTest(TestCase):
         assert_that(middle[20040817], near_to(11.541))
 
     def test_cr(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         stock.get('cr')
         assert_that(stock['cr'].loc[20110331], near_to(178.1714))
         assert_that(stock['cr-ma1'].loc[20110331], near_to(120.0364))
@@ -168,7 +168,7 @@ class StockDataFrameTest(TestCase):
         assert_that(stock['cr_26-ma3'].loc[20110331], near_to(111.5195))
 
     def test_column_permutation(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         amount_p = stock['volume_-1_d_-3,-2,-1_p']
         assert_that(amount_p.loc[20110107:20110112],
                     contains_exactly(2, 5, 2, 4))
@@ -177,34 +177,34 @@ class StockDataFrameTest(TestCase):
         assert_that(isnan(amount_p.loc[20110106]), equal_to(True))
 
     def test_column_max(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         volume_max = stock['volume_-3,2,-1_max']
         assert_that(volume_max.loc[20110106], equal_to(166409700))
         assert_that(volume_max.loc[20110120], equal_to(110664100))
         assert_that(volume_max.loc[20110112], equal_to(362436800))
 
     def test_column_min(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         volume_max = stock['volume_-3~1_min']
         assert_that(volume_max.loc[20110106], equal_to(83140300))
         assert_that(volume_max.loc[20110120], equal_to(50888500))
         assert_that(volume_max.loc[20110112], equal_to(72035800))
 
     def test_column_shift_positive(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         close_s = stock['close_2_s']
         assert_that(close_s.loc[20110118], equal_to(12.48))
         assert_that(close_s.loc[20110119], equal_to(12.48))
         assert_that(close_s.loc[20110120], equal_to(12.48))
 
     def test_column_shift_zero(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         close_s = stock['close_0_s']
         assert_that(close_s.loc[20110118:20110120],
                     contains_exactly(12.69, 12.82, 12.48))
 
     def test_column_shift_negative(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         close_s = stock['close_-2_s']
         assert_that(close_s.loc[20110104], equal_to(12.61))
         assert_that(close_s.loc[20110105], equal_to(12.61))
@@ -212,66 +212,66 @@ class StockDataFrameTest(TestCase):
         assert_that(close_s.loc[20110107], equal_to(12.71))
 
     def test_column_rsv(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         rsv_3 = stock['rsv_3']
         assert_that(rsv_3.loc[20110106], near_to(60.6557))
 
     def test_column_kdj_default(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         assert_that(stock['kdjk'].loc[20110104], near_to(60.5263))
         assert_that(stock['kdjd'].loc[20110104], near_to(53.5087))
         assert_that(stock['kdjj'].loc[20110104], near_to(74.5614))
 
     def test_column_kdjk(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         kdjk_3 = stock['kdjk_3']
         assert_that(kdjk_3.loc[20110104], near_to(60.5263))
         assert_that(kdjk_3.loc[20110120], near_to(31.2133))
 
     def test_column_kdjd(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         kdjk_3 = stock['kdjd_3']
         assert_that(kdjk_3.loc[20110104], near_to(53.5087))
         assert_that(kdjk_3.loc[20110120], near_to(43.1347))
 
     def test_column_kdjj(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         kdjk_3 = stock['kdjj_3']
         assert_that(kdjk_3.loc[20110104], near_to(74.5614))
         assert_that(kdjk_3.loc[20110120], near_to(7.37))
 
     def test_column_cross(self):
-        stock = self.get_stock_30day()
+        stock = self.get_stock_30days()
         cross = stock['kdjk_3_x_kdjd_3']
         assert_that(sum(cross), equal_to(2))
         assert_that(cross.loc[20110114], equal_to(True))
         assert_that(cross.loc[20110125], equal_to(True))
 
     def test_column_cross_up(self):
-        stock = self.get_stock_30day()
+        stock = self.get_stock_30days()
         cross = stock['kdjk_3_xu_kdjd_3']
         assert_that(sum(cross), equal_to(1))
         assert_that(cross.loc[20110125], equal_to(True))
 
     def test_column_cross_down(self):
-        stock = self.get_stock_30day()
+        stock = self.get_stock_30days()
         cross = stock['kdjk_3_xd_kdjd_3']
         assert_that(sum(cross), equal_to(1))
         assert_that(cross.loc[20110114], equal_to(True))
 
     def test_column_sma(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         sma_2 = stock['open_2_sma']
         assert_that(sma_2.loc[20110104], near_to(12.42))
         assert_that(sma_2.loc[20110105], near_to(12.56))
 
     def test_column_smma(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         smma = stock['high_5_smma']
         assert_that(smma.loc[20110120], near_to(13.0394))
 
     def test_column_ema(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         ema_5 = stock['close_5_ema']
         assert_that(ema_5.loc[20110107], near_to(12.9026))
         assert_that(ema_5.loc[20110110], near_to(12.9668))
@@ -283,7 +283,7 @@ class StockDataFrameTest(TestCase):
         assert_that(len(ema), equal_to(0))
 
     def test_column_macd(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         stock.get('macd')
         record = stock.loc[20110225]
         assert_that(record['macd'], near_to(-0.0382))
@@ -291,26 +291,26 @@ class StockDataFrameTest(TestCase):
         assert_that(record['macdh'], near_to(-0.02805))
 
     def test_column_macds(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         stock.get('macds')
         record = stock.loc[20110225]
         assert_that(record['macds'], near_to(-0.0101))
 
     def test_column_macdh(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         stock.get('macdh')
         record = stock.loc[20110225]
         assert_that(record['macdh'], near_to(-0.02805))
 
     def test_ppo(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         _ = stock[['ppo', 'ppos', 'ppoh']]
         assert_that(stock['ppo'].loc[20110331], near_to(1.1190))
         assert_that(stock['ppos'].loc[20110331], near_to(0.6840))
         assert_that(stock['ppoh'].loc[20110331], near_to(0.4349))
 
     def test_column_mstd(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         mstd_3 = stock['close_3_mstd']
         assert_that(mstd_3.loc[20110106], near_to(0.05033))
 
@@ -339,12 +339,12 @@ class StockDataFrameTest(TestCase):
         assert_that(len(s), equal_to(0))
 
     def test_column_mvar(self):
-        stock = self.get_stock_20day()
+        stock = self.get_stock_20days()
         mvar_3 = stock['open_3_mvar']
         assert_that(mvar_3.loc[20110106], near_to(0.0292))
 
     def test_column_parse_error(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         with self.assertRaises(UserWarning):
             _ = stock["foobarbaz"]
         with self.assertRaises(KeyError):
@@ -445,7 +445,7 @@ class StockDataFrameTest(TestCase):
                     contains_exactly('a', 'xu', 'b'))
 
     def test_get_log_ret(self):
-        stock = self.get_stock_30day()
+        stock = self.get_stock_30days()
         stock.get('log-ret')
         assert_that(stock.loc[20110128]['log-ret'], near_to(-0.010972))
 
@@ -474,7 +474,7 @@ class StockDataFrameTest(TestCase):
         assert_that(rsi.loc[idx], near_to(rsi_14.loc[idx]))
 
     def test_get_stoch_rsi(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         stoch_rsi = stock['stochrsi']
         stoch_rsi_6 = stock['stochrsi_6']
         stoch_rsi_14 = stock['stochrsi_14']
@@ -590,7 +590,7 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160815], near_to(197.5225))
 
     def test_mfi(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         first = 20110104
         last = 20110331
 
@@ -607,7 +607,7 @@ class StockDataFrameTest(TestCase):
         assert_that(mfi_15.loc[last], near_to(0.6733))
 
     def test_column_kama(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         idx = 20110331
         kama_10 = stock['close_10_kama_2_30']
         assert_that(kama_10.loc[idx], near_to(13.6648))
@@ -615,7 +615,7 @@ class StockDataFrameTest(TestCase):
         assert_that(kama_2.loc[idx], near_to(13.7326))
 
     def test_vwma(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         vwma = stock['vwma']
         vwma_7 = stock['vwma_7']
         vwma_14 = stock['vwma_14']
@@ -626,7 +626,7 @@ class StockDataFrameTest(TestCase):
         assert_that(vwma_7.loc[idx], is_not(near_to(vwma.loc[idx])))
 
     def test_chop(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         chop = stock['chop']
         chop_7 = stock['chop_7']
         chop_14 = stock['chop_14']
@@ -636,27 +636,27 @@ class StockDataFrameTest(TestCase):
         assert_that(chop_7.loc[idx], is_not(near_to(chop.loc[idx])))
 
     def test_column_conflict(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         res = stock[['close_26_ema', 'macd']]
         idx = 20110331
         assert_that(res['close_26_ema'].loc[idx], near_to(13.2488))
         assert_that(res['macd'].loc[idx], near_to(0.1482))
 
     def test_wave_trend(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         wt1, wt2 = stock['wt1'], stock['wt2']
         idx = 20110331
         assert_that(wt1.loc[idx], near_to(38.9610))
         assert_that(wt2.loc[idx], near_to(31.6997))
 
     def test_init_all(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         stock.init_all()
         columns = stock.columns
         assert_that(columns, has_items('macd', 'kdjj', 'mfi', 'boll'))
 
     def test_supertrend(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         st = stock['supertrend']
         st_ub = stock['supertrend_ub']
         st_lb = stock['supertrend_lb']
@@ -672,7 +672,7 @@ class StockDataFrameTest(TestCase):
         assert_that(st_lb[idx], near_to(12.9021))
 
     def test_ao(self):
-        stock = self.get_stock_90day()
+        stock = self.get_stock_90days()
         ao = stock['ao']
         ao1 = stock['ao_5,34']
         ao2 = stock['ao_5,10']
@@ -682,13 +682,13 @@ class StockDataFrameTest(TestCase):
         assert_that(ao2[idx], near_to(-0.071))
 
     def test_bop(self):
-        stock = self.get_stock_30day()
+        stock = self.get_stock_30days()
         bop = stock['bop']
         assert_that(bop[20110104], near_to(0.5))
         assert_that(bop[20110106], near_to(-0.207))
 
     def test_cmo(self):
-        stock = self.get_stock_30day()
+        stock = self.get_stock_30days()
         cmo = stock['cmo']
         assert_that(cmo[20110104], equal_to(0))
         assert_that(cmo[20110126], near_to(7.023))
@@ -774,3 +774,50 @@ class StockDataFrameTest(TestCase):
         assert_that(stock.loc[20040817, 'close_14_z'], equal_to(0))
         assert_that(stock.loc[20040915, 'close_14_z'], near_to(2.005))
         assert_that(stock.loc[20041014, 'close_14_z'], near_to(-2.014))
+
+    def test_roc(self):
+        stock = self._supor[:100]
+        _ = stock['high_5_roc']
+        assert_that(stock.loc[20040817, 'high_5_roc'], equal_to(0))
+        assert_that(stock.loc[20040915, 'high_5_roc'], near_to(5.912))
+        assert_that(stock.loc[20041014, 'high_5_roc'], near_to(5.009))
+        assert_that(stock.loc[20041220, 'high_5_roc'], near_to(-4.776))
+
+        s = StockDataFrame.roc(stock['high'], size=5)
+        assert_that(s.loc[20040915], near_to(5.912))
+
+    def test_mad(self):
+        stock = self.get_stock_30days()
+        s = stock['close_5_mad']
+        assert_that(s[20110104], equal_to(0))
+        assert_that(s[20110114], near_to(0.146))
+
+    @staticmethod
+    def test_mad_raw():
+        series = pd.Series([10, 15, 15, 17, 18, 21])
+        res = StockDataFrame._mad(series, 6)
+        assert_that(res[5], near_to(2.667))
+
+    @staticmethod
+    def test_linear_wma():
+        series = pd.Series([10, 15, 15, 17, 18, 21])
+        res = StockDataFrame.linear_wma(series, 6)
+        assert_that(res[0], equal_to(0))
+        assert_that(res[5], near_to(17.571))
+
+    def test_coppock(self):
+        stock = self.get_stock_90days()
+        c0 = stock['coppock']
+        assert_that(c0[20110117], equal_to(0))
+        assert_that(c0[20110221], near_to(3.293))
+        assert_that(c0[20110324], near_to(-2.274))
+
+        c1 = stock['coppock_10,11,14']
+        assert_that(c1[20110117], equal_to(0))
+        assert_that(c1[20110221], near_to(3.293))
+        assert_that(c1[20110324], near_to(-2.274))
+
+        c2 = stock['coppock_5,10,15']
+        assert_that(c2[20110117], equal_to(0))
+        assert_that(c2[20110221], near_to(4.649))
+        assert_that(c2[20110324], near_to(-2.177))
