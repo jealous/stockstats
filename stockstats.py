@@ -34,6 +34,8 @@ import pandas as pd
 
 __author__ = 'Cedric Zhuang'
 
+from numpy.lib.stride_tricks import as_strided
+
 
 def wrap(df, index_column=None):
     """ wraps a pandas DataFrame to StockDataFrame
@@ -114,6 +116,8 @@ class StockDataFrame(pd.DataFrame):
 
     ICHIMOKU = (9, 26, 52)
 
+    CTI = 12
+
     MULTI_SPLIT_INDICATORS = ("kama",)
 
     # End of options
@@ -163,12 +167,14 @@ class StockDataFrame(pd.DataFrame):
             self.set_nan(cp, shifts)
             self[column_name] = cp
 
-    def to_ints(self, shifts):
-        items = map(self._process_shifts_segment, shifts.split(','))
+    @classmethod
+    def to_ints(cls, shifts):
+        items = map(cls._process_shifts_segment, shifts.split(','))
         return sorted(list(set(itertools.chain(*items))))
 
-    def to_int(self, shifts):
-        numbers = self.to_ints(shifts)
+    @classmethod
+    def to_int(cls, shifts):
+        numbers = cls.to_ints(shifts)
         if len(numbers) != 1:
             raise IndexError("only accept 1 number.")
         return numbers[0]
@@ -983,12 +989,23 @@ class StockDataFrame(pd.DataFrame):
         """ get simple moving average
 
         :param column: column to calculate
-        :param windows: collection of window of simple moving average
+        :param windows: window of simple moving average
         :return: None
         """
         window = self.get_int_positive(windows)
         column_name = '{}_{}_sma'.format(column, window)
         self[column_name] = self.sma(self[column], window)
+
+    def _get_lrma(self, column, window):
+        """ get linear regression moving average
+
+        :param column: column to calculate
+        :param window: window size
+        :return: None
+        """
+        window = self.get_int_positive(window)
+        column_name = '{}_{}_lrma'.format(column, window)
+        self[column_name] = self.linear_reg(self[column], window)
 
     def _get_roc(self, column, window):
         """get Rate of Change (ROC) of a column
@@ -1043,6 +1060,69 @@ class StockDataFrame(pd.DataFrame):
 
         rolling = cls._rolling(series, window)
         return rolling.apply(linear(weights), raw=True)
+
+    @classmethod
+    def linear_reg(cls,
+                   series,
+                   window,
+                   correlation=False):
+        window = cls.get_int_positive(window)
+
+        x = range(1, window + 1)
+        x_sum = 0.5 * window * (window + 1)
+        x2_sum = x_sum * (2 * window + 1) / 3
+        divisor = window * x2_sum - x_sum * x_sum
+
+        def linear_regression(s):
+            y_sum = s.sum()
+            xy_sum = (x * s).sum()
+
+            m = (window * xy_sum - x_sum * y_sum) / divisor
+            b = (y_sum * x2_sum - x_sum * xy_sum) / divisor
+
+            if correlation:
+                y2_sum = (s * s).sum()
+                rn = window * xy_sum - x_sum * y_sum
+                rd = (divisor * (window * y2_sum - y_sum * y_sum)) ** 0.5
+                return rn / rd
+            return m * (window - 1) + b
+
+        def rolling(arr):
+            strides = arr.strides + (arr.strides[-1],)
+            shape = arr.shape[:-1] + (arr.shape[-1] - window + 1, window)
+            return as_strided(arr, shape=shape, strides=strides)
+
+        value = [linear_regression(_)
+                 for _ in rolling(np.array(series))]
+        ret = pd.Series([0.0] * (window - 1) + value,
+                        index=series.index)
+        return ret
+
+    def _get_cti(self, column=None, window=None):
+        """ get correlation trend indicator
+
+        Correlation Trend Indicator is a study that estimates
+        the current direction and strength of a trend.
+        https://tlc.thinkorswim.com/center/reference/Tech-Indicators/studies-library/C-D/CorrelationTrendIndicator
+
+        :param column: column to calculate, default to 'close'
+        :param window: window of Correlation Trend Indicator
+        """
+        if column is None and window is None:
+            column_name = 'cti'
+        else:
+            column_name = '{}_{}_cti'.format(column, window)
+
+        if column is None:
+            column = 'close'
+        if window is None:
+            window = self.CTI
+        else:
+            window = self.get_int_positive(window)
+
+        value = self.linear_reg(
+            self[column], window, correlation=True)
+        self[column_name] = value
 
     def _get_ema(self, column, windows):
         """ get exponential moving average
@@ -1151,11 +1231,12 @@ class StockDataFrame(pd.DataFrame):
         roc_ema = self.linear_wma(fast_roc + slow_roc, window)
         self[column_name] = roc_ema
 
-    def get_int_positive(self, windows):
+    @classmethod
+    def get_int_positive(cls, windows):
         if isinstance(windows, int):
             window = windows
         else:
-            window = self.to_int(windows)
+            window = cls.to_int(windows)
             if window <= 0:
                 raise IndexError("window must be greater than 0")
         return window
@@ -1585,6 +1666,7 @@ class StockDataFrame(pd.DataFrame):
             ('cmo',): self._get_cmo,
             ('coppock',): self._get_coppock,
             ('ichimoku',): self._get_ichimoku,
+            ('cti',): self._get_cti,
         }
 
     def __init_not_exist_column(self, key):

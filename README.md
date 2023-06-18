@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/jealous/stockstats/branch/master/graph/badge.svg?token=IFMD1pVJ7T)](https://codecov.io/gh/jealous/stockstats)
 [![pypi](https://img.shields.io/pypi/v/stockstats.svg)](https://pypi.python.org/pypi/stockstats)
 
-VERSION: 0.5.5
+VERSION: 0.6.0
 
 ## Introduction
 
@@ -63,6 +63,8 @@ Supported statistics/indicators are:
 * ROC: Rate of Change
 * Coppock: Coppock Curve
 * Ichimoku: Ichimoku Cloud
+* CTI: Correlation Trend Indicator
+* LRMA: Linear Regression Moving Average
 
 ## Installation
 
@@ -836,6 +838,31 @@ Examples:
 * `df['ichimoku']` returns the ichimoku cloud width with default windows
 * `df['ichimoku_7,22,44']` returns the ichimoku cloud width with window sizes
   7, 22, 44
+
+#### [Linear Regression Moving Average](https://www.daytrading.com/moving-linear-regression)
+
+Linear regression works by taking various data points in a sample and
+providing a “best fit” line to match the general trend in the data. 
+
+Implementation reference:
+
+https://github.com/twopirllc/pandas-ta/blob/main/pandas_ta/overlap/linreg.py
+
+Examples:
+* `df['close_10_lrma']` linear regression of close price with window size 10
+
+#### [Correlation Trend Indicator](https://tlc.thinkorswim.com/center/reference/Tech-Indicators/studies-library/C-D/CorrelationTrendIndicator)
+
+Correlation Trend Indicator is a study that estimates
+the current direction and strength of a trend.
+
+Implementation is based on the following code:
+
+https://github.com/twopirllc/pandas-ta/blob/main/pandas_ta/momentum/cti.py
+
+Examples:
+* `df['cti']` returns the CTI of close price with window 12
+* `df['high_5_cti']` returns the CTI of high price with window 5
 
 ## Issues
 

@@ -838,3 +838,39 @@ class StockDataFrameTest(TestCase):
         assert_that(c2[20110117], equal_to(0))
         assert_that(c2[20110221], near_to(4.649))
         assert_that(c2[20110324], near_to(-2.177))
+
+    @staticmethod
+    def test_linear_regression_raw():
+        arr = [1, 5, 7, 2, 4, 3, 7, 9, 2]
+        series = pd.Series(arr)
+        lg = StockDataFrame.linear_reg(series, 5)
+        assert_that(lg.iloc[3], equal_to(0.0))
+        assert_that(lg.iloc[8], equal_to(5.2))
+
+        cr = StockDataFrame.linear_reg(
+            series, 5, correlation=True)
+        assert_that(cr.iloc[3], equal_to(0.0))
+        assert_that(cr.iloc[8], near_to(0.108))
+
+    def test_linear_regression(self):
+        stock = self.get_stock_90days()
+        lr = stock['close_10_lrma']
+        assert_that(lr[20110114], equal_to(0))
+        assert_that(lr[20110127], near_to(12.782))
+
+    def test_cti(self):
+        stock = self.get_stock_90days()
+        cti = stock['cti']
+        assert_that(cti[20110118], equal_to(0))
+        assert_that(cti[20110131], near_to(-0.113))
+        assert_that(cti[20110215], near_to(0.369))
+
+        cti = stock['close_12_cti']
+        assert_that(cti[20110118], equal_to(0))
+        assert_that(cti[20110131], near_to(-0.113))
+        assert_that(cti[20110215], near_to(0.369))
+
+        cti = stock['high_10_cti']
+        assert_that(cti[20110118], near_to(-0.006))
+        assert_that(cti[20110131], near_to(-0.043))
+        assert_that(cti[20110215], near_to(0.5006))
