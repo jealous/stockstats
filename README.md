@@ -62,6 +62,7 @@ Supported statistics/indicators are:
 * MAD: Mean Absolute Deviation
 * ROC: Rate of Change
 * Coppock: Coppock Curve
+* Ichimoku: Ichimoku Cloud
 
 ## Installation
 
@@ -805,6 +806,36 @@ Examples:
 * `df['coppock']` returns the Coppock Curve with default windows
 * `df['coppock_5,10,15']` returns the Coppock Curve with WMA window 5,
   fast window 10, slow window 15. 
+
+#### [Ichimoku Cloud](https://www.investopedia.com/terms/i/ichimoku-cloud.asp)
+
+The Ichimoku Cloud is a collection of technical indicators
+that show support and resistance levels, as well as momentum
+and trend direction.
+
+In this implementation, we only calculate the delta between
+lead A and lead B (which is the width of the cloud).
+
+It contains three windows:
+* window for the conversion line, default to 9
+* window for the baseline and the shifts, default to 26
+* window for the leading line, default to 52
+
+Formular:
+* conversion line = (PH9 + PL9) / 2
+* baseline = (PH26 + PL26) / 2
+* leading span A = (conversion line + baseline) / 2
+* leading span B = (PH52 + PL52) / 2
+* result = leading span A - leading span B
+
+Where:
+* PH = Period High
+* PL = Period Low
+
+Examples:
+* `df['ichimoku']` returns the ichimoku cloud width with default windows
+* `df['ichimoku_7,22,44']` returns the ichimoku cloud width with window sizes
+  7, 22, 44
 
 ## Issues
 

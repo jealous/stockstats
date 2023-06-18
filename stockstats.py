@@ -110,7 +110,9 @@ class StockDataFrame(pd.DataFrame):
     AO_SLOW = 34
     AO_FAST = 5
 
-    COPPOCK_PERIODS = (10, 11, 14)
+    COPPOCK = (10, 11, 14)
+
+    ICHIMOKU = (9, 26, 52)
 
     MULTI_SPLIT_INDICATORS = ("kama",)
 
@@ -1133,9 +1135,9 @@ class StockDataFrame(pd.DataFrame):
         :return: None
         """
         if windows is None:
-            window = self.COPPOCK_PERIODS[0]
-            fast = self.COPPOCK_PERIODS[1]
-            slow = self.COPPOCK_PERIODS[2]
+            window = self.COPPOCK[0]
+            fast = self.COPPOCK[1]
+            slow = self.COPPOCK[2]
             column_name = 'coppock'
         else:
             periods = self.to_ints(windows)
@@ -1157,6 +1159,61 @@ class StockDataFrame(pd.DataFrame):
             if window <= 0:
                 raise IndexError("window must be greater than 0")
         return window
+
+    def _hl_mid(self, period):
+        ph = self.mov_max(self['high'], period)
+        pl = self.mov_min(self['low'], period)
+        return (ph + pl) * 0.5
+
+    def _get_ichimoku(self, windows=None):
+        """ get Ichimoku Cloud
+
+        The Ichimoku Cloud is a collection of technical indicators
+        that show support and resistance levels, as well as momentum
+        and trend direction.
+
+        In this implementation, we only calculate the delta between
+        lead A and lead B.
+
+        https://www.investopedia.com/terms/i/ichimoku-cloud.asp
+
+        It contains three windows:
+        * window for the conversion line, default to 9
+        * window for the baseline and the shifts, default to 26
+        * window for the leading line, default to 52
+
+        Formular:
+        * conversion line = (PH9 + PL9) / 2
+        * baseline = (PH26 + PL26) / 2
+        * leading span A = (conversion line + baseline) / 2
+        * leading span B = (PH52 + PL52) / 2
+        * result = leading span A - leading span B
+
+        Where:
+        * PH = Period High
+        * PL = Period Low
+
+        """
+        if windows is None:
+            conv = self.ICHIMOKU[0]
+            base = self.ICHIMOKU[1]
+            lead = self.ICHIMOKU[2]
+            column_name = 'ichimoku'
+        else:
+            periods = self.to_ints(windows)
+            conv = periods[0]
+            base = periods[1]
+            lead = periods[2]
+            column_name = 'ichimoku_{}'.format(windows)
+
+        conv_line = self._hl_mid(conv)
+        base_line = self._hl_mid(base)
+        lead_a = (conv_line + base_line) * 0.5
+        lead_b = self._hl_mid(lead)
+
+        lead_a_s = lead_a.shift(base, fill_value=lead_a.iloc[0])
+        lead_b_s = lead_b.shift(base, fill_value=lead_b.iloc[0])
+        self[column_name] = lead_a_s - lead_b_s
 
     @classmethod
     def mov_std(cls, series, window):
@@ -1527,6 +1584,7 @@ class StockDataFrame(pd.DataFrame):
             ('bop',): self._get_bop,
             ('cmo',): self._get_cmo,
             ('coppock',): self._get_coppock,
+            ('ichimoku',): self._get_ichimoku,
         }
 
     def __init_not_exist_column(self, key):
