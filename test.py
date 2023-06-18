@@ -798,6 +798,23 @@ class StockDataFrameTest(TestCase):
         res = StockDataFrame._mad(series, 6)
         assert_that(res[5], near_to(2.667))
 
+    def test_ichimoku(self):
+        stock = self.get_stock_90days()
+        i0 = stock['ichimoku']
+        i1 = stock['ichimoku_9,26,52']
+        i2 = stock['ichimoku_5,10,20']
+        assert_that(i0[20110228], equal_to(0))
+        assert_that(i0[20110308], near_to(0.0275))
+        assert_that(i0[20110318], near_to(-0.0975))
+
+        assert_that(i1[20110228], equal_to(0))
+        assert_that(i1[20110308], near_to(0.0275))
+        assert_that(i1[20110318], near_to(-0.0975))
+
+        assert_that(i2[20110228], near_to(-0.11))
+        assert_that(i2[20110308], near_to(0.0575))
+        assert_that(i2[20110318], near_to(0.0175))
+
     @staticmethod
     def test_linear_wma():
         series = pd.Series([10, 15, 15, 17, 18, 21])
