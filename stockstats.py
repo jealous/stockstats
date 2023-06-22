@@ -343,8 +343,8 @@ class StockDataFrame(pd.DataFrame):
         change = self._delta(self['close'], -1)
         close_pm = (change + change.abs()) / 2
         close_nm = (-change + change.abs()) / 2
-        p_ema = self._smma(close_pm, window)
-        n_ema = self._smma(close_nm, window)
+        p_ema = self.smma(close_pm, window)
+        n_ema = self.smma(close_nm, window)
 
         rs_column_name = 'rs_{}'.format(window)
         self[rs_column_name] = rs = p_ema / n_ema
@@ -395,7 +395,7 @@ class StockDataFrame(pd.DataFrame):
         self["wt2"] = self.sma(tci, 4)
 
     @staticmethod
-    def _smma(series, window):
+    def smma(series, window):
         return series.ewm(
             ignore_na=False,
             alpha=1.0 / window,
@@ -411,7 +411,7 @@ class StockDataFrame(pd.DataFrame):
         """
         window = self.get_int_positive(windows)
         column_name = '{}_{}_smma'.format(column, window)
-        self[column_name] = self._smma(self[column], window)
+        self[column_name] = self.smma(self[column], window)
 
     def _get_trix(self, column=None, windows=None):
         """ Triple Exponential Average
@@ -673,7 +673,7 @@ class StockDataFrame(pd.DataFrame):
 
     def _atr(self, window):
         tr = self._tr()
-        return self._smma(tr, window)
+        return self.smma(tr, window)
 
     def _get_atr(self, window=None):
         """ Average True Range
@@ -725,9 +725,27 @@ class StockDataFrame(pd.DataFrame):
         initialize up move and down move
         """
         hd = self._col_delta('high')
-        self['um'] = (hd + hd.abs()) / 2
+        self['um'] = (hd > 0) * hd
         ld = -self._col_delta('low')
-        self['dm'] = (ld + ld.abs()) / 2
+        self['dm'] = (ld > 0) * ld
+
+    def _get_pdm_ndm(self, window):
+        hd = self._col_delta('high')
+        ld = -self._col_delta('low')
+        p = ((hd > 0) & (hd > ld)) * hd
+        n = ((ld > 0) & (ld > hd)) * ld
+        if window > 1:
+            p = self.smma(p, window)
+            n = self.smma(n, window)
+        return p, n
+
+    def _pdm(self, window):
+        ret, _ = self._get_pdm_ndm(window)
+        return ret
+
+    def _ndm(self, window):
+        _, ret = self._get_pdm_ndm(window)
+        return ret
 
     def _get_pdm(self, windows):
         """ +DM, positive directional moving
@@ -738,14 +756,26 @@ class StockDataFrame(pd.DataFrame):
         :return:
         """
         window = self.get_int_positive(windows)
-        column_name = 'pdm_{}'.format(window)
-        um, dm = self['um'], self['dm']
-        self['pdm'] = np.where(um > dm, um, 0)
         if window > 1:
-            pdm = self['pdm_{}_ema'.format(window)]
+            column_name = 'pdm_{}'.format(window)
         else:
-            pdm = self['pdm']
-        self[column_name] = pdm
+            column_name = 'pdm'
+        self[column_name] = self._pdm(window)
+
+    def _get_ndm(self, windows):
+        """ -DM, negative directional moving accumulation
+
+        If window is not 1, return the SMA of -DM.
+
+        :param windows: range
+        :return:
+        """
+        window = self.get_int_positive(windows)
+        if window > 1:
+            column_name = 'ndm_{}'.format(window)
+        else:
+            column_name = 'ndm'
+        self[column_name] = self._ndm(window)
 
     def _get_vr(self, windows=None):
         if windows is None:
@@ -770,23 +800,12 @@ class StockDataFrame(pd.DataFrame):
 
         self[column_name] = (avs + cvs / 2) / (bvs + cvs / 2) * 100
 
-    def _get_mdm(self, windows):
-        """ -DM, negative directional moving accumulation
-
-        If window is not 1, return the SMA of -DM.
-
-        :param windows: range
-        :return:
-        """
-        window = self.get_int_positive(windows)
-        column_name = 'mdm_{}'.format(window)
-        um, dm = self['um'], self['dm']
-        self['mdm'] = np.where(dm > um, dm, 0)
-        if window > 1:
-            mdm = self['mdm_{}_ema'.format(window)]
-        else:
-            mdm = self['mdm']
-        self[column_name] = mdm
+    def _get_pdi_ndi(self, window):
+        pdm, ndm = self._get_pdm_ndm(window)
+        atr = self._atr(window)
+        pdi = pdm / atr * 100
+        ndi = ndm / atr * 100
+        return pdi, ndi
 
     def _get_pdi(self, windows):
         """ +DI, positive directional moving index
@@ -795,26 +814,22 @@ class StockDataFrame(pd.DataFrame):
         :return:
         """
         window = self.get_int_positive(windows)
-        pdm_column = 'pdm_{}'.format(window)
-        tr_column = 'atr_{}'.format(window)
+        pdi, _ = self._get_pdi_ndi(window)
         pdi_column = 'pdi_{}'.format(window)
-        self[pdi_column] = self[pdm_column] / self[tr_column] * 100
+        self[pdi_column] = pdi
         return self[pdi_column]
 
     def _get_mdi(self, windows):
         window = self.get_int_positive(windows)
-        mdm_column = 'mdm_{}'.format(window)
-        tr_column = 'atr_{}'.format(window)
+        _, ndi = self._get_pdi_ndi(window)
         mdi_column = 'mdi_{}'.format(window)
-        self[mdi_column] = self[mdm_column] / self[tr_column] * 100
+        self[mdi_column] = ndi
         return self[mdi_column]
 
     def _get_dx(self, windows):
         window = self.get_int_positive(windows)
         dx_column = 'dx_{}'.format(window)
-        mdi_column = 'mdi_{}'.format(window)
-        pdi_column = 'pdi_{}'.format(window)
-        mdi, pdi = self[mdi_column], self[pdi_column]
+        pdi, mdi = self._get_pdi_ndi(window)
         self[dx_column] = abs(pdi - mdi) / (pdi + mdi) * 100
         return self[dx_column]
 
@@ -1564,11 +1579,13 @@ class StockDataFrame(pd.DataFrame):
         self['rate'] = self['close'].pct_change() * 100
 
     def _col_delta(self, col):
-        return self[col].diff()
+        ret = self[col].diff()
+        ret.iloc[0] = 0.0
+        return ret
 
     def _get_delta(self, key):
         key_to_delta = key.replace('_delta', '')
-        self[key] = self[key_to_delta].diff()
+        self[key] = self._col_delta(key_to_delta)
         return self[key]
 
     def _get_cross(self, key):
@@ -1645,7 +1662,6 @@ class StockDataFrame(pd.DataFrame):
             ('cci',): self._get_cci,
             ('tr',): self._get_tr,
             ('atr',): self._get_atr,
-            ('um', 'dm'): self._get_um_dm,
             ('pdi', 'mdi', 'dx', 'adx', 'adxr'): self._get_dmi,
             ('trix',): self._get_trix,
             ('tema',): self._get_tema,
