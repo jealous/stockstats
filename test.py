@@ -522,35 +522,46 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160816], near_to(2.15))
         assert_that(c.loc[20160815], near_to(2.2743))
 
+    def test_pdm_ndm(self):
+        c = self.get_stock_90days()
+
+        pdm = c['pdm_14']
+        assert_that(pdm.loc[20110104], equal_to(0))
+        assert_that(pdm.loc[20110331], near_to(.0842))
+
+        ndm = c['ndm_14']
+        assert_that(ndm.loc[20110104], equal_to(0))
+        assert_that(ndm.loc[20110331], near_to(0.0432))
+
     def test_get_pdi(self):
         c = self._supor.get('pdi')
-        assert_that(c.loc[20160817], near_to(24.5989))
-        assert_that(c.loc[20160816], near_to(28.6088))
-        assert_that(c.loc[20160815], near_to(21.23))
+        assert_that(c.loc[20160817], near_to(25.747))
+        assert_that(c.loc[20160816], near_to(27.948))
+        assert_that(c.loc[20160815], near_to(24.646))
 
     def test_get_mdi(self):
         c = self._supor.get('mdi')
-        assert_that(c.loc[20160817], near_to(13.6049))
-        assert_that(c.loc[20160816], near_to(15.8227))
-        assert_that(c.loc[20160815], near_to(18.8455))
+        assert_that(c.loc[20160817], near_to(16.195))
+        assert_that(c.loc[20160816], near_to(17.579))
+        assert_that(c.loc[20160815], near_to(19.542))
 
     def test_dx(self):
         c = self._supor.get('dx')
-        assert_that(c.loc[20160817], near_to(28.7771))
-        assert_that(c.loc[20160815], near_to(5.95))
-        assert_that(c.loc[20160812], near_to(10.05))
+        assert_that(c.loc[20160817], near_to(22.774))
+        assert_that(c.loc[20160815], near_to(11.550))
+        assert_that(c.loc[20160812], near_to(4.828))
 
     def test_adx(self):
         c = self._supor.get('adx')
-        assert_that(c.loc[20160817], near_to(20.1545))
-        assert_that(c.loc[20160816], near_to(16.7054))
-        assert_that(c.loc[20160815], near_to(11.8767))
+        assert_that(c.loc[20160817], near_to(15.535))
+        assert_that(c.loc[20160816], near_to(12.640))
+        assert_that(c.loc[20160815], near_to(8.586))
 
     def test_adxr(self):
         c = self._supor.get('adxr')
-        assert_that(c.loc[20160817], near_to(17.3630))
-        assert_that(c.loc[20160816], near_to(16.2464))
-        assert_that(c.loc[20160815], near_to(16.0628))
+        assert_that(c.loc[20160817], near_to(13.208))
+        assert_that(c.loc[20160816], near_to(12.278))
+        assert_that(c.loc[20160815], near_to(12.133))
 
     def test_trix_default(self):
         c = self._supor.get('trix')
