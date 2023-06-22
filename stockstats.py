@@ -106,6 +106,8 @@ class StockDataFrame(pd.DataFrame):
     WAVE_TREND_1 = 10
     WAVE_TREND_2 = 21
 
+    ER = 10
+
     KAMA_SLOW = 34
     KAMA_FAST = 5
 
@@ -719,19 +721,9 @@ class StockDataFrame(pd.DataFrame):
         self['adx'] = self.ema(self['dx'], self.ADX_EMA)
         self['adxr'] = self.ema(self['adx'], self.ADXR_EMA)
 
-    def _get_um_dm(self):
-        """ Up move and down move
-
-        initialize up move and down move
-        """
-        hd = self._col_delta('high')
-        self['um'] = (hd > 0) * hd
-        ld = -self._col_delta('low')
-        self['dm'] = (ld > 0) * ld
-
     def _get_pdm_ndm(self, window):
-        hd = self._col_delta('high')
-        ld = -self._col_delta('low')
+        hd = self._col_diff('high')
+        ld = -self._col_diff('low')
         p = ((hd > 0) & (hd > ld)) * hd
         n = ((ld > 0) & (ld > hd)) * ld
         if window > 1:
@@ -1495,6 +1487,48 @@ class StockDataFrame(pd.DataFrame):
         res.iloc[0] = 0
         self[column_name] = res
 
+    def ker(self, column, window):
+        col = self[column]
+        col_window_s = self._shift(col, -window)
+        window_diff = (col - col_window_s).abs()
+        diff = self._col_diff(column).abs()
+        volatility = self.mov_sum(diff, window)
+        ret = window_diff / volatility
+        ret.iloc[0] = 0
+        return ret
+
+    def _get_ker(self, column=None, window=None):
+        """ get Kaufman's efficiency ratio
+
+        The Efficiency Ratio (ER) is calculated by
+        dividing the price change over a period by the
+        absolute sum of the price movements that occurred
+        to achieve that change.
+        The resulting ratio ranges between 0 and 1 with
+        higher values representing a more efficient or
+        trending market.
+
+        The default column is close.
+        The default window is 10.
+
+        https://strategyquant.com/codebase/kaufmans-efficiency-ratio-ker/
+
+        Formular:
+        window_change = ABS(close - close[n])
+        last_change = ABS(close-close[1])
+        volatility = moving sum of last_change in n
+        KER = window_change / volatility
+        """
+        if column is None and window is None:
+            column = 'close'
+            window = self.ER
+            column_name = 'ker'
+        else:
+            window = self.get_int_positive(window)
+            column_name = '{}_{}_ker'.format(column, window)
+
+        self[column_name] = self.ker(column, window)
+
     def _get_kama(self, column, windows, fasts=None, slows=None):
         """ get Kaufman's Adaptive Moving Average.
         Implemented after
@@ -1516,11 +1550,7 @@ class StockDataFrame(pd.DataFrame):
             column_name = '{}_{}_kama_{}_{}'.format(column, window, fast, slow)
 
         col = self[column]
-        col_window_s = self._shift(col, -window)
-        col_last = self._shift(col, -1)
-        change = (col - col_window_s).abs()
-        volatility = self.mov_sum((col - col_last).abs(), window)
-        efficiency_ratio = change / volatility
+        efficiency_ratio = self.ker(column, window)
         fast_ema_smoothing = 2.0 / (fast + 1)
         slow_ema_smoothing = 2.0 / (slow + 1)
         smoothing_2 = fast_ema_smoothing - slow_ema_smoothing
@@ -1578,14 +1608,14 @@ class StockDataFrame(pd.DataFrame):
         """
         self['rate'] = self['close'].pct_change() * 100
 
-    def _col_delta(self, col):
+    def _col_diff(self, col):
         ret = self[col].diff()
         ret.iloc[0] = 0.0
         return ret
 
     def _get_delta(self, key):
         key_to_delta = key.replace('_delta', '')
-        self[key] = self._col_delta(key_to_delta)
+        self[key] = self._col_diff(key_to_delta)
         return self[key]
 
     def _get_cross(self, key):
@@ -1683,6 +1713,7 @@ class StockDataFrame(pd.DataFrame):
             ('coppock',): self._get_coppock,
             ('ichimoku',): self._get_ichimoku,
             ('cti',): self._get_cti,
+            ('ker',): self._get_ker,
         }
 
     def __init_not_exist_column(self, key):

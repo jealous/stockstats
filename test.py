@@ -617,6 +617,21 @@ class StockDataFrameTest(TestCase):
         assert_that(mfi_15.loc[first], near_to(0.5))
         assert_that(mfi_15.loc[last], near_to(0.6733))
 
+    def test_ker(self):
+        stock = self.get_stock_90days()
+        k = stock['ker']
+        assert_that(k[20110104], equal_to(0))
+        assert_that(k[20110105], equal_to(1))
+        assert_that(k[20110210], near_to(0.305))
+
+        k = stock['close_10_ker']
+        assert_that(k[20110104], equal_to(0))
+        assert_that(k[20110105], equal_to(1))
+        assert_that(k[20110210], near_to(0.305))
+
+        k = stock['high_5_ker']
+        assert_that(k[20110210], near_to(0.399))
+
     def test_column_kama(self):
         stock = self.get_stock_90days()
         idx = 20110331
