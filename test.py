@@ -309,6 +309,27 @@ class StockDataFrameTest(TestCase):
         assert_that(stock['ppos'].loc[20110331], near_to(0.6840))
         assert_that(stock['ppoh'].loc[20110331], near_to(0.4349))
 
+    def test_eri(self):
+        stock = self.get_stock_90days()
+        bull = stock['eribull']
+        bear = stock['eribear']
+        assert_that(bull[20110104], near_to(0.070))
+        assert_that(bear[20110104], near_to(-0.309))
+        assert_that(bull[20110222], near_to(0.099))
+        assert_that(bear[20110222], near_to(-0.290))
+
+        bull = stock['eribull_13']
+        bear = stock['eribear_13']
+        assert_that(bull[20110104], near_to(0.070))
+        assert_that(bear[20110104], near_to(-0.309))
+        assert_that(bull[20110222], near_to(0.099))
+        assert_that(bear[20110222], near_to(-0.290))
+
+        bull = stock['eribull_10']
+        bear = stock['eribear_10']
+        assert_that(bull[20110222], near_to(0.092))
+        assert_that(bear[20110222], near_to(-0.297))
+
     def test_column_mstd(self):
         stock = self.get_stock_20days()
         mstd_3 = stock['close_3_mstd']
