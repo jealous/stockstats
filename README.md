@@ -50,6 +50,7 @@ Supported statistics/indicators are:
 * MFI: Money Flow Index
 * VWMA: Volume Weighted Moving Average
 * CHOP: Choppiness Index
+* KER: Kaufman's efficiency ratio
 * KAMA: Kaufman's Adaptive Moving Average
 * PPO: Percentage Price Oscillator
 * StochRSI: Stochastic RSI
@@ -668,6 +669,32 @@ It has a parameter for window size.  The default window is 14.  Change it with
 Examples:
 * `df['mfi']` retrieves the 14 periods MFI
 * `df['mfi_6']` retrieves the 6 periods MFI
+
+
+#### [KER - Kaufman's efficiency ratio](https://strategyquant.com/codebase/kaufmans-efficiency-ratio-ker/)
+
+The Efficiency Ratio (ER) is calculated by
+dividing the price change over a period by the
+absolute sum of the price movements that occurred
+to achieve that change.
+
+The resulting ratio ranges between 0 and 1 with
+higher values representing a more efficient or
+trending market.
+
+The default column is close.
+
+The default window is 10.
+
+Formular:
+* window_change = ABS(close - close[n])
+* last_change = ABS(close-close[1])
+* volatility = moving sum of last_change in n
+* KER = window_change / volatility
+
+Examples:
+* `df['ker']` retrieves the 10 periods KER of the close price
+* `df['high_5_ker']` retrieves 5 periods KER of the high price
 
 #### [KAMA - Kaufman's Adaptive Moving Average](https://school.stockcharts.com/doku.php?id=technical_indicators:kaufman_s_adaptive_moving_average)
 
