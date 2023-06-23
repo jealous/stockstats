@@ -66,6 +66,7 @@ Supported statistics/indicators are:
 * Ichimoku: Ichimoku Cloud
 * CTI: Correlation Trend Indicator
 * LRMA: Linear Regression Moving Average
+* ERI: Elder-Ray Index
 
 ## Installation
 
@@ -670,6 +671,23 @@ Examples:
 * `df['mfi']` retrieves the 14 periods MFI
 * `df['mfi_6']` retrieves the 6 periods MFI
 
+#### [ERI - Elder-Ray Index](https://admiralmarkets.com/education/articles/forex-indicators/bears-and-bulls-power-indicator)
+
+The Elder-Ray Index contains the bull and the bear power.
+Both are calculated based on the EMA of the close price.
+
+The default window is 13.
+
+Formular:
+* Bulls Power = High - EMA
+* Bears Power = Low - EMA
+* EMA is exponential moving average of close of N periods
+
+Examples:
+* `df['eribull']` retrieves the 13 periods bull power
+* `df['eribear']` retrieves the 13 periods bear power
+* `df['eribull_5']` retrieves the 5 periods bull power
+* `df['eribear_5']` retrieves the 5 periods bear power
 
 #### [KER - Kaufman's efficiency ratio](https://strategyquant.com/codebase/kaufmans-efficiency-ratio-ker/)
 

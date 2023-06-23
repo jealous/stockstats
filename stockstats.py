@@ -120,6 +120,8 @@ class StockDataFrame(pd.DataFrame):
 
     CTI = 12
 
+    ERI = 13
+
     MULTI_SPLIT_INDICATORS = ("kama",)
 
     # End of options
@@ -1040,12 +1042,12 @@ class StockDataFrame(pd.DataFrame):
         self[column_name] = self.roc(self[column], window)
 
     @staticmethod
-    def ema(series, window):
+    def ema(series, window, *, adjust=True):
         return series.ewm(
             ignore_na=False,
             span=window,
-            min_periods=0,
-            adjust=True).mean()
+            min_periods=1,
+            adjust=adjust).mean()
 
     @staticmethod
     def _rolling(series, window):
@@ -1209,6 +1211,39 @@ class StockDataFrame(pd.DataFrame):
         self['ppo'] = (ppo_short - ppo_long) / ppo_long * 100
         self['ppos'] = self.ema(self['ppo'], self.PPO_EMA_SIGNAL)
         self['ppoh'] = self['ppo'] - self['ppos']
+
+    def _get_eribull(self, windows=None):
+        return self._get_eri(windows)
+
+    def _get_eribear(self, windows=None):
+        return self._get_eri(windows)
+
+    def _get_eri(self, windows=None):
+        """ The bull line of Elder-Ray Index
+
+        The Elder-Ray Index contains the bull and the bear power.
+        Both are calculated based on the EMA of the close price.
+
+        The default window is 13.
+
+        https://admiralmarkets.com/education/articles/forex-indicators/bears-and-bulls-power-indicator
+
+        Formular:
+        * Bulls Power = High - EMA
+        * Bears Power = Low - EMA
+        * EMA is exponential moving average of close of N periods
+        """
+        if windows is None:
+            window = self.ERI
+            bull_name = 'eribull'
+            bear_name = 'eribear'
+        else:
+            window = self.get_int_positive(windows)
+            bull_name = 'eribull_{}'.format(window)
+            bear_name = 'eribear_{}'.format(window)
+        ema = self.ema(self['close'], window, adjust=False)
+        self[bull_name] = self['high'] - ema
+        self[bear_name] = self['low'] - ema
 
     def _get_coppock(self, windows=None):
         """ Get Coppock Curve
@@ -1714,6 +1749,7 @@ class StockDataFrame(pd.DataFrame):
             ('ichimoku',): self._get_ichimoku,
             ('cti',): self._get_cti,
             ('ker',): self._get_ker,
+            ('eribull', 'eribear'): self._get_eri,
         }
 
     def __init_not_exist_column(self, key):
