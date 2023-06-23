@@ -34,6 +34,7 @@ from hamcrest import greater_than, assert_that, equal_to, close_to, \
     not_, has_item, has_length
 from numpy import isnan
 
+import stockstats
 from stockstats import StockDataFrame as Sdf, StockDataFrame
 from stockstats import wrap, unwrap
 
@@ -135,7 +136,14 @@ class StockDataFrameTest(TestCase):
     def test_change(self):
         stock = self.get_stock_20days()
         change = stock['change']
+        assert_that(change.loc[20110104], equal_to(0))
+        assert_that(change.loc[20110105], near_to(0.793))
         assert_that(change.loc[20110107], near_to(4.4198))
+
+        change = stock['change_2']
+        assert_that(change.loc[20110104], equal_to(0))
+        assert_that(change.loc[20110105], equal_to(0))
+        assert_that(change.loc[20110106], near_to(0.476))
 
     def test_middle(self):
         stock = self.get_stock_20days()
@@ -215,6 +223,22 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_20days()
         rsv_3 = stock['rsv_3']
         assert_that(rsv_3.loc[20110106], near_to(60.6557))
+
+    def test_change_single_default_window(self):
+        stock = self.get_stock_20days()
+        rsv = stock['rsv']
+        rsv_9 = stock['rsv_9']
+        rsv_5 = stock['rsv_5']
+        idx = 20110114
+        assert_that(rsv[idx], equal_to(rsv_9[idx]))
+        assert_that(rsv[idx], not_(equal_to(rsv_5[idx])))
+
+        orig = stockstats.set_dft_window('rsv', 5)
+        assert_that(orig, equal_to(9))
+        stock.drop_column('rsv', inplace=True)
+        rsv = stock['rsv']
+        assert_that(rsv[idx], equal_to(rsv_5[idx]))
+        stockstats.set_dft_window('rsv', orig)
 
     def test_column_kdj_default(self):
         stock = self.get_stock_20days()
@@ -472,8 +496,7 @@ class StockDataFrameTest(TestCase):
 
     @staticmethod
     def test_rsv_nan_value():
-        s = wrap(pd.read_csv(get_file('asml.as.csv')))
-        df = wrap(s)
+        df = wrap(pd.read_csv(get_file('asml.as.csv')))
         assert_that(df['rsv_9'][0], equal_to(0.0))
 
     def test_unwrap(self):
@@ -543,6 +566,12 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160816], near_to(2.15))
         assert_that(c.loc[20160815], near_to(2.2743))
 
+        c = self._supor.get('close_10,50_dma')
+        assert_that(c.loc[20160817], near_to(2.078))
+
+        c = self._supor.get('high_5,10_dma')
+        assert_that(c.loc[20160817], near_to(0.174))
+
     def test_pdm_ndm(self):
         c = self.get_stock_90days()
 
@@ -561,7 +590,7 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160815], near_to(24.646))
 
     def test_get_mdi(self):
-        c = self._supor.get('mdi')
+        c = self._supor.get('ndi')
         assert_that(c.loc[20160817], near_to(16.195))
         assert_that(c.loc[20160816], near_to(17.579))
         assert_that(c.loc[20160815], near_to(19.542))
@@ -590,6 +619,12 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160816], near_to(0.2135))
         assert_that(c.loc[20160815], near_to(0.24))
 
+        c = self._supor.get('close_12_trix')
+        assert_that(c.loc[20160815], near_to(0.24))
+
+        c = self._supor.get('high_12_trix')
+        assert_that(c.loc[20160815], near_to(0.235))
+
     def test_tema_default(self):
         c = self._supor.get('tema')
         a = self._supor.get('close_5_tema')
@@ -597,6 +632,9 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160817], near_to(40.2883))
         assert_that(c.loc[20160816], near_to(39.6371))
         assert_that(c.loc[20160815], near_to(39.3778))
+
+        c = self._supor.get('high_3_tema')
+        assert_that(c.loc[20160815], near_to(39.7315))
 
     def test_trix_ma(self):
         c = self._supor.get('trix_9_sma')
@@ -655,11 +693,13 @@ class StockDataFrameTest(TestCase):
 
     def test_column_kama(self):
         stock = self.get_stock_90days()
-        idx = 20110331
-        kama_10 = stock['close_10_kama_2_30']
-        assert_that(kama_10.loc[idx], near_to(13.6648))
+        kama_10 = stock['close_10,2,30_kama']
+        assert_that(kama_10.loc[20110331], near_to(13.6648))
+
+    def test_kama_with_default_fast_slow(self):
+        stock = self.get_stock_90days()
         kama_2 = stock['close_2_kama']
-        assert_that(kama_2.loc[idx], near_to(13.7326))
+        assert_that(kama_2.loc[20110331], near_to(13.7326))
 
     def test_vwma(self):
         stock = self.get_stock_90days()
@@ -693,6 +733,10 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_90days()
         wt1, wt2 = stock['wt1'], stock['wt2']
         idx = 20110331
+        assert_that(wt1.loc[idx], near_to(38.9610))
+        assert_that(wt2.loc[idx], near_to(31.6997))
+
+        wt1, wt2 = stock['wt1_10,21'], stock['wt2_10,21']
         assert_that(wt1.loc[idx], near_to(38.9610))
         assert_that(wt2.loc[idx], near_to(31.6997))
 
@@ -921,3 +965,19 @@ class StockDataFrameTest(TestCase):
         assert_that(cti[20110118], near_to(-0.006))
         assert_that(cti[20110131], near_to(-0.043))
         assert_that(cti[20110215], near_to(0.5006))
+
+    def test_change_group_window_defaults(self):
+        stock = self.get_stock_90days()
+        macd = stock['macd']
+        ref = stock['macd_12,26,9']
+        i = 20110225
+        assert_that(macd[i], equal_to(ref[i]))
+
+        orig = stockstats.set_dft_window('macd', (10, 20, 5))
+        assert_that(orig, contains_exactly(12, 26, 9))
+        stock.drop_column(['macd', 'macdh', 'macds'], inplace=True)
+        macd = stock['macd']
+        ref = stock['macd_10,20,5']
+        assert_that(macd[i], equal_to(ref[i]))
+
+        stockstats.set_dft_window('macd', orig)
