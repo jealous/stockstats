@@ -73,6 +73,7 @@ _dft_windows = {
     'ppo': (12, 26, 9),  # short, long, signal
     'rsi': 14,
     'rsv': 9,
+    'rvgi': 14,
     'stochrsi': 14,
     'supertrend': 14,
     'tema': 5,
@@ -197,6 +198,10 @@ class _Meta:
         if self._column is None:
             return f'{self._name}_{self._windows}'
         return f'{self.column}_{self.windows}_{self._name}'
+
+    def set_name(self, name: str):
+        self._name = name
+        return self
 
     def name_ex(self, ex):
         ret = f'{self._name}{ex}'
@@ -1429,7 +1434,7 @@ class StockDataFrame(pd.DataFrame):
             last_kama = cur
         self[meta.name] = kama
 
-    def _ftr(self, window: int):
+    def _ftr(self, window: int) -> pd.Series:
         mp = (self.high + self.low) * 0.5
         highest = mp.rolling(window).max()
         lowest = mp.rolling(window).min()
@@ -1469,6 +1474,65 @@ class StockDataFrame(pd.DataFrame):
         * X is a series whose values are between -1 to 1
         """
         self[meta.name] = self._ftr(meta.int)
+
+    @staticmethod
+    def sym_wma4(series: pd.Series) -> pd.Series:
+        arr = np.array([1, 2, 2, 1])
+        weights = arr / sum(arr)
+        rolled = series.rolling(arr.size)
+        ret = rolled.apply(lambda x: np.dot(x, weights), raw=True)
+        ret.iloc[:arr.size - 1] = 0.0
+        return ret
+
+    def _rvgi(self, window: int) -> pd.Series:
+        """ Relative Vigor Index (RVGI)
+
+        The Relative Vigor Index (RVI) is a momentum indicator
+        used in technical analysis that measures the strength
+        of a trend by comparing a security's closing price to
+        its trading range while smoothing the results using a
+        simple moving average (SMA).
+
+        https://www.investopedia.com/terms/r/relative_vigor_index.asp
+
+        Formular
+        * NUMERATOR= (a+(2×b)+(2×c)+d) / 6
+        * DENOMINATOR= (e+(2×f)+(2×g)+h) / 6
+        * RVI= SMA-N of DENOMINATOR / SMA-N of NUMERATOR
+        * Signal Line = (RVI+(2×i)+(2×j)+k) / 6
+
+        where:
+        * a=Close−Open
+        * b=Close−Open One Bar Prior to a
+        * c=Close−Open One Bar Prior to b
+        * d=Close−Open One Bar Prior to c
+        * e=High−Low of Bar a
+        * f=High−Low of Bar b
+        * g=High−Low of Bar c
+        * h=High−Low of Bar d
+        * i=RVI Value One Bar Prior
+        * j=RVI Value One Bar Prior to i
+        * k=RVI Value One Bar Prior to j
+        * N=Minutes/Hours/Days/Weeks/Months
+        """
+        co = self.close - self.open
+        hl = self.high - self.low
+
+        nu = self.sym_wma4(co)
+        de = self.sym_wma4(hl)
+        ret = self.sma(nu, window) / self.sma(de, window)
+        return ret
+
+    def _get_rvgis(self, meta: _Meta):
+        self._get_rvgi(meta.set_name('rvgi'))
+
+    def _get_rvgi(self, meta: _Meta):
+        rvgi = self._rvgi(meta.int)
+        rvgi.iloc[:3] = 0.0
+        rvgi_s = self.sym_wma4(rvgi)
+        rvgi_s.iloc[:6] = 0.0
+        self[meta.name] = rvgi
+        self[meta.name_ex('s')] = rvgi_s
 
     @staticmethod
     def parse_column_name(name):
@@ -1613,6 +1677,7 @@ class StockDataFrame(pd.DataFrame):
             ('ker',): self._get_ker,
             ('eribull', 'eribear'): self._get_eri,
             ('ftr',): self._get_ftr,
+            ('rvgi', 'rvgis'): self._get_rvgi,
         }
 
     def __init_not_exist_column(self, key):

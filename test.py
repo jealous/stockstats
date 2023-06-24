@@ -889,6 +889,15 @@ class StockDataFrameTest(TestCase):
         res = StockDataFrame._mad(series, 6)
         assert_that(res[5], near_to(2.667))
 
+    @staticmethod
+    def test_sym_wma4():
+        series = pd.Series([4, 2, 2, 4, 8])
+        res = StockDataFrame.sym_wma4(series)
+        assert_that(res[0], equal_to(0))
+        assert_that(res[2], equal_to(0))
+        assert_that(res[3], near_to(2.666))
+        assert_that(res[4], near_to(3.666))
+
     def test_ichimoku(self):
         stock = self.get_stock_90days()
         i0 = stock['ichimoku']
@@ -976,6 +985,21 @@ class StockDataFrameTest(TestCase):
 
         f = stock['ftr_15']
         assert_that(f[20110128], near_to(-1.005))
+
+    def test_rvgi(self):
+        stock = self.get_stock_30days()
+        r, s = stock['rvgi'], stock['rvgis']
+        r14, s14 = stock['rvgi_14'], stock['rvgis_14']
+        assert_that(r[20110128], equal_to(r14[20110128]))
+        assert_that(s[20110128], equal_to(s14[20110128]))
+        assert_that(r[20110106], equal_to(0))
+        assert_that(r[20110107], near_to(0.257))
+        assert_that(s[20110111], equal_to(0))
+        assert_that(s[20110112], near_to(0.303))
+
+        s10, r10 = stock['rvgis_10'], stock['rvgi_10']
+        assert_that(r10[20110128], near_to(-0.056))
+        assert_that(s10[20110128], near_to(-0.043))
 
     def test_change_group_window_defaults(self):
         stock = self.get_stock_90days()
