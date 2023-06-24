@@ -66,6 +66,7 @@ Supported statistics/indicators are:
 * LRMA: Linear Regression Moving Average
 * ERI: Elder-Ray Index
 * FTR: the Gaussian Fisher Transform Price Reversals indicator
+* RVGI: Relative Vigor Index
 
 ## Installation
 
@@ -922,6 +923,42 @@ Formular:
 Examples:
 * `df['ftr']` returns the FTR with window 9
 * `df['ftr_20']` returns the FTR with window 20
+
+#### [Relative Vigor Index (RVGI)](https://www.investopedia.com/terms/r/relative_vigor_index.asp)
+
+The Relative Vigor Index (RVI) is a momentum indicator
+used in technical analysis that measures the strength
+of a trend by comparing a security's closing price to
+its trading range while smoothing the results using a
+simple moving average (SMA).
+
+Formular
+
+* NUMERATOR= (a+(2×b)+(2×c)+d) / 6
+* DENOMINATOR= (e+(2×f)+(2×g)+h) / 6
+* RVI= SMA-N of DENOMINATOR / SMA-N of NUMERATOR
+* Signal Line = (RVI+(2×i)+(2×j)+k) / 6
+
+where:
+
+* a=Close−Open
+* b=Close−Open One Bar Prior to a
+* c=Close−Open One Bar Prior to b
+* d=Close−Open One Bar Prior to c
+* e=High−Low of Bar a
+* f=High−Low of Bar b
+* g=High−Low of Bar c
+* h=High−Low of Bar d
+* i=RVI Value One Bar Prior
+* j=RVI Value One Bar Prior to i
+* k=RVI Value One Bar Prior to j
+* N=Minutes/Hours/Days/Weeks/Months
+
+Examples:
+* `df['rvgi']` retrieves the RVGI line of window 14
+* `df['rvgis']` retrieves the RVGI signal line of window 14
+* `df['rvgi_5']` retrieves the RVGI line of window 5
+* `df['rvgis_5']` retrieves the RVGI signal line of window 5
 
 ## Issues
 
