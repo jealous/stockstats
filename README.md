@@ -65,6 +65,7 @@ Supported statistics/indicators are:
 * CTI: Correlation Trend Indicator
 * LRMA: Linear Regression Moving Average
 * ERI: Elder-Ray Index
+* FTR: the Gaussian Fisher Transform Price Reversals indicator
 
 ## Installation
 
@@ -900,6 +901,27 @@ https://github.com/twopirllc/pandas-ta/blob/main/pandas_ta/momentum/cti.py
 Examples:
 * `df['cti']` returns the CTI of close price with window 12
 * `df['high_5_cti']` returns the CTI of high price with window 5
+
+#### [the Gaussian Fisher Transform Price Reversals indicator](https://www.tradingview.com/script/ajZT2tZo-Gaussian-Fisher-Transform-Price-Reversals-FTR/)
+
+The Gaussian Fisher Transform Price Reversals indicator, dubbed
+FTR for short, is a stat based price reversal detection indicator
+inspired by and based on the work of the electrical engineer
+now private trader John F. Ehlers.
+
+https://www.tradingview.com/script/ajZT2tZo-Gaussian-Fisher-Transform-Price-Reversals-FTR/
+
+Implementation reference:
+
+https://github.com/twopirllc/pandas-ta/blob/084dbe1c4b76082f383fa3029270ea9ac35e4dc7/pandas_ta/momentum/fisher.py#L9
+
+Formular:
+* Fisher Transform = 0.5 * ln((1 + X) / (1 - X))
+* X is a series whose values are between -1 to 1
+
+Examples:
+* `df['ftr']` returns the FTR with window 9
+* `df['ftr_20']` returns the FTR with window 20
 
 ## Issues
 
