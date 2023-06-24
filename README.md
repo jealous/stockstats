@@ -13,7 +13,6 @@ statistics/indicators support.
 
 Supported statistics/indicators are:
 
-* change (in percent)
 * delta
 * permutation (zero-based)
 * log return
@@ -25,7 +24,6 @@ Supported statistics/indicators are:
 * cross: including upward cross and downward cross
 * SMA: Simple Moving Average
 * EMA: Exponential Moving Average
-* ROC: Rate of Change
 * MSTD: Moving Standard Deviation
 * MVAR: Moving Variance
 * RSV: Raw Stochastic Value
@@ -199,10 +197,6 @@ Some statistics have configurable parameters. They are class-level fields. Chang
 of these fields is global. And they won't affect the existing results. Removing
 existing columns so that they will be re-evaluated the next time you access them.
 
-#### Change of the Close
-
-`df['change']` is the change of the `close` price in percentage.
-
 #### Delta of Periods
 
 Using pattern `<column>_<window>_d` to retrieve the delta between different periods.
@@ -246,7 +240,7 @@ date
 #### [RSI - Relative Strength Index](https://en.wikipedia.org/wiki/Relative_strength_index)
 
 RSI has a configurable window. The default window size is 14 which is
-configurable through `StockDataFrame.RSI`. e.g.
+configurable through `set_dft_window('rsi', n)`. e.g.
 
 * `df['rsi']`: 14 periods RSI
 * `df['rsi_6']`: 6 periods RSI
@@ -340,7 +334,7 @@ Use `df['rsv']` or `df['rsv_6']` to access it.
 RSI chart the current and historical strength or weakness of a stock. It takes 
 a window parameter.
 
-The default window is 14. Use `StockDataFrame.RSI` to tune it.
+The default window is 14. Use `set_dft_window('rsi', n)` to tune it.
 
 Examples:
 
@@ -352,7 +346,7 @@ Examples:
 Stochastic RSI gives traders an idea of whether the current RSI value is 
 overbought or oversold. It takes a window parameter.
 
-The default window is 14. Use `StockDataFrame.RSI` to tune it.
+The default window is 14. Use `set_dft_window('stochrsi', n)` to tune it.
 
 Examples:
 
@@ -364,7 +358,7 @@ Examples:
 Retrieve the LazyBear's Wave Trend with `df['wt1']` and `df['wt2']`.
 
 Wave trend uses two parameters. You can tune them with
-`StockDataFrame.WAVE_TREND_1` and `StockDataFrame.WAVE_TREND_2`.
+`set_dft_window('wt', (10, 21))`.
 
 #### SMMA - Smoothed Moving Average
 
@@ -426,7 +420,7 @@ LastTripleEMA =  TripleEMA of the last period
 It requires column and window. By default, the column is `close`,
 the window is 12.
 
-Use `StockDataFrame.TRIX_EMA_WINDOW` to change the default window.
+Use `set_dft_window('trix', n)` to change the default window.
 
 Examples:
 
@@ -444,7 +438,7 @@ TEMA=(3 x EMA) - (3 x EMA of EMA) + (EMA of EMA of EMA)
 It takes two parameters, column and window. By default, the column is `close`,
 the window is 5.
 
-Use `StockDataFrame.TEMA_EMA_WINDOW` to change the default window.
+Use `set_dft_window('tema', n)` to change the default window.
 
 Examples:
 
@@ -455,7 +449,7 @@ Examples:
 
 It is the strength index of the trading volume.
 
-It has a default window of 26. Change it with `StockDataFrame.VR`.
+It has a default window of 26. Change it with `set_dft_window('vr', n)`.
 
 Examples:
 * `df['vr']` retrieves the 26 periods VR.
@@ -467,7 +461,7 @@ Williams Overbought/Oversold index
 is a type of momentum indicator that moves between 0 and -100 and measures
 overbought and oversold levels.
 
-It takes a window parameter. The default window is 14. Use `StockDataFrame.WR`
+It takes a window parameter. The default window is 14. Use `set_dft_window('wr', n)`
 to change the default window.
 
 Examples:
@@ -480,7 +474,7 @@ Examples:
 CCI stands for Commodity Channel Index.
 
 It requires a window parameter. The default window is 14. Use
-`StockDataFrame.CCI` to change it.
+`set_dft_window('cci', n)` to change it.
 
 Examples:
 
@@ -498,7 +492,7 @@ The Average True Range is an
 N-period smoothed moving average (SMMA) of the true range value.  
 Default to 14 periods.
 
-Users can modify the default window with `StockDataFrame.ATR_SMMA`.
+Users can modify the default window with `set_dft_window('atr', n)`.
 
 Example:
 
@@ -516,7 +510,7 @@ It includes 3 lines:
 
 It has 2 parameters:
 * `StockDataFrame.SUPERTREND_MUL` is the multiplier of the band, default to 3.
-* `StockDataFrame.SUPERTREND_WINDOW` is the window size, default to 14.
+* the default window size is 14.  Change it with `set_dft_window('supertrend', n)`
 
 #### DMA - Difference of Moving Average
 
@@ -531,22 +525,22 @@ identifies in which direction the price of an asset is moving.
 It has several lines:
 
 * `df['pdi']` is the positive directional movement line (+DI)
-* `df['mdi']` is the negative directional movement line (-DI)
+* `df['ndi']` is the negative directional movement line (-DI)
 * `df['dx']` is the directional index (DX)
 * `df['adx']` is the average directional index (ADX)
 * `df['adxr']` is an EMA for ADX
 
 It has several parameters.
 
-* `StockDataFrame.PDI_SMMA` - window for +DI
-* `StockDataFrame.MDI_SMMA` - window for -DI
-* `StockDataFrame.DX_SMMA` - window for DX
-* `StockDataFrame.ADX_EMA` - window for ADX
-* `StockDataFrame.ADXR_EMA` - window for ADXR
+* default window for +DI is 14, change it with `set_dft_window('pdi', n)`
+* default window for -DI is 14, change it with `set_dft_window('ndi', n)`
+* `StockDataFrame.DX_SMMA` - window for DX, default to 14
+* `StockDataFrame.ADX_EMA` - window for ADX, default to 6
+* `StockDataFrame.ADXR_EMA` - window for ADXR, default to 6
 
 #### [KDJ Indicator](https://en.wikipedia.org/wiki/Stochastic_oscillator)
 
-The stochastic oscillator is a momentum indicator that uses support and 
+The stochastic oscillator is a momenxtum indicator that uses support and 
 resistance levels.
 
 It includes three lines:
@@ -554,7 +548,7 @@ It includes three lines:
 * `df['kdjd']` - D series
 * `df['kdjj']` - J series
 
-The default window is 9.  Use `StockDataFrame.KDJ_WINDOW` to change it.
+The default window is 9.  Use `set_dft_window('kdjk', n)` to change it.
 Use `df['kdjk_6']` to retrieve the K series of 6 periods.
 
 KDJ also has two configurable parameters named `StockDataFrame.KDJ_PARAM`.
@@ -569,9 +563,12 @@ and sell.
 
 It contains 4 lines:
 * `df['cr']` - the CR line
-* `df['cr-ma1']` - `StockDataFrame.CR_MA1` periods of the CR moving average
-* `df['cr-ma2']` - `StockDataFrame.CR_MA2` periods of the CR moving average
-* `df['cr-ma3']` - `StockDataFrame.CR_MA3` periods of the CR moving average
+* `df['cr-ma1']` - `StockDataFrame.CR_MA[0]` periods of the CR moving average,
+  the default window is 5
+* `df['cr-ma2']` - `StockDataFrame.CR_MA[1]` periods of the CR moving average,
+  the default window is 10
+* `df['cr-ma3']` - `StockDataFrame.CR_MA[2]` periods of the CR moving average,
+  the default window is 20
 
 #### [Typical Price](https://en.wikipedia.org/wiki/Typical_price)
 
@@ -588,12 +585,12 @@ The Bollinger bands includes three lines
 * `df['boll_ub']` is the upper band
 * `df['boll_lb']` is the lower band
 
-The default window of boll is defined by `BOLL_PERIOD`.  The default value is 20.
+The default window of boll is 20.
 You can also supply your window with `df['boll_10']`.  It will also
 generate the `boll_ub_10` and `boll_lb_10` column.
 
 The default period of the Bollinger Band can be changed with
-`StockDataFrame.BOLL_PERIOD`.  The width of the bands can be turned with
+`set_dft_window('boll', n)`.  The width of the bands can be turned with
 `StockDataFrame.BOLL_STD_TIMES`.  The default value is 2.
 
 #### [MACD - Moving Average Convergence Divergence](https://en.wikipedia.org/wiki/MACD)
@@ -603,12 +600,9 @@ We use the close price to calculate the MACD lines.
 * `df['macds]` is the signal line.
 * `df['macdh']` is he histogram line.
 
-The period of short and long EMA can be tuned with 
-`StockDataFrame.MACD_EMA_SHORT` and `StockDataFrame.MACD_EMA_LONG`.  The default
-value are 12 and 26
-
-The period of the signal line can be tuned with 
-`StockDataFrame.MACD_EMA_SIGNAL`. The default value is 9.
+The period of short, long EMA and signal line can be tuned with 
+`set_dft_window('macd', (short, long, signal))`.  The default
+windows are 12 and 26 and 9.
 
 #### [PPO - Percentage Price Oscillator](https://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:price_oscillators_ppo)
 
@@ -618,12 +612,9 @@ The Percentage Price Oscillator includes three lines.
 * `df['ppos]` is the signal line.
 * `df['ppoh']` is he histogram line.
 
-The period of short and long EMA can be tuned with 
-`StockDataFrame.PPO_EMA_SHORT` and `StockDataFrame.PPO_EMA_LONG`.  The default
-value are 12 and 26
-
-The period of the signal line can be tuned with 
-`StockDataFrame.PPO_EMA_SIGNAL`. The default value is 9.
+The period of short, long EMA and signal line can be tuned with 
+`set_dft_window('ppo', (short, long, signal))`.  The default
+windows are 12 and 26 and 9.
 
 #### [Simple Moving Average](https://www.investopedia.com/terms/m/mean.asp)
 
@@ -642,7 +633,7 @@ Follow the pattern `<columnName>_<window>_mvar` to retrieve the moving VAR.
 It's the moving average weighted by volume.
 
 It has a parameter for window size.  The default window is 14.  Change it with
-`StockDataFrame.VWMA`.
+`set_dft_window('vwma', n)`.
 
 Examples:
 * `df['vwma']` retrieves the 14 periods VWMA
@@ -653,7 +644,7 @@ Examples:
 The Choppiness Index determines if the market is choppy.
 
 It has a parameter for window size.  The default window is 14.  Change it with
-`StockDataFrame.CHOP`.
+`set_dft_window('chop', n)`.
 
 Examples:
 * `df['chop']` retrieves the 14 periods CHOP
@@ -665,7 +656,7 @@ The Money Flow Index
 identifies overbought or oversold signals in an asset.
 
 It has a parameter for window size.  The default window is 14.  Change it with
-`StockDataFrame.MFI`.
+`set_dft_window('mfi', n)`.
 
 Examples:
 * `df['mfi']` retrieves the 14 periods MFI
@@ -725,13 +716,14 @@ It has 2 optional parameters and 2 required parameters
 * column - required, the column to calculate
 * window - required, rolling window size
 
-The default value for fast and slow can be configured with
-`StockDataFrame.KAMA_FAST` and `StockDataFrame.KAMA_SLOW`
+The default value for window, fast and slow can be configured with
+`set_dft_window('kama', (10, 5, 34))`
 
 Examples:
-* `df['close_10_kama_2_30']` retrieves 10 periods KAMA of the close price with 
-  `fast = 2` and `slow = 30`
+* `df['close_10,2,30_kama']` retrieves 10 periods KAMA of the close 
+  price with `fast = 2` and `slow = 30`
 * `df['close_2_kama']` retrieves 2 periods KAMA of the close price
+  with default fast and slow
 
 #### Cross Upwards and Cross Downwards
 
