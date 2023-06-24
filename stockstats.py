@@ -60,6 +60,7 @@ _dft_windows = {
     'eribear': 13,
     'eribull': 13,
     'ichimoku': (9, 26, 52),
+    'ftr': 9,
     'kama': (10, 5, 34),  # window, fast, slow
     'kdjd': 9,
     'kdjj': 9,
@@ -193,7 +194,7 @@ class _Meta:
     def name(self):
         if self._windows is None and self._column is None:
             return self._name
-        if self.column is None:
+        if self._column is None:
             return f'{self._name}_{self._windows}'
         return f'{self.column}_{self.windows}_{self._name}'
 
@@ -239,6 +240,22 @@ class StockDataFrame(pd.DataFrame):
     SUPERTREND_MUL = 3
 
     # End of options
+
+    @property
+    def high(self) -> pd.Series:
+        return self['high']
+
+    @property
+    def low(self) -> pd.Series:
+        return self['low']
+
+    @property
+    def close(self) -> pd.Series:
+        return self['close']
+
+    @property
+    def open(self) -> pd.Series:
+        return self['open']
 
     def _get_change(self, meta: _Meta):
         """ Get the percentage change column
@@ -299,17 +316,17 @@ class StockDataFrame(pd.DataFrame):
             shifts = [int(shift_segment)]
         return shifts
 
-    @staticmethod
-    def set_nan(pd_obj, shift):
+    @classmethod
+    def set_nan(cls, pd_obj, shift):
         try:
             iter(shift)
             max_shift = max(shift)
             min_shift = min(shift)
-            StockDataFrame._set_nan_of_single_shift(pd_obj, max_shift)
-            StockDataFrame._set_nan_of_single_shift(pd_obj, min_shift)
+            cls._set_nan_of_single_shift(pd_obj, max_shift)
+            cls._set_nan_of_single_shift(pd_obj, min_shift)
         except TypeError:
             # shift is not iterable
-            StockDataFrame._set_nan_of_single_shift(pd_obj, shift)
+            cls._set_nan_of_single_shift(pd_obj, shift)
 
     @staticmethod
     def _set_nan_of_single_shift(pd_obj, shift):
@@ -1412,6 +1429,47 @@ class StockDataFrame(pd.DataFrame):
             last_kama = cur
         self[meta.name] = kama
 
+    def _ftr(self, window: int):
+        mp = (self.high + self.low) * 0.5
+        highest = mp.rolling(window).max()
+        lowest = mp.rolling(window).min()
+        width = highest - lowest
+        width[width < 0.001] = 0.001
+        position = list(((mp - lowest) / width) - 0.5)
+
+        v = 0
+        size = self.high.size
+        result = np.zeros(size)
+        for i in range(window, size):
+            v = 0.66 * position[i] + 0.67 * v
+            if v < -0.99:
+                v = -0.999
+            if v > 0.99:
+                v = 0.999
+            r = 0.5 * (np.log((1 + v) / (1 - v)) + result[i - 1])
+            result[i] = r
+        return pd.Series(result, index=self.index)
+
+    def _get_ftr(self, meta: _Meta):
+        """ the Gaussian Fisher Transform Price Reversals indicator
+
+        The Gaussian Fisher Transform Price Reversals indicator, dubbed
+        FTR for short, is a stat based price reversal detection indicator
+        inspired by and based on the work of the electrical engineer
+        now private trader John F. Ehlers.
+
+        https://www.tradingview.com/script/ajZT2tZo-Gaussian-Fisher-Transform-Price-Reversals-FTR/
+
+        Implementation reference:
+
+        https://github.com/twopirllc/pandas-ta/blob/084dbe1c4b76082f383fa3029270ea9ac35e4dc7/pandas_ta/momentum/fisher.py#L9
+
+        Formular:
+        * Fisher Transform = 0.5 * ln((1 + X) / (1 - X))
+        * X is a series whose values are between -1 to 1
+        """
+        self[meta.name] = self._ftr(meta.int)
+
     @staticmethod
     def parse_column_name(name):
         m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
@@ -1554,6 +1612,7 @@ class StockDataFrame(pd.DataFrame):
             ('cti',): self._get_cti,
             ('ker',): self._get_ker,
             ('eribull', 'eribear'): self._get_eri,
+            ('ftr',): self._get_ftr,
         }
 
     def __init_not_exist_column(self, key):

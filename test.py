@@ -966,6 +966,17 @@ class StockDataFrameTest(TestCase):
         assert_that(cti[20110131], near_to(-0.043))
         assert_that(cti[20110215], near_to(0.5006))
 
+    def test_ftr(self):
+        stock = self.get_stock_90days()
+        f = stock['ftr']
+        f9 = stock['ftr_9']
+        assert_that(f[20110114], equal_to(0))
+        assert_that(f[20110128], near_to(-1.135))
+        assert_that(f9[20110128], equal_to(f[20110128]))
+
+        f = stock['ftr_15']
+        assert_that(f[20110128], near_to(-1.005))
+
     def test_change_group_window_defaults(self):
         stock = self.get_stock_90days()
         macd = stock['macd']
