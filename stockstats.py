@@ -60,6 +60,7 @@ _dft_windows = {
     'eribear': 13,
     'eribull': 13,
     'ichimoku': (9, 26, 52),
+    'inertia': (20, 14),
     'ftr': 9,
     'kama': (10, 5, 34),  # window, fast, slow
     'kdjd': 9,
@@ -1534,6 +1535,25 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = rvgi
         self[meta.name_ex('s')] = rvgi_s
 
+    def _inertia(self, window: int, rvgi_window: int) -> pd.Series:
+        """ Inertia Indicator
+
+        https://theforexgeek.com/inertia-indicator/
+
+        In financial markets, the concept of inertia was given by Donald Dorsey
+        in the 1995 issue of Technical Analysis of Stocks and Commodities
+        through the Inertia Indicator. The Inertia Indicator is moment-based
+        and is an extension of Dorsey’s Relative Volatility Index (RVI).
+        """
+        rvgi = self._rvgi(rvgi_window)
+        value = self.linear_reg(rvgi, window)
+        value.iloc[:max(window, rvgi_window) + 2] = 0
+        return value
+
+    def _get_inertia(self, meta: _Meta):
+        value = self._inertia(meta.int0, meta.int1)
+        self[meta.name] = value
+
     @staticmethod
     def parse_column_name(name):
         m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
@@ -1678,6 +1698,7 @@ class StockDataFrame(pd.DataFrame):
             ('eribull', 'eribear'): self._get_eri,
             ('ftr',): self._get_ftr,
             ('rvgi', 'rvgis'): self._get_rvgi,
+            ('inertia',): self._get_inertia,
         }
 
     def __init_not_exist_column(self, key):
