@@ -1016,3 +1016,24 @@ class StockDataFrameTest(TestCase):
         assert_that(macd[i], equal_to(ref[i]))
 
         stockstats.set_dft_window('macd', orig)
+
+    def test_inertia(self):
+        stock = self.get_stock_90days()
+        inertia = stock['inertia']
+        assert_that(inertia[20110209], equal_to(0))
+        assert_that(inertia[20110210], near_to(-0.024856))
+        assert_that(inertia[20110304], near_to(0.155576))
+
+        inertia_dft = stock['inertia_20,14']
+        assert_that(inertia_dft[20110209], equal_to(0))
+        assert_that(inertia_dft[20110210], near_to(-0.024856))
+        assert_that(inertia_dft[20110304], near_to(0.155576))
+
+        inertia14 = stock['inertia_20']
+        assert_that(inertia14[20110209], equal_to(0))
+        assert_that(inertia14[20110210], near_to(-0.024856))
+        assert_that(inertia14[20110304], near_to(0.155576))
+
+        inertia10 = stock['inertia_10']
+        assert_that(inertia10[20110209], near_to(0.011085))
+        assert_that(inertia10[20110210], near_to(-0.014669))

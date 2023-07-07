@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/jealous/stockstats/branch/master/graph/badge.svg?token=IFMD1pVJ7T)](https://codecov.io/gh/jealous/stockstats)
 [![pypi](https://img.shields.io/pypi/v/stockstats.svg)](https://pypi.python.org/pypi/stockstats)
 
-VERSION: 0.6.0
+VERSION: 0.6.1
 
 ## Introduction
 
@@ -67,6 +67,7 @@ Supported statistics/indicators are:
 * ERI: Elder-Ray Index
 * FTR: the Gaussian Fisher Transform Price Reversals indicator
 * RVGI: Relative Vigor Index
+* Inertia: Inertia Indicator
 
 ## Installation
 
@@ -959,6 +960,20 @@ Examples:
 * `df['rvgis']` retrieves the RVGI signal line of window 14
 * `df['rvgi_5']` retrieves the RVGI line of window 5
 * `df['rvgis_5']` retrieves the RVGI signal line of window 5
+
+#### [Inertia Indicator](https://theforexgeek.com/inertia-indicator/)
+
+In financial markets, the concept of inertia was given by Donald Dorsey
+in the 1995 issue of Technical Analysis of Stocks and Commodities
+through the Inertia Indicator. The Inertia Indicator is moment-based
+and is an extension of Dorsey’s Relative Volatility Index (RVI).
+
+Formular:
+* inertia = n periods linear regression of RVGI
+
+Examples:
+* `df['inertia']` retrieves the inertia of 20 periods linear regression of 14 periods RVGI
+* `df['inertia_10']` retrieves the inertia of 10 periods linear regression of 14 periods RVGI
 
 ## Issues
 
