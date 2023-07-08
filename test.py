@@ -744,7 +744,10 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_90days()
         stock.init_all()
         columns = stock.columns
-        assert_that(columns, has_items('macd', 'kdjj', 'mfi', 'boll'))
+        assert_that(columns, has_items(
+            'macd', 'kdjj', 'mfi', 'boll',
+            'adx', 'cr-ma2', 'supertrend_lb', 'boll_lb',
+            'ao', 'cti', 'ftr', 'psl'))
 
     def test_supertrend(self):
         stock = self.get_stock_90days()
@@ -1058,3 +1061,21 @@ class StockDataFrameTest(TestCase):
         pgo10 = stock['pgo_10']
         assert_that(pgo10[20110117], near_to(-0.959768))
         assert_that(pgo10[20110214], near_to(1.214206))
+
+    def test_psl(self):
+        stock = self.get_stock_90days()
+        psl = stock['psl']
+        assert_that(psl[20110118], near_to(41.666))
+        assert_that(psl[20110127], near_to(50))
+
+        psl12 = stock['psl_12']
+        assert_that(psl12[20110118], near_to(41.666))
+        assert_that(psl12[20110127], near_to(50))
+
+        psl10 = stock['psl_10']
+        assert_that(psl10[20110118], near_to(50))
+        assert_that(psl10[20110131], near_to(60))
+
+        high_psl12 = stock['high_12_psl']
+        assert_that(high_psl12[20110118], near_to(41.666))
+        assert_that(high_psl12[20110127], near_to(41.666))
