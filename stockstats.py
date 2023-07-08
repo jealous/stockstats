@@ -71,6 +71,7 @@ _dft_windows = {
     'mfi': 14,
     'ndi': 14,
     'pdi': 14,
+    'pgo': 14,
     'ppo': (12, 26, 9),  # short, long, signal
     'rsi': 14,
     'rsv': 9,
@@ -1581,6 +1582,29 @@ class StockDataFrame(pd.DataFrame):
     def _get_kst(self, meta: _Meta):
         self[meta.name] = self._kst()
 
+    def _pgo(self, window: int) -> pd.Series:
+        """ Pretty Good Oscillator (PGO)
+
+        https://library.tradingtechnologies.com/trade/chrt-ti-pretty-good-oscillator.html
+
+        The Pretty Good Oscillator indicator by Mark Johnson measures the
+        distance of the current close from its N-day simple moving average,
+        expressed in terms of an average true range over a similar period.
+
+        Formular:
+        * PGO = (Close - SMA) / (EMA of TR)
+
+        Where:
+        * SMA = Simple Moving Average of Close over N periods
+        * EMA of TR = Exponential Moving Average of True Range over N periods
+        """
+        up = self.close - self.sma(self.close, window)
+        down = self.ema(self._tr(), window)
+        return up / down
+
+    def _get_pgo(self, meta: _Meta):
+        self[meta.name] = self._pgo(meta.int)
+
     @staticmethod
     def parse_column_name(name):
         m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
@@ -1727,6 +1751,7 @@ class StockDataFrame(pd.DataFrame):
             ('rvgi', 'rvgis'): self._get_rvgi,
             ('inertia',): self._get_inertia,
             ('kst',): self._get_kst,
+            ('pgo',): self._get_pgo,
         }
 
     def __init_not_exist_column(self, key):

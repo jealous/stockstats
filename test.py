@@ -1044,3 +1044,17 @@ class StockDataFrameTest(TestCase):
         assert_that(kst[20110117], equal_to(0))
         assert_that(kst[20110118], near_to(0.063442))
         assert_that(kst[20110131], near_to(-2.519985))
+
+    def test_pgo(self):
+        stock = self.get_stock_90days()
+        pgo = stock['pgo']
+        assert_that(pgo[20110117], near_to(-0.968845))
+        assert_that(pgo[20110214], near_to(1.292029))
+
+        pgo14 = stock['pgo_14']
+        assert_that(pgo14[20110117], near_to(-0.968845))
+        assert_that(pgo14[20110214], near_to(1.292029))
+
+        pgo10 = stock['pgo_10']
+        assert_that(pgo10[20110117], near_to(-0.959768))
+        assert_that(pgo10[20110214], near_to(1.214206))

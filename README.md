@@ -68,6 +68,8 @@ Supported statistics/indicators are:
 * FTR: the Gaussian Fisher Transform Price Reversals indicator
 * RVGI: Relative Vigor Index
 * Inertia: Inertia Indicator
+* KST: Know Sure Thing
+* PGO: Pretty Good Oscillator
 
 ## Installation
 
@@ -989,6 +991,23 @@ Where:
 * RCMA2=10-period SMA of 15-period ROC
 * RCMA3=10-period SMA of 20-period ROC
 * RCMA4=15-period SMA of 30-period ROC
+
+Example:
+* `df['kst']` retrieves the KST.
+
+#### [Pretty Good Oscillator (PGO)](https://library.tradingtechnologies.com/trade/chrt-ti-pretty-good-oscillator.html)
+
+The Pretty Good Oscillator indicator by Mark Johnson measures the 
+distance of the current close from its N-day simple moving average, 
+expressed in terms of an average true range over a similar period.
+
+Formular:
+* PGO = (Close - SMA) / (EMA of TR)
+
+Example:
+* `df['pgo']` retrieves the PGO with default window 14.
+* `df['pgo_10']` retrieves the PGO with window 10.
+
 
 ## Issues
 
