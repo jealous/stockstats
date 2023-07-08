@@ -73,6 +73,7 @@ _dft_windows = {
     'pdi': 14,
     'pgo': 14,
     'ppo': (12, 26, 9),  # short, long, signal
+    'psl': 12,
     'rsi': 14,
     'rsv': 9,
     'rvgi': 14,
@@ -99,6 +100,7 @@ _dft_column = {
     'dma': 'close',
     'kama': 'close',
     'ker': 'close',
+    'psl': 'close',
     'tema': 'close',
     'trix': 'close',
 }
@@ -1605,6 +1607,29 @@ class StockDataFrame(pd.DataFrame):
     def _get_pgo(self, meta: _Meta):
         self[meta.name] = self._pgo(meta.int)
 
+    def _psl(self, col_name: str, window: int) -> pd.Series:
+        """ Psychological Line (PSL)
+
+        The Psychological Line indicator is the ratio of the number of
+        rising periods over the total number of periods.
+
+        https://library.tradingtechnologies.com/trade/chrt-ti-psychological-line.html
+
+        Formular:
+        * PSL = (Number of Rising Periods) / (Total Number of Periods) * 100
+
+        Example:
+        * `df['psl']` retrieves the PSL with default window 12.
+        * `df['psl_10']` retrieves the PSL with window 10.
+        * `df['high_12_psl']` retrieves the PSL of high price with window 10.
+        """
+        col_diff = self._col_diff(col_name)
+        pos = col_diff > 0
+        return self.mov_sum(pos, window) / window * 100
+
+    def _get_psl(self, meta: _Meta):
+        self[meta.name] = self._psl(meta.column, meta.int)
+
     @staticmethod
     def parse_column_name(name):
         m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
@@ -1702,57 +1727,36 @@ class StockDataFrame(pd.DataFrame):
             return self
         return wrap(ret)
 
+    def _get_handler(self, name: str):
+        return getattr(self, f'_get_{name}')
+
     @property
     def handler(self):
-        return {
-            ('change',): self._get_change,
-            ('rsi',): self._get_rsi,
-            ('stochrsi',): self._get_stochrsi,
+        ret = {
             ('rate',): self._get_rate,
             ('middle',): self._get_middle,
             ('tp',): self._get_tp,
             ('boll', 'boll_ub', 'boll_lb'): self._get_boll,
             ('macd', 'macds', 'macdh'): self._get_macd,
             ('ppo', 'ppos', 'ppoh'): self._get_ppo,
-            ('kdjk',): self._get_kdjk,
-            ('kdjd',): self._get_kdjd,
-            ('kdjj',): self._get_kdjj,
-            ('rsv',): self._get_rsv,
             ('cr', 'cr-ma1', 'cr-ma2', 'cr-ma3'): self._get_cr,
-            ('cci',): self._get_cci,
             ('tr',): self._get_tr,
-            ('atr',): self._get_atr,
-            ('pdi',): self._get_pdi,
-            ('ndi',): self._get_ndi,
             ('dx', 'adx', 'adxr'): self._get_dmi,
-            ('trix',): self._get_trix,
-            ('tema',): self._get_tema,
-            ('vr',): self._get_vr,
-            ('dma',): self._get_dma,
-            ('vwma',): self._get_vwma,
-            ('chop',): self._get_chop,
             ('log-ret',): self._get_log_ret,
-            ('mfi',): self._get_mfi,
             ('wt1', 'wt2'): self._get_wt,
-            ('wr',): self._get_wr,
             ('supertrend',
              'supertrend_lb',
              'supertrend_ub'): self._get_supertrend,
-            ('aroon',): self._get_aroon,
-            ('ao',): self._get_ao,
             ('bop',): self._get_bop,
-            ('cmo',): self._get_cmo,
-            ('coppock',): self._get_coppock,
-            ('ichimoku',): self._get_ichimoku,
             ('cti',): self._get_cti,
-            ('ker',): self._get_ker,
             ('eribull', 'eribear'): self._get_eri,
-            ('ftr',): self._get_ftr,
             ('rvgi', 'rvgis'): self._get_rvgi,
-            ('inertia',): self._get_inertia,
             ('kst',): self._get_kst,
-            ('pgo',): self._get_pgo,
         }
+        for k in _dft_windows.keys():
+            if k not in ret:
+                ret[k] = self._get_handler(k)
+        return ret
 
     def __init_not_exist_column(self, key):
         for names, handler in self.handler.items():
@@ -1774,7 +1778,7 @@ class StockDataFrame(pd.DataFrame):
                 raise UserWarning("Invalid number of return arguments "
                                   f"after parsing column name: '{key}'")
             meta = _Meta(name, windows=n, column=col)
-            getattr(self, f'_get_{name}')(meta)
+            self._get_handler(name)(meta)
 
     def __init_column(self, key):
         if key not in self:

@@ -70,6 +70,7 @@ Supported statistics/indicators are:
 * Inertia: Inertia Indicator
 * KST: Know Sure Thing
 * PGO: Pretty Good Oscillator
+* PSL: Psychological Line
 
 ## Installation
 
@@ -1007,6 +1008,19 @@ Formular:
 Example:
 * `df['pgo']` retrieves the PGO with default window 14.
 * `df['pgo_10']` retrieves the PGO with window 10.
+
+#### [Psychological Line (PSL)](https://library.tradingtechnologies.com/trade/chrt-ti-psychological-line.html)
+
+The Psychological Line indicator is the ratio of the number of 
+rising periods over the total number of periods.
+
+Formular:
+* PSL = (Number of Rising Periods) / (Total Number of Periods) * 100
+
+Example:
+* `df['psl']` retrieves the PSL with default window 12.
+* `df['psl_10']` retrieves the PSL with window 10.
+* `df['high_12_psl']` retrieves the PSL of high price with window 10.
 
 
 ## Issues
