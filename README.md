@@ -975,6 +975,21 @@ Examples:
 * `df['inertia']` retrieves the inertia of 20 periods linear regression of 14 periods RVGI
 * `df['inertia_10']` retrieves the inertia of 10 periods linear regression of 14 periods RVGI
 
+#### [Know Sure Thing (kst)](https://www.investopedia.com/terms/k/know-sure-thing-kst.asp)
+
+The Know Sure Thing (KST) is a momentum oscillator developed by
+Martin Pring to make rate-of-change readings easier for traders
+to interpret.
+
+Formular:
+* KST=(RCMA1×1)+(RCMA2×2) + (RCMA3×3)+(RCMA4×4)
+
+Where:
+* RCMA1=10-period SMA of 10-period ROC
+* RCMA2=10-period SMA of 15-period ROC
+* RCMA3=10-period SMA of 20-period ROC
+* RCMA4=15-period SMA of 30-period ROC
+
 ## Issues
 
 We use [Github Issues](https://github.com/jealous/stockstats/issues) to track

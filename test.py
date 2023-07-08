@@ -1037,3 +1037,10 @@ class StockDataFrameTest(TestCase):
         inertia10 = stock['inertia_10']
         assert_that(inertia10[20110209], near_to(0.011085))
         assert_that(inertia10[20110210], near_to(-0.014669))
+
+    def test_kst(self):
+        stock = self.get_stock_90days()
+        kst = stock['kst']
+        assert_that(kst[20110117], equal_to(0))
+        assert_that(kst[20110118], near_to(0.063442))
+        assert_that(kst[20110131], near_to(-2.519985))

@@ -1554,6 +1554,33 @@ class StockDataFrame(pd.DataFrame):
         value = self._inertia(meta.int0, meta.int1)
         self[meta.name] = value
 
+    def _kst(self) -> pd.Series:
+        """ Know Sure Thing (kst)
+
+        https://www.investopedia.com/terms/k/know-sure-thing-kst.asp
+
+        The Know Sure Thing (KST) is a momentum oscillator developed by
+        Martin Pring to make rate-of-change readings easier for traders
+        to interpret.
+
+        Formular:
+        * KST=(RCMA #1×1)+(RCMA #2×2) + (RCMA #3×3)+(RCMA #4×4)
+
+        where:
+        * RCMA #1=10-period SMA of 10-period ROC
+        * RCMA #2=10-period SMA of 15-period ROC
+        * RCMA #3=10-period SMA of 20-period ROC
+        * RCMA #4=15-period SMA of 30-period ROC
+        """
+        ma1 = self.sma(self.roc(self.close, 10), 10)
+        ma2 = self.sma(self.roc(self.close, 15), 10)
+        ma3 = self.sma(self.roc(self.close, 20), 10)
+        ma4 = self.sma(self.roc(self.close, 30), 15)
+        return ma1 + ma2 * 2 + ma3 * 3 + ma4 * 4
+
+    def _get_kst(self, meta: _Meta):
+        self[meta.name] = self._kst()
+
     @staticmethod
     def parse_column_name(name):
         m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
@@ -1699,6 +1726,7 @@ class StockDataFrame(pd.DataFrame):
             ('ftr',): self._get_ftr,
             ('rvgi', 'rvgis'): self._get_rvgi,
             ('inertia',): self._get_inertia,
+            ('kst',): self._get_kst,
         }
 
     def __init_not_exist_column(self, key):
