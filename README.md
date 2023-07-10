@@ -72,6 +72,7 @@ Supported statistics/indicators are:
 * PGO: Pretty Good Oscillator
 * PSL: Psychological Line
 * PVO: Percentage Volume Oscillator
+* QQE: Quantitative Qualitative Estimation
 
 ## Installation
 
@@ -1044,6 +1045,31 @@ Example:
 The period of short, long EMA and signal line can be tuned with 
 `set_dft_window('pvo', (short, long, signal))`.  The default
 windows are 12 and 26 and 9.
+
+#### [Quantitative Qualitative Estimation(QQE)](https://www.tradingview.com/script/0vn4HZ7O-Quantitative-Qualitative-Estimation-QQE/)
+
+The Qualitative Quantitative Estimation (QQE) indicator works like a smoother 
+version of the popular Relative Strength Index (RSI) indicator. QQE expands 
+on RSI by adding two volatility based trailing stop lines. These trailing 
+stop lines are composed of a fast and a slow moving Average True Range (ATR). 
+These ATR lines are smoothed making this indicator less susceptible to short 
+term volatility.
+
+Implementation reference:
+https://github.com/twopirllc/pandas-ta/blob/main/pandas_ta/momentum/qqe.py
+
+Example:
+* `df['qqe']` retrieves the QQE with RSI window 14, MA window 5.
+* `df['qqel']` retrieves the QQE long
+* `df['qqes']` retrieves the QQE short
+* `df['qqe_10,4']` retrieves the QQE with RSI window 10, MA window 4
+* `df['qqel_10,4']` retrieves the QQE long with customized windows.
+  Initialized by retrieving `df['qqe_10,4']`
+* `df['qqes_10,4']` retrieves the QQE short with customized windows
+  Initialized by retrieving `df['qqe_10,4']`
+
+The period of short, long EMA and signal line can be tuned with 
+`set_dft_window('qqe', (rsi, rsi_ma))`.  The default windows are 14 and 5.
 
 ## Issues
 
