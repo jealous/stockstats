@@ -1086,3 +1086,20 @@ class StockDataFrameTest(TestCase):
         assert_that(stock['pvo'].loc[20110331], near_to(3.4708))
         assert_that(stock['pvos'].loc[20110331], near_to(-3.7464))
         assert_that(stock['pvoh'].loc[20110331], near_to(7.2173))
+
+    def test_qqe(self):
+        stock = self.get_stock_90days()
+        _ = stock['qqe']
+        _ = stock['qqe_14,5']
+        _ = stock['qqe_10,4']
+
+        assert_that(stock.loc[20110125, 'qqe'], near_to(44.603))
+        assert_that(stock.loc[20110125, 'qqel'], near_to(44.603))
+        assert_that(stock.loc[20110125, 'qqes'], near_to(0))
+
+        assert_that(stock.loc[20110223, 'qqe'], near_to(53.26))
+        assert_that(stock.loc[20110223, 'qqel'], near_to(0))
+        assert_that(stock.loc[20110223, 'qqes'], near_to(53.26))
+
+        assert_that(stock.loc[20110125, 'qqe_14,5'], near_to(44.603))
+        assert_that(stock.loc[20110125, 'qqe_10,4'], near_to(39.431))

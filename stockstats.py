@@ -26,6 +26,7 @@
 
 from __future__ import unicode_literals
 
+import functools
 import itertools
 import re
 from typing import Optional, Callable, Union
@@ -75,6 +76,7 @@ _dft_windows = {
     'ppo': (12, 26, 9),  # short, long, signal
     'pvo': (12, 26, 9),  # short, long, signal
     'psl': 12,
+    'qqe': (14, 5),  # rsi, rsi ema
     'rsi': 14,
     'rsv': 9,
     'rvgi': 14,
@@ -455,7 +457,8 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = self._rsv(meta.int)
 
     def _rsi(self, window) -> pd.Series:
-        change = self._delta(self['close'], -1)
+        change = self.close.diff()
+        change.iloc[0] = 0
         close_pm = (change + change.abs()) / 2
         close_nm = (-change + change.abs()) / 2
         p_ema = self.smma(close_pm, window)
@@ -998,11 +1001,11 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = self.roc(self[meta.column], meta.int)
 
     @staticmethod
-    def ema(series, window, *, adjust=True):
+    def ema(series, window, *, adjust=True, min_periods=1):
         return series.ewm(
             ignore_na=False,
             span=window,
-            min_periods=1,
+            min_periods=min_periods,
             adjust=adjust).mean()
 
     @staticmethod
@@ -1656,6 +1659,91 @@ class StockDataFrame(pd.DataFrame):
     def _get_psl(self, meta: _Meta):
         self[meta.name] = self._psl(meta.column, meta.int)
 
+    def _get_qqe(self, meta: _Meta):
+        """ QQE (Quantitative Qualitative Estimation)
+
+        https://www.tradingview.com/script/0vn4HZ7O-Quantitative-Qualitative-Estimation-QQE/
+
+        The Qualitative Quantitative Estimation (QQE) indicator works like a
+        smoother version of the popular Relative Strength Index (RSI)
+        indicator. QQE expands on RSI by adding two volatility based trailing
+        stop lines. These trailing stop lines are composed of a fast and a
+        slow moving Average True Range (ATR).  These ATR lines are smoothed
+        making this indicator less susceptible to short term volatility.
+
+        Implementation reference:
+        https://github.com/twopirllc/pandas-ta/blob/main/pandas_ta/momentum/qqe.py
+
+        """
+        rsi_window = meta.int0
+        rsi_ma_window = meta.int1
+        factor = 4.236
+        wilder_window = rsi_window * 2 - 1
+        ema = functools.partial(self.ema, adjust=False)
+
+        rsi = self._rsi(rsi_window)
+        rsi.iloc[:rsi_window] = np.nan
+        rsi_ma = ema(rsi, rsi_ma_window)
+        tr = rsi_ma.diff().abs()
+        tr_ma = ema(tr, wilder_window)
+        tr_ma_ma = ema(tr_ma, wilder_window) * factor
+
+        upper = list(rsi_ma + tr_ma_ma)
+        lower = list(rsi_ma - tr_ma_ma)
+        rsi_ma = list(rsi_ma)
+
+        size = self.close.size
+        long = [0] * size
+        short = [0] * size
+        trend = [1] * size
+        qqe = [rsi_ma[0]] * size
+        qqe_long = [np.nan] * size
+        qqe_short = [np.nan] * size
+
+        for i in range(1, size):
+            c_rsi, p_rsi = rsi_ma[i], rsi_ma[i - 1]
+            c_long, p_long = long[i - 1], long[i - 2]
+            c_short, p_short = short[i - 1], short[i - 2]
+
+            # Long Line
+            if p_rsi > c_long and c_rsi > c_long:
+                long[i] = max(c_long, lower[i])
+            else:
+                long[i] = lower[i]
+
+            # Short Line
+            if p_rsi < c_short and c_rsi < c_short:
+                short[i] = min(c_short, upper[i])
+            else:
+                short[i] = upper[i]
+
+            # Trend & QQE Calculation
+            # Long: Current RSI_MA value Crosses the Prior Short Line Value
+            # Short: Current RSI_MA Crosses the Prior Long Line Value
+            rsi_ux_short = c_rsi > c_short and p_rsi < p_short
+            rsi_dx_short = c_rsi <= c_short and p_rsi >= p_short
+            rsi_ux_long = c_rsi > c_long and p_rsi < p_long
+            rsi_dx_long = c_rsi <= c_long and p_rsi >= p_long
+            if rsi_ux_short or rsi_dx_short:
+                trend[i] = 1
+                qqe[i] = qqe_long[i] = long[i]
+            elif rsi_ux_long or rsi_dx_long:
+                trend[i] = -1
+                qqe[i] = qqe_short[i] = short[i]
+            else:
+                trend[i] = trend[i - 1]
+                if trend[i] == 1:
+                    qqe[i] = qqe_long[i] = long[i]
+                else:
+                    qqe[i] = qqe_short[i] = short[i]
+
+        self[meta.name] = self.to_series(qqe)
+        self[meta.name_ex('l')] = self.to_series(qqe_long)
+        self[meta.name_ex('s')] = self.to_series(qqe_short)
+
+    def to_series(self, arr: list):
+        return pd.Series(arr, index=self.close.index).fillna(0)
+
     @staticmethod
     def parse_column_name(name):
         m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
@@ -1766,6 +1854,7 @@ class StockDataFrame(pd.DataFrame):
             ('macd', 'macds', 'macdh'): self._get_macd,
             ('pvo', 'pvos', 'pvoh'): self._get_pvo,
             ('ppo', 'ppos', 'ppoh'): self._get_ppo,
+            ('qqe', 'qqel', 'qqes'): self._get_qqe,
             ('cr', 'cr-ma1', 'cr-ma2', 'cr-ma3'): self._get_cr,
             ('tr',): self._get_tr,
             ('dx', 'adx', 'adxr'): self._get_dmi,
