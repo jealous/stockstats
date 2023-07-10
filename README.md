@@ -71,6 +71,7 @@ Supported statistics/indicators are:
 * KST: Know Sure Thing
 * PGO: Pretty Good Oscillator
 * PSL: Psychological Line
+* PVO: Percentage Volume Oscillator
 
 ## Installation
 
@@ -1022,6 +1023,27 @@ Example:
 * `df['psl_10']` retrieves the PSL with window 10.
 * `df['high_12_psl']` retrieves the PSL of high price with window 10.
 
+#### [Percentage Volume Oscillator(PVO)](https://school.stockcharts.com/doku.php?id=technical_indicators:percentage_volume_oscillator_pvo)
+
+The Percentage Volume Oscillator (PVO) is a momentum oscillator for volume. 
+The PVO measures the difference between two volume-based moving averages as
+a percentage of the larger moving average.
+
+Formular: 
+
+* Percentage Volume Oscillator (PVO): 
+  ((12-day EMA of Volume - 26-day EMA of Volume)/26-day EMA of Volume) x 100
+* Signal Line: 9-day EMA of PVO
+* PVO Histogram: PVO - Signal Line
+
+Example:
+* `df['pvo']` derives from the difference of 2 exponential moving average.
+* `df['pvos]` is the signal line.
+* `df['pvoh']` is he histogram line.
+
+The period of short, long EMA and signal line can be tuned with 
+`set_dft_window('pvo', (short, long, signal))`.  The default
+windows are 12 and 26 and 9.
 
 ## Issues
 

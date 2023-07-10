@@ -73,6 +73,7 @@ _dft_windows = {
     'pdi': 14,
     'pgo': 14,
     'ppo': (12, 26, 9),  # short, long, signal
+    'pvo': (12, 26, 9),  # short, long, signal
     'psl': 12,
     'rsi': 14,
     'rsv': 9,
@@ -1120,6 +1121,37 @@ class StockDataFrame(pd.DataFrame):
         self[macds] = self.ema(self[macd], signal_w)
         self[macdh] = self[macd] - self[macds]
 
+    def _ppo_and_pvo(self, name: str, col_name: str, meta: _Meta):
+        volume = self[col_name]
+        short_w, long_w, signal_w = meta.int0, meta.int1, meta.int2
+        pvo_short = self.ema(volume, short_w)
+        pvo_long = self.ema(volume, long_w)
+        self[name] = (pvo_short - pvo_long) / pvo_long * 100
+        self[f'{name}s'] = self.ema(self[name], signal_w)
+        self[f'{name}h'] = self[name] - self[f'{name}s']
+
+    def _get_pvo(self, meta: _Meta):
+        """ Percentage Volume Oscillator
+
+        The Percentage Volume Oscillator (PVO) is a momentum oscillator for
+        volume.  The PVO measures the difference between two volume-based
+        moving averages as a percentage of the larger moving average.
+
+        https://school.stockcharts.com/doku.php?id=technical_indicators:percentage_volume_oscillator_pvo
+
+        Percentage Volume Oscillator (PVO):
+            {(12_EOV - 26_EOV)/26_EOV} x 100
+
+        Where:
+        * 12_EOV is the 12-day EMA of Volume
+        * 26_EOV is the 26-day EMA of Volume
+
+        Signal Line: 9-day EMA of PVO
+
+        PVO Histogram: PVO - Signal Line
+        """
+        return self._ppo_and_pvo('pvo', 'volume', meta)
+
     def _get_ppo(self, meta: _Meta):
         """ Percentage Price Oscillator
 
@@ -1132,13 +1164,7 @@ class StockDataFrame(pd.DataFrame):
 
         PPO Histogram: PPO - Signal Line
         """
-        close = self['close']
-        short_w, long_w, signal_w = meta.int0, meta.int1, meta.int2
-        ppo_short = self.ema(close, short_w)
-        ppo_long = self.ema(close, long_w)
-        self['ppo'] = (ppo_short - ppo_long) / ppo_long * 100
-        self['ppos'] = self.ema(self['ppo'], signal_w)
-        self['ppoh'] = self['ppo'] - self['ppos']
+        return self._ppo_and_pvo('ppo', 'close', meta)
 
     def _eri(self, window):
         ema = self.ema(self['close'], window, adjust=False)
@@ -1738,6 +1764,7 @@ class StockDataFrame(pd.DataFrame):
             ('tp',): self._get_tp,
             ('boll', 'boll_ub', 'boll_lb'): self._get_boll,
             ('macd', 'macds', 'macdh'): self._get_macd,
+            ('pvo', 'pvos', 'pvoh'): self._get_pvo,
             ('ppo', 'ppos', 'ppoh'): self._get_ppo,
             ('cr', 'cr-ma1', 'cr-ma2', 'cr-ma3'): self._get_cr,
             ('tr',): self._get_tr,

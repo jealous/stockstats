@@ -1079,3 +1079,10 @@ class StockDataFrameTest(TestCase):
         high_psl12 = stock['high_12_psl']
         assert_that(high_psl12[20110118], near_to(41.666))
         assert_that(high_psl12[20110127], near_to(41.666))
+
+    def test_pvo(self):
+        stock = self.get_stock_90days()
+        _ = stock[['pvo', 'pvos', 'pvoh']]
+        assert_that(stock['pvo'].loc[20110331], near_to(3.4708))
+        assert_that(stock['pvos'].loc[20110331], near_to(-3.7464))
+        assert_that(stock['pvoh'].loc[20110331], near_to(7.2173))
