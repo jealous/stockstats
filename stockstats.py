@@ -359,7 +359,7 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = self.roc(self[meta.column], shift)
 
     @staticmethod
-    def _shift(series: pd.Series, window: int):
+    def s_shift(series: pd.Series, window: int):
         """ Shift the series
 
         When window is negative, shift the past period to current.
@@ -386,11 +386,11 @@ class StockDataFrame(pd.DataFrame):
         negative values meaning data in the past,
         positive values meaning data in the future.
         """
-        self[meta.name] = self._shift(self[meta.column], meta.int)
+        self[meta.name] = self.s_shift(self[meta.column], meta.int)
 
     def _get_log_ret(self, _: _Meta):
         close = self['close']
-        self['log-ret'] = np.log(close / self._shift(close, -1))
+        self['log-ret'] = np.log(close / self.s_shift(close, -1))
 
     def _get_c(self, meta: _Meta) -> pd.Series:
         """ get the count of column in range (shifts)
@@ -424,7 +424,7 @@ class StockDataFrame(pd.DataFrame):
         col = self.get(column)
         res = pd.DataFrame()
         for i in shifts:
-            res[int(i)] = self._shift(col, i).values
+            res[int(i)] = self.s_shift(col, i).values
         return res
 
     def _get_max(self, meta: _Meta):
@@ -538,7 +538,7 @@ class StockDataFrame(pd.DataFrame):
         single = self.ema(self[meta.column], window)
         double = self.ema(single, window)
         triple = self.ema(double, window)
-        prev_triple = self._shift(triple, -1)
+        prev_triple = self.s_shift(triple, -1)
         triple_change = self._delta(triple, -1)
         self[meta.name] = triple_change * 100 / prev_triple
 
@@ -585,7 +585,7 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = (tp - tp_sma) / (.015 * mad)
 
     def _tr(self):
-        prev_close = self._shift(self['close'], -1)
+        prev_close = self.s_shift(self['close'], -1)
         high = self['high']
         low = self['low']
         c1 = high - low
@@ -724,7 +724,10 @@ class StockDataFrame(pd.DataFrame):
         col = self[meta.column]
         mean = self.sma(col, window)
         std = self.mov_std(col, window)
-        self[meta.name] = ((col - mean) / std).fillna(0.0)
+        value = (col - mean) / std
+        if len(value) > 1:
+            value.iloc[0] = value.iloc[1]
+        self[meta.name] = value
 
     def _atr(self, window):
         tr = self._tr()
@@ -854,8 +857,8 @@ class StockDataFrame(pd.DataFrame):
         """
         window = meta.int
         middle = self._tp()
-        last_middle = self._shift(middle, -1)
-        ym = self._shift(middle, -1)
+        last_middle = self.s_shift(middle, -1)
+        ym = self.s_shift(middle, -1)
         high = self['high']
         low = self['low']
         p1_m = pd.concat((last_middle, high), axis=1).min(axis=1)
@@ -871,7 +874,7 @@ class StockDataFrame(pd.DataFrame):
 
     def _shifted_cr_sma(self, cr, window):
         cr_sma = self.sma(cr, window)
-        return self._shift(cr_sma, -int(window / 2.5 + 1))
+        return self.s_shift(cr_sma, -int(window / 2.5 + 1))
 
     def _tp(self):
         if 'amount' in self:
@@ -1336,7 +1339,7 @@ class StockDataFrame(pd.DataFrame):
         window = meta.int
         middle = self._tp()
         money_flow = (middle * self["volume"]).fillna(0.0)
-        shifted = self._shift(middle, -1)
+        shifted = self.s_shift(middle, -1)
         delta = (middle - shifted).fillna(0)
         pos_flow = money_flow.mask(delta < 0, 0)
         neg_flow = money_flow.mask(delta >= 0, 0)
@@ -1407,7 +1410,7 @@ class StockDataFrame(pd.DataFrame):
 
     def ker(self, column, window):
         col = self[column]
-        col_window_s = self._shift(col, -window)
+        col_window_s = self.s_shift(col, -window)
         window_diff = (col - col_window_s).abs()
         diff = self._col_diff(column).abs()
         volatility = self.mov_sum(diff, window)

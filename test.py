@@ -264,6 +264,16 @@ class StockDataFrameTest(TestCase):
         assert_that(kdjk_3.loc[20110104], near_to(74.5614))
         assert_that(kdjk_3.loc[20110120], near_to(7.37))
 
+    def test_z_kdj(self):
+        stock = self.get_stock_90days()
+        for col in ['open', 'high', 'low', 'close', 'volume']:
+            stock[col] = stock[f'{col}_20_z']
+        _ = stock[['kdjk', 'kdjd', 'kdjj']]
+        row = stock.loc[20110104]
+        assert_that(row['kdjk'], near_to(66.666))
+        assert_that(row['kdjd'], near_to(55.555))
+        assert_that(row['kdjj'], near_to(88.888))
+
     def test_column_cross(self):
         stock = self.get_stock_30days()
         cross = stock['kdjk_3_x_kdjd_3']
@@ -865,7 +875,7 @@ class StockDataFrameTest(TestCase):
     def test_close_z(self):
         stock = self._supor[:100]
         _ = stock['close_14_z']
-        assert_that(stock.loc[20040817, 'close_14_z'], equal_to(0))
+        assert_that(stock.loc[20040817, 'close_14_z'], near_to(-0.7071))
         assert_that(stock.loc[20040915, 'close_14_z'], near_to(2.005))
         assert_that(stock.loc[20041014, 'close_14_z'], near_to(-2.014))
 
