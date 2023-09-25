@@ -599,7 +599,7 @@ class StockDataFrameTest(TestCase):
         assert_that(c.loc[20160816], near_to(27.948))
         assert_that(c.loc[20160815], near_to(24.646))
 
-    def test_get_mdi(self):
+    def test_get_ndi(self):
         c = self._supor.get('ndi')
         assert_that(c.loc[20160817], near_to(16.195))
         assert_that(c.loc[20160816], near_to(17.579))
