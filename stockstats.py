@@ -1760,14 +1760,27 @@ class StockDataFrame(pd.DataFrame):
         return ret
 
     CROSS_COLUMN_MATCH_STR = '(.+)_(x|xu|xd)_(.+)'
+    COMPARE_COLUMN_MATCH_STR = '(.+)_(le|ge|lt|gt|eq|ne)_(.+)'
 
     @classmethod
     def is_cross_columns(cls, name):
         return re.match(cls.CROSS_COLUMN_MATCH_STR, name) is not None
 
     @classmethod
+    def is_compare_columns(cls, name):
+        return re.match(cls.COMPARE_COLUMN_MATCH_STR, name) is not None
+
+    @classmethod
     def parse_cross_column(cls, name):
         m = re.match(cls.CROSS_COLUMN_MATCH_STR, name)
+        ret = [None, None, None]
+        if m is not None:
+            ret = m.group(1, 2, 3)
+        return ret
+
+    @classmethod
+    def parse_compare_column(cls, name):
+        m = re.match(cls.COMPARE_COLUMN_MATCH_STR, name)
         ret = [None, None, None]
         if m is not None:
             ret = m.group(1, 2, 3)
@@ -1802,6 +1815,22 @@ class StockDataFrame(pd.DataFrame):
             self[key] = different & lt_series
         elif op == 'xd':
             self[key] = different & ~lt_series
+        return self[key]
+
+    def _get_compare(self, key):
+        left, op, right = StockDataFrame.parse_compare_column(key)
+        if op == 'le':
+            self[key] = self[left] <= self[right]
+        elif op == 'ge':
+            self[key] = self[left] >= self[right]
+        elif op == 'lt':
+            self[key] = self[left] < self[right]
+        elif op == 'gt':
+            self[key] = self[left] > self[right]
+        elif op == 'eq':
+            self[key] = self[left] == self[right]
+        elif op == 'ne':
+            self[key] = self[left] != self[right]
         return self[key]
 
     def init_all(self):
@@ -1886,6 +1915,8 @@ class StockDataFrame(pd.DataFrame):
             self._get_delta(key)
         elif self.is_cross_columns(key):
             self._get_cross(key)
+        elif self.is_compare_columns(key):
+            self._get_compare(key)
         else:
             ret = self.parse_column_name(key)
             if len(ret) == 3:
