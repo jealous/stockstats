@@ -88,6 +88,7 @@ _dft_windows = {
     'wt': (10, 21),
     'vr': 26,
     'vwma': 14,
+    'num': 0,
 }
 
 
@@ -1744,6 +1745,14 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name_ex('l')] = self.to_series(qqe_long)
         self[meta.name_ex('s')] = self.to_series(qqe_short)
 
+    def _get_num(self, meta):
+        split = meta.name.split(',')
+        decimal_places = 0.0
+        if (len(split) > 1):
+            decimal_places_str = split[1]
+            decimal_places = int(decimal_places_str) * pow(0.1, len(decimal_places_str))
+        self[meta.name] = meta.int0 + decimal_places
+
     def to_series(self, arr: list):
         return pd.Series(arr, index=self.close.index).fillna(0)
 
@@ -1900,6 +1909,7 @@ class StockDataFrame(pd.DataFrame):
             ('eribull', 'eribear'): self._get_eri,
             ('rvgi', 'rvgis'): self._get_rvgi,
             ('kst',): self._get_kst,
+            ('num',): self._get_num,
         }
         for k in _dft_windows.keys():
             if k not in ret:
