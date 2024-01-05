@@ -88,6 +88,7 @@ _dft_windows = {
     'wt': (10, 21),
     'vr': 26,
     'vwma': 14,
+    'num': 0,
 }
 
 
@@ -1744,6 +1745,15 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name_ex('l')] = self.to_series(qqe_long)
         self[meta.name_ex('s')] = self.to_series(qqe_short)
 
+    def _get_num(self, meta):
+        split = meta.name.split(',')
+        decimal_places = 0.0
+        if (len(split) > 1):
+            decimal_places_str = split[1]
+            power = pow(0.1, len(decimal_places_str))
+            decimal_places = float(decimal_places_str) * power
+        self[meta.name] = meta.int0 + decimal_places
+
     def to_series(self, arr: list):
         return pd.Series(arr, index=self.close.index).fillna(0)
 
@@ -1760,14 +1770,27 @@ class StockDataFrame(pd.DataFrame):
         return ret
 
     CROSS_COLUMN_MATCH_STR = '(.+)_(x|xu|xd)_(.+)'
+    COMPARE_COLUMN_MATCH_STR = '(.+)_(le|ge|lt|gt|eq|ne)_(.+)'
 
     @classmethod
     def is_cross_columns(cls, name):
         return re.match(cls.CROSS_COLUMN_MATCH_STR, name) is not None
 
     @classmethod
+    def is_compare_columns(cls, name):
+        return re.match(cls.COMPARE_COLUMN_MATCH_STR, name) is not None
+
+    @classmethod
     def parse_cross_column(cls, name):
         m = re.match(cls.CROSS_COLUMN_MATCH_STR, name)
+        ret = [None, None, None]
+        if m is not None:
+            ret = m.group(1, 2, 3)
+        return ret
+
+    @classmethod
+    def parse_compare_column(cls, name):
+        m = re.match(cls.COMPARE_COLUMN_MATCH_STR, name)
         ret = [None, None, None]
         if m is not None:
             ret = m.group(1, 2, 3)
@@ -1802,6 +1825,22 @@ class StockDataFrame(pd.DataFrame):
             self[key] = different & lt_series
         elif op == 'xd':
             self[key] = different & ~lt_series
+        return self[key]
+
+    def _get_compare(self, key):
+        left, op, right = StockDataFrame.parse_compare_column(key)
+        if op == 'le':
+            self[key] = self[left] <= self[right]
+        elif op == 'ge':
+            self[key] = self[left] >= self[right]
+        elif op == 'lt':
+            self[key] = self[left] < self[right]
+        elif op == 'gt':
+            self[key] = self[left] > self[right]
+        elif op == 'eq':
+            self[key] = self[left] == self[right]
+        elif op == 'ne':
+            self[key] = self[left] != self[right]
         return self[key]
 
     def init_all(self):
@@ -1871,6 +1910,7 @@ class StockDataFrame(pd.DataFrame):
             ('eribull', 'eribear'): self._get_eri,
             ('rvgi', 'rvgis'): self._get_rvgi,
             ('kst',): self._get_kst,
+            ('num',): self._get_num,
         }
         for k in _dft_windows.keys():
             if k not in ret:
@@ -1886,6 +1926,8 @@ class StockDataFrame(pd.DataFrame):
             self._get_delta(key)
         elif self.is_cross_columns(key):
             self._get_cross(key)
+        elif self.is_compare_columns(key):
+            self._get_compare(key)
         else:
             ret = self.parse_column_name(key)
             if len(ret) == 3:
