@@ -1750,8 +1750,8 @@ class StockDataFrame(pd.DataFrame):
         decimal_places = 0.0
         if (len(split) > 1):
             decimal_places_str = split[1]
-            decimal_places = int(decimal_places_str) *
-                            pow(0.1, len(decimal_places_str))
+            power = pow(0.1, len(decimal_places_str))
+            decimal_places = float(decimal_places_str) * power
         self[meta.name] = meta.int0 + decimal_places
 
     def to_series(self, arr: list):
