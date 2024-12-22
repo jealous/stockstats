@@ -661,12 +661,12 @@ class StockDataFrame(pd.DataFrame):
 
             # calculate supertrend
             if last_st == last_ub:
-                if curr_close <= ub[i]:
+                if curr_close <= last_ub:
                     st[i] = ub[i]
                 else:
                     st[i] = lb[i]
             elif last_st == last_lb:
-                if curr_close > lb[i]:
+                if curr_close > last_lb:
                     st[i] = lb[i]
                 else:
                     st[i] = ub[i]
