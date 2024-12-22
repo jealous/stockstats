@@ -29,6 +29,7 @@ import os
 from unittest import TestCase
 
 import pandas as pd
+import yfinance as yf
 from hamcrest import greater_than, assert_that, equal_to, close_to, \
     contains_exactly, none, is_not, raises, has_items, instance_of, \
     not_, has_item, has_length
@@ -52,6 +53,26 @@ def near_to(value):
 
 def not_has(item):
     return not_(has_item(item))
+
+
+class YFinanceCompatibilityTest(TestCase):
+    _stock = wrap(yf.download('002032.SZ'))
+
+    def test_wrap_yfinance(self):
+        col = self._stock['close_20_dma']
+        assert_that(col.loc['2021-01-04'], near_to(0.6196))
+
+    def test_kdj_of_yfinance(self):
+        kdjk = self._stock['kdjk']
+        assert_that(kdjk.loc['2021-01-04'], near_to(69.54346))
+
+    def test_get_wr(self):
+        wr = self._stock.get('wr')
+        assert_that(wr.loc['2016-08-17'], near_to(-49.1621))
+
+    def test_get_adx(self):
+        wr = self._stock.get('adx')
+        assert_that(wr.loc['2016-08-17'], near_to(15.6078))
 
 
 class StockDataFrameTest(TestCase):
