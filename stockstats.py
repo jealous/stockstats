@@ -254,21 +254,36 @@ class StockDataFrame(pd.DataFrame):
 
     # End of options
 
+    @staticmethod
+    def _df_to_series(column):
+        # if column is data frame, retrieve the first column
+        if isinstance(column, pd.DataFrame):
+            column = column.iloc[:, 0]
+        return column
+
     @property
     def high(self) -> pd.Series:
-        return self['high']
+        return self._df_to_series(self['high'])
 
     @property
     def low(self) -> pd.Series:
-        return self['low']
+        return self._df_to_series(self['low'])
 
     @property
     def close(self) -> pd.Series:
-        return self['close']
+        return self._df_to_series(self['close'])
 
     @property
     def open(self) -> pd.Series:
-        return self['open']
+        return self._df_to_series(self['open'])
+
+    @property
+    def volume(self) -> pd.Series:
+        return self._df_to_series(self['volume'])
+
+    @property
+    def amount(self) -> pd.Series:
+        return self._df_to_series(self['amount'])
 
     def _get_change(self, meta: _Meta):
         """ Get the percentage change column
@@ -277,7 +292,7 @@ class StockDataFrame(pd.DataFrame):
 
         :return: result series
         """
-        self[meta.name] = self.roc(self['close'], meta.int)
+        self[meta.name] = self.roc(self.close, meta.int)
 
     def _get_p(self, meta: _Meta):
         """ get the permutation of specified range
@@ -390,7 +405,7 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = self.s_shift(self[meta.column], meta.int)
 
     def _get_log_ret(self, _: _Meta):
-        close = self['close']
+        close = self.close
         self['log-ret'] = np.log(close / self.s_shift(close, -1))
 
     def _get_c(self, meta: _Meta) -> pd.Series:
@@ -441,10 +456,10 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = cols.min(axis=1).values
 
     def _rsv(self, window):
-        low_min = self.mov_min(self['low'], window)
-        high_max = self.mov_max(self['high'], window)
+        low_min = self.mov_min(self.low, window)
+        high_max = self.mov_max(self.high, window)
 
-        cv = (self['close'] - low_min) / (high_max - low_min)
+        cv = (self.close - low_min) / (high_max - low_min)
         cv.fillna(0.0, inplace=True)
         return cv * 100
 
@@ -565,9 +580,9 @@ class StockDataFrame(pd.DataFrame):
         Ln - N periods low
         """
         window = meta.int
-        ln = self.mov_min(self['low'], window)
-        hn = self.mov_max(self['high'], window)
-        self[meta.name] = (hn - self['close']) / (hn - ln) * -100
+        ln = self.mov_min(self.low, window)
+        hn = self.mov_max(self.high, window)
+        self[meta.name] = (hn - self.close) / (hn - ln) * -100
 
     def _get_cci(self, meta: _Meta):
         """ Commodity Channel Index
@@ -587,8 +602,8 @@ class StockDataFrame(pd.DataFrame):
 
     def _tr(self):
         prev_close = self.s_shift(self['close'], -1)
-        high = self['high']
-        low = self['low']
+        high = self.high
+        low = self.low
         c1 = high - low
         c2 = (high - prev_close).abs()
         c3 = (low - prev_close).abs()
@@ -613,9 +628,9 @@ class StockDataFrame(pd.DataFrame):
         https://medium.com/codex/step-by-step-implementation-of-the-supertrend-indicator-in-python-656aa678c111
         """
         window = meta.int
-        high = self['high']
-        low = self['low']
-        close = self['close']
+        high = self.high
+        low = self.low
+        close = self.close
         m_atr = self.SUPERTREND_MUL * self._atr(window)
         hl_avg = (high + low) / 2.0
         # basic upper band
@@ -695,9 +710,9 @@ class StockDataFrame(pd.DataFrame):
             return (n - (n - (s + 1))) / n * 100
 
         high_since = self._rolling(
-            self['high'], window).apply(np.argmax, raw=True)
+            self.high, window).apply(np.argmax, raw=True)
         low_since = self._rolling(
-            self['low'], window).apply(np.argmin, raw=True)
+            self.low, window).apply(np.argmin, raw=True)
 
         aroon_up = _window_pct(high_since)
         aroon_down = _window_pct(low_since)
@@ -808,15 +823,15 @@ class StockDataFrame(pd.DataFrame):
         """ VR - Volume Variation Index """
         window = meta.int
         idx = self.index
-        gt_zero = np.where(self['change'] > 0, self['volume'], 0)
+        gt_zero = np.where(self['change'] > 0, self.volume, 0)
         av = pd.Series(gt_zero, index=idx)
         avs = self.mov_sum(av, window)
 
-        lt_zero = np.where(self['change'] < 0, self['volume'], 0)
+        lt_zero = np.where(self['change'] < 0, self.volume, 0)
         bv = pd.Series(lt_zero, index=idx)
         bvs = self.mov_sum(bv, window)
 
-        eq_zero = np.where(self['change'] == 0, self['volume'], 0)
+        eq_zero = np.where(self['change'] == 0, self.volume, 0)
         cv = pd.Series(eq_zero, index=idx)
         cvs = self.mov_sum(cv, window)
 
@@ -860,8 +875,8 @@ class StockDataFrame(pd.DataFrame):
         middle = self._tp()
         last_middle = self.s_shift(middle, -1)
         ym = self.s_shift(middle, -1)
-        high = self['high']
-        low = self['low']
+        high = self.high
+        low = self.low
         p1_m = pd.concat((last_middle, high), axis=1).min(axis=1)
         p2_m = pd.concat((last_middle, low), axis=1).min(axis=1)
         p1 = self.mov_sum(high - p1_m, window)
@@ -879,8 +894,8 @@ class StockDataFrame(pd.DataFrame):
 
     def _tp(self):
         if 'amount' in self:
-            return self['amount'] / self['volume']
-        return (self['close'] + self['high'] + self['low']).divide(3.0)
+            return self.amount / self.volume
+        return (self.close + self.high + self.low).divide(3.0)
 
     def _get_tp(self, meta: _Meta):
         self[meta.name] = self._tp()
@@ -1100,8 +1115,8 @@ class StockDataFrame(pd.DataFrame):
         boll = meta.name
         boll_ub = meta.name_ex('_ub')
         boll_lb = meta.name_ex('_lb')
-        moving_avg = self.sma(self['close'], n)
-        moving_std = self.mov_std(self['close'], n)
+        moving_avg = self.sma(self.close, n)
+        moving_std = self.mov_std(self.close, n)
 
         self[boll] = moving_avg
         width = self.BOLL_STD_TIMES * moving_std
@@ -1117,7 +1132,7 @@ class StockDataFrame(pd.DataFrame):
         Signal Line (macds): 9-day EMA of MACD Line
         MACD Histogram (macdh): MACD Line - Signal Line
         """
-        close = self['close']
+        close = self.close
         short_w, long_w, signal_w = meta.int0, meta.int1, meta.int2
         ema_short = self.ema(close, short_w)
         ema_long = self.ema(close, long_w)
@@ -1174,9 +1189,9 @@ class StockDataFrame(pd.DataFrame):
         return self._ppo_and_pvo('ppo', 'close', meta)
 
     def _eri(self, window):
-        ema = self.ema(self['close'], window, adjust=False)
-        bull = self['high'] - ema
-        bear = self['low'] - ema
+        ema = self.ema(self.close, window, adjust=False)
+        bull = self.high - ema
+        bear = self.low - ema
         return bull, bear
 
     def _get_eribull(self, meta: _Meta):
@@ -1219,8 +1234,8 @@ class StockDataFrame(pd.DataFrame):
         https://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:coppock_curve
         """
         window, fast, slow = meta.int0, meta.int1, meta.int2
-        fast_roc = self.roc(self['close'], fast)
-        slow_roc = self.roc(self['close'], slow)
+        fast_roc = self.roc(self.close, fast)
+        slow_roc = self.roc(self.close, slow)
         roc_ema = self.linear_wma(fast_roc + slow_roc, window)
         self[meta.name] = roc_ema
 
@@ -1235,8 +1250,8 @@ class StockDataFrame(pd.DataFrame):
         return window
 
     def _hl_mid(self, period):
-        ph = self.mov_max(self['high'], period)
-        pl = self.mov_min(self['low'], period)
+        ph = self.mov_max(self.high, period)
+        pl = self.mov_min(self.low, period)
         return (ph + pl) * 0.5
 
     def _get_ichimoku(self, meta: _Meta):
@@ -1301,9 +1316,9 @@ class StockDataFrame(pd.DataFrame):
         https://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp
         """
         window = meta.int
-        tpv = self['volume'] * self._tp()
+        tpv = self.volume * self._tp()
         rolling_tpv = self.mov_sum(tpv, window)
-        rolling_vol = self.mov_sum(self['volume'], window)
+        rolling_vol = self.mov_sum(self.volume, window)
         self[meta.name] = rolling_tpv / rolling_vol
 
     def _get_chop(self, meta: _Meta):
@@ -1324,8 +1339,8 @@ class StockDataFrame(pd.DataFrame):
         window = meta.int
         atr = self._atr(1)
         atr_sum = self.mov_sum(atr, window)
-        high = self.mov_max(self['high'], window)
-        low = self.mov_min(self['low'], window)
+        high = self.mov_max(self.high, window)
+        low = self.mov_min(self.low, window)
         choppy = atr_sum / (high - low)
         numerator = np.log10(choppy) * 100
         denominator = np.log10(window)
@@ -1368,7 +1383,7 @@ class StockDataFrame(pd.DataFrame):
         """
         fast = meta.int0
         slow = meta.int1
-        median_price = (self['high'] + self['low']) * 0.5
+        median_price = (self.high + self.low) * 0.5
         ao = self.sma(median_price, fast) - self.sma(median_price, slow)
         self[meta.name] = ao
 
@@ -1380,8 +1395,8 @@ class StockDataFrame(pd.DataFrame):
 
         BOP = (close - open) / (high - low)
         """
-        dividend = self['close'] - self['open']
-        divisor = self['high'] - self['low']
+        dividend = self.close - self.open
+        divisor = self.high - self.low
         self[meta.name] = dividend / divisor
 
     def _get_cmo(self, meta: _Meta):
@@ -1581,6 +1596,8 @@ class StockDataFrame(pd.DataFrame):
         through the Inertia Indicator. The Inertia Indicator is moment-based
         and is an extension of Dorsey’s Relative Volatility Index (RVI).
         """
+        if len(self) < window + rvgi_window:
+            return pd.Series(np.zeros(len(self)), index=self.index)
         rvgi = self._rvgi(rvgi_window)
         value = self.linear_reg(rvgi, window)
         value.iloc[:max(window, rvgi_window) + 2] = 0
@@ -1798,10 +1815,11 @@ class StockDataFrame(pd.DataFrame):
 
     def _get_rate(self, _: _Meta):
         """ same as percent """
-        self['rate'] = self['close'].pct_change() * 100
+        self['rate'] = self.close.pct_change() * 100
 
     def _col_diff(self, col):
         ret = self[col].diff()
+        ret = self._df_to_series(ret)
         ret.iloc[0] = 0.0
         return ret
 
@@ -1998,13 +2016,17 @@ class StockDataFrame(pd.DataFrame):
         if isinstance(value, StockDataFrame):
             return value
         elif isinstance(value, pd.DataFrame):
-            name = value.columns.name
-            # use all lower case for column name
-            value.columns = map(lambda c: c.lower(), value.columns)
-
+            value.rename(_lower_col_name, axis='columns', inplace=True)
             if index_column in value.columns:
                 value.set_index(index_column, inplace=True)
             ret = StockDataFrame(value)
-            ret.columns.name = name
+            # ret.columns.name = name
             return ret
         return value
+
+
+def _lower_col_name(name):
+    candidates = ('open', 'close', 'high', 'low', 'volume', 'amount')
+    if name.lower() != name and name.lower() in candidates:
+        return name.lower()
+    return name

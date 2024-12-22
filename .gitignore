@@ -10,6 +10,7 @@ dist/
 *.egg-info/
 .eggs/
 docs/_build/doctrees/
+.DS_Store
 
 # IDE related
 .idea/
