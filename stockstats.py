@@ -2016,7 +2016,7 @@ class StockDataFrame(pd.DataFrame):
         if isinstance(value, StockDataFrame):
             return value
         elif isinstance(value, pd.DataFrame):
-            value.rename(_lower_col_name, axis='columns', inplace=True)
+            value = value.rename(_lower_col_name, axis='columns')
             if index_column in value.columns:
                 value.set_index(index_column, inplace=True)
             ret = StockDataFrame(value)
