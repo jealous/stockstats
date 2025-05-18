@@ -388,7 +388,9 @@ class StockDataFrame(pd.DataFrame):
         :param window: number of periods to shift
         :return: the shifted series with filled gap
         """
-        ret = series.shift(-window)
+        if series.empty:
+            return series.copy()
+        ret = series.shift(-window).copy()
         if window < 0:
             ret.iloc[:-window] = series.iloc[0]
         elif window > 0:
@@ -426,7 +428,8 @@ class StockDataFrame(pd.DataFrame):
         :return: result series
         """
         shift = meta.int
-        reversed_series = self[meta.column][::-1]
+        series = self[meta.column]
+        reversed_series = series[::-1]
         rolled = self._rolling(reversed_series, shift)
         reversed_counts = rolled.apply(np.count_nonzero, raw=True)
         counts = reversed_counts[::-1]
@@ -2020,7 +2023,6 @@ class StockDataFrame(pd.DataFrame):
             if index_column in value.columns:
                 value.set_index(index_column, inplace=True)
             ret = StockDataFrame(value)
-            # ret.columns.name = name
             return ret
         return value
 

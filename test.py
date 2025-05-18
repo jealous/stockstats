@@ -1111,6 +1111,30 @@ class StockDataFrameTest(TestCase):
         assert_that(high_psl12[20110118], near_to(41.666))
         assert_that(high_psl12[20110127], near_to(41.666))
 
+    def test_s_shift(self):
+        stock = self.get_stock_90days()
+        close_n1 = StockDataFrame.s_shift(stock['close'], -1)
+        close_0 = StockDataFrame.s_shift(stock['close'], 0)
+        close_p1 = StockDataFrame.s_shift(stock['close'], 1)
+        assert_that(close_n1[20110104], near_to(12.61))
+        assert_that(close_n1[20110105], near_to(12.61))
+        assert_that(close_n1[20110106], near_to(12.71))
+
+        assert_that(close_0[20110106], near_to(12.67))
+        assert_that(close_0[20110330],  equal_to(13.85))
+
+        assert_that(close_p1[20110329], near_to(13.85))
+        assert_that(close_p1[20110330], near_to(13.62))
+        assert_that(close_p1[20110331], near_to(13.62))
+
+    def test_s_shift_when_df_is_empty(self):
+        stock = self.get_stock_90days()
+        empty_df = stock[:0]
+        close_n1 = StockDataFrame.s_shift(empty_df['close'], -1)
+        close_p1 = StockDataFrame.s_shift(empty_df['close'], 1)
+        assert_that(close_n1, has_length(0))
+        assert_that(close_p1, has_length(0))
+
     def test_pvo(self):
         stock = self.get_stock_90days()
         _ = stock[['pvo', 'pvos', 'pvoh']]
