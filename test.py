@@ -56,11 +56,11 @@ def not_has(item):
 
 
 class YFinanceCompatibilityTest(TestCase):
-    _stock = wrap(yf.download('002032.SZ'))
+    _stock = wrap(yf.download('002032.SZ', period='max'))
 
     def test_wrap_yfinance(self):
         col = self._stock['close_20_dma']
-        assert_that(col.loc['2021-01-04'], near_to(0.6196))
+        assert_that(col.loc['2021-01-04'], near_to(0.59002))
 
     def test_kdj_of_yfinance(self):
         kdjk = self._stock['kdjk']
