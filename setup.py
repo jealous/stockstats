@@ -74,7 +74,7 @@ setup(
     license="BSD",
     keywords="stock statistics indicator",
     url="https://github.com/jealous/stockstats",
-    py_modules=['stockstats'],
+    py_modules=['stockstats', 'stockstats_polars'],
     platforms=['any'],
     long_description=get_long_description(),
     classifiers=[
@@ -92,6 +92,9 @@ setup(
         "License :: OSI Approved :: BSD License",
     ],
     install_requires=read_requirements('requirements.txt'),
+    extras_require={
+        "polars": ["polars>=1.35.1"],
+    },
     tests_require=read_requirements('test-requirements.txt'),
     long_description_content_type='text/markdown',
 )

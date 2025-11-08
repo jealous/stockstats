@@ -27,9 +27,12 @@
 from __future__ import unicode_literals
 
 import functools
+import importlib
 import itertools
 import re
-from typing import Optional, Callable, Union
+from types import ModuleType
+from typing import (Any, Callable, Dict, Iterable, Optional, Protocol,
+                    TypeVar, Union, runtime_checkable)
 
 import numpy as np
 import pandas as pd
@@ -123,6 +126,160 @@ def dft_column(name: str) -> Optional[str]:
     if name not in _dft_column:
         return None
     return _dft_column[name]
+
+
+SeriesLike = Any
+FrameLike = Any
+BackendT = TypeVar('BackendT', bound='Backend')
+
+
+@runtime_checkable
+class Backend(Protocol):
+    """Minimal surface area the indicator layer expects from a frame backend."""
+
+    def clone(self) -> 'Backend':
+        ...
+
+    def data(self) -> FrameLike:
+        ...
+
+    def has_column(self, name: str) -> bool:
+        ...
+
+    def get_column(self, name: str) -> SeriesLike:
+        ...
+
+    def set_column(self, name: str, series: SeriesLike) -> None:
+        ...
+
+    def with_columns(self, **exprs: Any) -> 'Backend':
+        ...
+
+    def shift(self,
+              series: SeriesLike,
+              periods: int,
+              *,
+              fill_value: Optional[Any] = None) -> SeriesLike:
+        ...
+
+    def diff(self, series: SeriesLike, periods: int) -> SeriesLike:
+        ...
+
+    def pct_change(self, series: SeriesLike) -> SeriesLike:
+        ...
+
+    def sma(self, series: SeriesLike, window: int) -> SeriesLike:
+        ...
+
+    def ema(self,
+            series: SeriesLike,
+            window: int,
+            *,
+            adjust: bool = True,
+            min_periods: int = 1) -> SeriesLike:
+        ...
+
+    def rolling_min(self, series: SeriesLike, window: int) -> SeriesLike:
+        ...
+
+    def rolling_max(self, series: SeriesLike, window: int) -> SeriesLike:
+        ...
+
+    def rolling_sum(self, series: SeriesLike, window: int) -> SeriesLike:
+        ...
+
+    def rolling_std(self, series: SeriesLike, window: int) -> SeriesLike:
+        ...
+
+    def rolling_var(self, series: SeriesLike, window: int) -> SeriesLike:
+        ...
+
+    def concat_cols(self, *cols: SeriesLike) -> SeriesLike:
+        ...
+
+    def to_numpy(self, series: SeriesLike) -> np.ndarray:
+        ...
+
+    def from_numpy(self, array: np.ndarray, like: Optional[SeriesLike] = None) -> SeriesLike:
+        ...
+
+
+class PandasBackend(Backend):
+    """Backend implementation backed by a pandas.DataFrame."""
+
+    def __init__(self, df: pd.DataFrame):
+        self._df = df
+
+    def clone(self) -> 'PandasBackend':
+        return PandasBackend(self._df.copy(deep=True))
+
+    def data(self) -> pd.DataFrame:
+        return self._df
+
+    def has_column(self, name: str) -> bool:
+        return name in self._df.columns
+
+    def get_column(self, name: str) -> pd.Series:
+        return self._df[name]
+
+    def set_column(self, name: str, series: SeriesLike) -> None:
+        self._df[name] = series
+
+    def with_columns(self, **exprs: Any) -> 'PandasBackend':
+        updated = self._df.copy(deep=True)
+        for key, value in exprs.items():
+            updated[key] = value
+        return PandasBackend(updated)
+
+    def shift(self,
+              series: pd.Series,
+              periods: int,
+              *,
+              fill_value: Optional[Any] = None) -> pd.Series:
+        return series.shift(periods, fill_value=fill_value)
+
+    def diff(self, series: pd.Series, periods: int) -> pd.Series:
+        return series.diff(periods)
+
+    def pct_change(self, series: pd.Series) -> pd.Series:
+        return series.pct_change()
+
+    def sma(self, series: pd.Series, window: int) -> pd.Series:
+        return series.rolling(window, min_periods=1).mean()
+
+    def ema(self,
+            series: pd.Series,
+            window: int,
+            *,
+            adjust: bool = True,
+            min_periods: int = 1) -> pd.Series:
+        return series.ewm(span=window, adjust=adjust, min_periods=min_periods).mean()
+
+    def rolling_min(self, series: pd.Series, window: int) -> pd.Series:
+        return series.rolling(window, min_periods=1).min()
+
+    def rolling_max(self, series: pd.Series, window: int) -> pd.Series:
+        return series.rolling(window, min_periods=1).max()
+
+    def rolling_sum(self, series: pd.Series, window: int) -> pd.Series:
+        return series.rolling(window, min_periods=1).sum()
+
+    def rolling_std(self, series: pd.Series, window: int) -> pd.Series:
+        return series.rolling(window, min_periods=1).std()
+
+    def rolling_var(self, series: pd.Series, window: int) -> pd.Series:
+        return series.rolling(window, min_periods=1).var()
+
+    def concat_cols(self, *cols: pd.Series) -> pd.DataFrame:
+        return pd.concat(cols, axis=1)
+
+    def to_numpy(self, series: pd.Series) -> np.ndarray:
+        return series.to_numpy(copy=False)
+
+    def from_numpy(self, array: np.ndarray, like: Optional[pd.Series] = None) -> pd.Series:
+        if like is not None and hasattr(like, 'index'):
+            return pd.Series(array, index=like.index, name=like.name)
+        return pd.Series(array)
 
 
 class _Meta:
@@ -223,6 +380,37 @@ def _call_handler(handler: Callable):
     return handler(meta)
 
 
+_POLARS_MODULE: Optional[ModuleType] = None
+
+
+def _looks_like_polars_df(obj: Any) -> bool:
+    cls = getattr(obj, '__class__', None)
+    module = getattr(cls, '__module__', '')
+    name = getattr(cls, '__name__', '')
+    return module.startswith('polars') and name == 'DataFrame'
+
+
+def _load_polars_module(optional: bool = True) -> Optional[ModuleType]:
+    global _POLARS_MODULE
+    if _POLARS_MODULE is not None:
+        return _POLARS_MODULE
+    try:
+        module = importlib.import_module('stockstats_polars')
+    except ModuleNotFoundError:
+        if optional:
+            return None
+        raise
+    _POLARS_MODULE = module
+    return module
+
+
+def _require_polars_module() -> ModuleType:
+    module = _load_polars_module(optional=False)
+    if module is None:  # pragma: no cover - defensive guard
+        raise RuntimeError('Polars support requires the stockstats_polars package')
+    return module
+
+
 def wrap(df, index_column=None):
     """ wraps a pandas DataFrame to StockDataFrame
 
@@ -230,15 +418,30 @@ def wrap(df, index_column=None):
     :param index_column: the name of the index column, default to ``date``
     :return: an object of StockDataFrame
     """
+
+    if _looks_like_polars_df(df):
+        raise TypeError('Polars DataFrame detected. Use stockstats_polars.wrap_frame instead.')
+
     return StockDataFrame.retype(df, index_column)
+
+
+def wrap_frame(df, index_column=None):
+    """Compatibility shim that forwards to ``stockstats_polars.wrap_frame``."""
+
+    polars_mod = _require_polars_module()
+    return polars_mod.wrap_frame(df, index_column=index_column)
 
 
 def unwrap(sdf):
     """ convert a StockDataFrame back to a pandas DataFrame """
+    module_name = getattr(type(sdf), '__module__', '')
+    if module_name.startswith('stockstats_polars'):
+        polars_mod = _require_polars_module()
+        return polars_mod.unwrap(sdf)
     return pd.DataFrame(sdf)
 
 
-class StockDataFrame(pd.DataFrame):
+class StockStatsCore:
     # Start of options.
     KDJ_PARAM = (2.0 / 3.0, 1.0 / 3.0)
 
@@ -253,6 +456,31 @@ class StockDataFrame(pd.DataFrame):
     SUPERTREND_MUL = 3
 
     # End of options
+
+    _metadata = ['_backend']
+
+    def __init__(self, backend: Backend):
+        self._backend: Backend = backend
+
+    @property
+    def backend(self) -> Backend:
+        return self._backend
+
+    def to_stock_frame(self):
+        """Represent this container using the polars facade (stockstats_polars)."""
+
+        polars_mod = _require_polars_module()
+        data = self._backend.data()
+        if not isinstance(data, pd.DataFrame):
+            data = pd.DataFrame(data)
+        return polars_mod.wrap_frame(data)
+
+    # -- Hooks expected from concrete frame implementations -------------
+    def _frame_getitem(self, item):
+        raise NotImplementedError
+
+    def _frame_copy(self, deep: bool = True):
+        raise NotImplementedError
 
     @staticmethod
     def _df_to_series(column):
@@ -388,14 +616,20 @@ class StockDataFrame(pd.DataFrame):
         :param window: number of periods to shift
         :return: the shifted series with filled gap
         """
-        if series.empty:
+        if series.empty or window == 0:
             return series.copy()
-        ret = series.shift(-window).copy()
+
+        arr = series.to_numpy(copy=True)
+        size = arr.size
         if window < 0:
-            ret.iloc[:-window] = series.iloc[0]
-        elif window > 0:
-            ret.iloc[-window:] = series.iloc[-1]
-        return ret
+            step = min(-window, size)
+            arr[step:] = arr[:-step]
+            arr[:step] = arr[0]
+        else:
+            step = min(window, size)
+            arr[:-step] = arr[step:]
+            arr[-step:] = arr[-1]
+        return pd.Series(arr, index=series.index, name=series.name)
 
     def _get_s(self, meta: _Meta):
         """ Get the column shifted by periods
@@ -949,21 +1183,28 @@ class StockDataFrame(pd.DataFrame):
     def _get_d(self, meta: _Meta):
         self[meta.name] = self._delta(self[meta.column], meta.int)
 
-    @classmethod
-    def mov_min(cls, series, size):
-        return cls._rolling(series, size).min()
+    def mov_min(self, series, size):
+        return self.backend.rolling_min(series, size)
 
-    @classmethod
-    def mov_max(cls, series, size):
-        return cls._rolling(series, size).max()
+    def mov_max(self, series, size):
+        return self.backend.rolling_max(series, size)
 
-    @classmethod
-    def mov_sum(cls, series, size):
-        return cls._rolling(series, size).sum()
+    def mov_sum(self, series, size):
+        return self.backend.rolling_sum(series, size)
 
-    @classmethod
-    def sma(cls, series, size):
-        return cls._rolling(series, size).mean()
+    def sma(self, series, size):
+        return self.backend.sma(series, size)
+
+    def ema(self,
+            series,
+            window,
+            *,
+            adjust: bool = True,
+            min_periods: int = 1):
+        return self.backend.ema(series,
+                                 window,
+                                 adjust=adjust,
+                                 min_periods=min_periods)
 
     @staticmethod
     def roc(series, size):
@@ -1023,33 +1264,23 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = self.roc(self[meta.column], meta.int)
 
     @staticmethod
-    def ema(series, window, *, adjust=True, min_periods=1):
-        return series.ewm(
-            ignore_na=False,
-            span=window,
-            min_periods=min_periods,
-            adjust=adjust).mean()
-
-    @staticmethod
     def _rolling(series: pd.Series, window: int):
         return series.rolling(window, min_periods=1, center=False)
 
-    @classmethod
-    def linear_wma(cls, series, window):
+    @staticmethod
+    def linear_wma(series, window):
+        if window <= 0:
+            raise StockStatsError('window must be greater than 0')
         total_weight = 0.5 * window * (window + 1)
         weights = np.arange(1, window + 1) / total_weight
 
-        def linear(w):
-            def _compute(x):
-                try:
-                    return np.dot(x, w)
-                except ValueError:
-                    return 0.0
+        def compute(values):
+            return np.dot(values, weights)
 
-            return _compute
-
-        rolling = cls._rolling(series, window)
-        return rolling.apply(linear(weights), raw=True)
+        rolled = series.rolling(window, min_periods=window)
+        result = rolled.apply(compute, raw=True).fillna(0.0)
+        result.iloc[:window - 1] = 0.0
+        return result
 
     @classmethod
     def linear_reg(cls,
@@ -1254,8 +1485,8 @@ class StockDataFrame(pd.DataFrame):
 
     def _hl_mid(self, period):
         ph = self.mov_max(self.high, period)
-        pl = self.mov_min(self.low, period)
-        return (ph + pl) * 0.5
+        low = self.mov_min(self.low, period)
+        return (ph + low) * 0.5
 
     def _get_ichimoku(self, meta: _Meta):
         """ get Ichimoku Cloud
@@ -1296,17 +1527,15 @@ class StockDataFrame(pd.DataFrame):
         lead_b_s = lead_b.shift(base, fill_value=lead_b.iloc[0])
         self[meta.name] = lead_a_s - lead_b_s
 
-    @classmethod
-    def mov_std(cls, series, window):
-        return cls._rolling(series, window).std()
+    def mov_std(self, series, window):
+        return self.backend.rolling_std(series, window)
 
     def _get_mstd(self, meta: _Meta):
         """ get moving standard deviation """
         self[meta.name] = self.mov_std(self[meta.column], meta.int)
 
-    @classmethod
-    def mov_var(cls, series, window):
-        return cls._rolling(series, window).var()
+    def mov_var(self, series, window):
+        return self.backend.rolling_var(series, window)
 
     def _get_mvar(self, meta: _Meta):
         """ get moving variance """
@@ -1832,7 +2061,7 @@ class StockDataFrame(pd.DataFrame):
         return self[key]
 
     def _get_cross(self, key):
-        left, op, right = StockDataFrame.parse_cross_column(key)
+        left, op, right = type(self).parse_cross_column(key)
         lt_series = self[left] > self[right]
         # noinspection PyTypeChecker
         different = np.zeros_like(lt_series)
@@ -1849,7 +2078,7 @@ class StockDataFrame(pd.DataFrame):
         return self[key]
 
     def _get_compare(self, key):
-        left, op, right = StockDataFrame.parse_compare_column(key)
+        left, op, right = type(self).parse_compare_column(key)
         if op == 'le':
             self[key] = self[left] <= self[right]
         elif op == 'ge':
@@ -1971,7 +2200,7 @@ class StockDataFrame(pd.DataFrame):
 
     def __getitem__(self, item):
         try:
-            result = wrap(super(StockDataFrame, self).__getitem__(item))
+            result = wrap(self._frame_getitem(item))
         except KeyError:
             try:
                 if isinstance(item, list):
@@ -1981,7 +2210,7 @@ class StockDataFrame(pd.DataFrame):
                     self.__init_column(item)
             except AttributeError:
                 pass
-            result = wrap(super(StockDataFrame, self).__getitem__(item))
+            result = wrap(self._frame_getitem(item))
         return result
 
     def till(self, end_date):
@@ -1995,7 +2224,7 @@ class StockDataFrame(pd.DataFrame):
 
     # noinspection PyFinal
     def copy(self, deep=True):
-        return wrap(super(StockDataFrame, self).copy(deep))
+        return self._frame_copy(deep)
 
     @staticmethod
     def _ensure_type(obj):
@@ -2005,8 +2234,8 @@ class StockDataFrame(pd.DataFrame):
         """
         return obj
 
-    @staticmethod
-    def retype(value, index_column=None):
+    @classmethod
+    def retype(cls, value, index_column=None):
         """ if the input is a `DataFrame`, convert it to this class.
 
         :param index_column: name of the index column, default to `date`
@@ -2016,7 +2245,7 @@ class StockDataFrame(pd.DataFrame):
         if index_column is None:
             index_column = 'date'
 
-        if isinstance(value, StockDataFrame):
+        if isinstance(value, cls):
             return value
         elif isinstance(value, pd.DataFrame):
             value = value.rename(_lower_col_name, axis='columns')
@@ -2027,8 +2256,34 @@ class StockDataFrame(pd.DataFrame):
         return value
 
 
+class StockDataFrame(StockStatsCore, pd.DataFrame):
+    """Concrete pandas-backed dataframe that mixes in StockStatsCore logic."""
+
+    _metadata = StockStatsCore._metadata
+
+    def __init__(self, *args, **kwargs):
+        pd.DataFrame.__init__(self, *args, **kwargs)
+        StockStatsCore.__init__(self, PandasBackend(self))
+
+    # -- Hooks for StockStatsCore --------------------------------------
+    def _frame_getitem(self, item):
+        return pd.DataFrame.__getitem__(self, item)
+
+    def _frame_copy(self, deep: bool = True):
+        return wrap(pd.DataFrame.copy(self, deep=deep))
+
+
 def _lower_col_name(name):
     candidates = ('open', 'close', 'high', 'low', 'volume', 'amount')
     if name.lower() != name and name.lower() in candidates:
         return name.lower()
     return name
+
+
+def _normalize_pandas_frame(df: pd.DataFrame, index_column: str) -> pd.DataFrame:
+    """Lower-case key OHLCV columns and ensure the desired index is applied."""
+
+    renamed = df.rename(_lower_col_name, axis='columns')
+    if index_column in renamed.columns:
+        renamed = renamed.set_index(index_column)
+    return renamed

@@ -25,8 +25,10 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import unicode_literals
 
+import io
 import os
-from unittest import TestCase
+import unittest
+from unittest import TestCase, SkipTest
 
 import pandas as pd
 import yfinance as yf
@@ -37,7 +39,12 @@ from numpy import isnan
 
 import stockstats
 from stockstats import StockDataFrame as Sdf, StockDataFrame
-from stockstats import wrap, unwrap
+from stockstats import wrap, unwrap, wrap_frame
+
+try:  # pragma: no cover - optional dependency
+    import polars as pl  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    pl = None
 
 __author__ = 'Cedric Zhuang'
 
@@ -72,12 +79,63 @@ class YFinanceCompatibilityTest(TestCase):
 
     def test_get_adx(self):
         wr = self._stock.get('adx')
+        assert_that(wr, is_not(None))
         assert_that(wr.loc['2016-08-17'], near_to(15.6078))
 
 
-class StockDataFrameTest(TestCase):
-    _stock = wrap(pd.read_csv(get_file('987654.csv')))
-    _supor = Sdf.retype(pd.read_csv(get_file('002032.csv')))
+class StockDataFrameTestBase:
+    """Base class that can be subclassed per backend (pandas/polars)."""
+
+    BACKEND = 'pandas'
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+
+        if cls.BACKEND == "pandas":
+            # Load once, natively, for pandas
+            cls._stock_source = pd.read_csv(get_file("987654.csv"))
+            cls._supor_source = pd.read_csv(get_file("002032.csv"))
+
+        elif cls.BACKEND == "polars":
+            if pl is None:
+                raise unittest.SkipTest("polars is not installed")
+            # Load once, natively, for polars (no pandas -> csv -> polars dance)
+            cls._stock_source = pl.read_csv(get_file("987654.csv"))
+            cls._supor_source = pl.read_csv(get_file("002032.csv"))
+
+        else:
+            raise RuntimeError(f"Unknown BACKEND={cls.BACKEND!r}")
+
+    def setUp(self):
+        super().setUp()
+
+        if self.BACKEND == "pandas":
+            # Cheap copy is fine for tests; deep copy not usually needed
+            stock_df = self._stock_source.copy(deep=False)
+            supor_df = self._supor_source.copy(deep=False)
+            self._stock = wrap(stock_df)
+            self._supor = wrap(supor_df)
+
+        elif self.BACKEND == "polars":
+            # Polars has explicit clone(); keeps columns/laziness intact
+            stock_df = self._stock_source.clone()
+            supor_df = self._supor_source.clone()
+            self._stock = wrap_frame(stock_df)
+            self._supor = wrap_frame(supor_df)
+
+        else:
+            self.fail(f"Unknown BACKEND={self.BACKEND!r}")
+
+    # Optional: a helper if you still ever need to wrap an ad-hoc frame
+    def _wrap_df(self, df):
+        if self.BACKEND == "pandas":
+            return wrap(df)
+        if self.BACKEND == "polars":
+            if pl is None:
+                self.skipTest("polars is not installed")
+            return wrap_frame(df)
+        self.fail(f"Unknown BACKEND={self.BACKEND!r}")
 
     def get_stock_20days(self):
         return self.get_stock().within(20110101, 20110120)
@@ -89,7 +147,15 @@ class StockDataFrameTest(TestCase):
         return self.get_stock().within(20110101, 20110331)
 
     def get_stock(self):
-        return Sdf(self._stock.copy())
+        return self._wrap_df(self._source_copy(self._stock_source))
+
+    def _source_copy(self, df):
+        if self.BACKEND == "pandas":
+            return df.copy(deep=False)
+        elif self.BACKEND == "polars":
+            return df.clone()
+        else:
+            self.fail(f"Unknown BACKEND={self.BACKEND!r}")
 
     def test_delta(self):
         stock = self.get_stock()
@@ -1158,3 +1224,17 @@ class StockDataFrameTest(TestCase):
 
         assert_that(stock.loc[20110125, 'qqe_14,5'], near_to(44.603))
         assert_that(stock.loc[20110125, 'qqe_10,4'], near_to(39.431))
+
+
+class StockDataFrameTest(StockDataFrameTestBase, TestCase):
+    """Concrete test suite for the default pandas backend."""
+
+    BACKEND = 'pandas'
+
+
+if pl is not None:
+
+    class StockDataFramePolarsTest(StockDataFrameTestBase, TestCase):
+        """Placeholder for exercising the polars backend when available."""
+
+        BACKEND = 'polars'

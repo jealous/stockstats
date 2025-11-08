@@ -148,6 +148,24 @@ date
 Use `unwrap` to convert it back to a `pandas.DataFrame`.
 Note that `unwrap` won't reset the columns and the index.
 
+### Polars support
+
+`stockstats.py` remains a pandas-oriented module, and polars support now lives in
+`stockstats_polars.py`. Install the optional dependency and wrap a polars
+DataFrame like this:
+
+```python
+import polars as pl
+from stockstats_polars import wrap_frame
+
+pdf = pl.read_csv('stock.csv')
+stock = wrap_frame(pdf)  # returns PolarsStockDataFrame
+```
+
+The same indicator APIs exposed by `StockDataFrame` are available on
+`PolarsStockDataFrame`, and you can call `stock.to_polars()` or `stock.to_pandas()`
+to convert between runtimes.
+
 ### `yfinance` support
 
 When retrieving data from yfinance, the resulting DataFrame may have a multi-index. 
