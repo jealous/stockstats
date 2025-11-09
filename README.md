@@ -198,6 +198,35 @@ them: `<columnName>_<windowSize>_<statistics>`
 Examples:
 
 * 5 periods simple moving average of the high price: `high_5_sma`
+
+### Polars backend (experimental)
+
+`stockstats_polars` exposes every indicator as a first-class Polars expression
+via `pl.Expr.stockstats`. Importing the module registers the namespace:
+
+```python
+import polars as pl
+import stockstats_polars  # side-effect: registers pl.Expr.stockstats
+
+lazy = (
+    pl.read_csv("stock.csv").lazy()
+    .with_columns(
+        pl.col("close").stockstats.rsi(14, by="symbol").alias("rsi_14"),
+        pl.col("close").stockstats.macd().struct.field("macd").alias("macd"),
+        pl.col("close").stockstats.macd().struct.field("macds").alias("macds"),
+        pl.col("close").stockstats.macd().struct.field("macdh").alias("macdh"),
+        pl.col("close")
+          .stockstats.atr(14, high=pl.col("high"), low=pl.col("low"), by="symbol")
+          .alias("atr_14"),
+    )
+)
+df = lazy.collect()
+```
+
+Everything stays lazy until you call `.collect()`, so you can weave these
+indicators into the rest of your Polars query (filters, joins, group-bys, etc.).
+Multi-output indicators (e.g., MACD, Bollinger Bands, PPO/PVO) return structs—
+extract whichever fields you need with `.struct.field(...)` before aliasing.
 * 10 periods exponential moving average of the close: `close_10_ema`
 * 1 period delta of the high price: `high_-1_d`.
   The minus symbol means looking backward.

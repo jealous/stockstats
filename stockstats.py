@@ -29,7 +29,7 @@ from __future__ import unicode_literals
 import functools
 import itertools
 import re
-from typing import Optional, Callable, Union
+from typing import Optional, Callable
 
 import numpy as np
 import pandas as pd
@@ -38,91 +38,12 @@ __author__ = 'Cedric Zhuang'
 
 from numpy.lib.stride_tricks import as_strided
 
-
-class StockStatsError(Exception):
-    pass
-
-
-_dft_windows = {
-    # sort alphabetically
-    'ao': (5, 34),
-    'aroon': 25,
-    'atr': 14,
-    'boll': 20,
-    'cci': 14,
-    'change': 1,
-    'chop': 14,
-    'cmo': 14,
-    'coppock': (10, 11, 14),
-    'cr': 26,
-    'cti': 12,
-    'dma': (10, 50),
-    'eri': 13,
-    'eribear': 13,
-    'eribull': 13,
-    'ichimoku': (9, 26, 52),
-    'inertia': (20, 14),
-    'ftr': 9,
-    'kama': (10, 5, 34),  # window, fast, slow
-    'kdjd': 9,
-    'kdjj': 9,
-    'kdjk': 9,
-    'ker': 10,
-    'macd': (12, 26, 9),  # short, long, signal
-    'mfi': 14,
-    'ndi': 14,
-    'pdi': 14,
-    'pgo': 14,
-    'ppo': (12, 26, 9),  # short, long, signal
-    'pvo': (12, 26, 9),  # short, long, signal
-    'psl': 12,
-    'qqe': (14, 5),  # rsi, rsi ema
-    'rsi': 14,
-    'rsv': 9,
-    'rvgi': 14,
-    'stochrsi': 14,
-    'supertrend': 14,
-    'tema': 5,
-    'trix': 12,
-    'wr': 14,
-    'wt': (10, 21),
-    'vr': 26,
-    'vwma': 14,
-    'num': 0,
-}
-
-
-def set_dft_window(name: str, windows: Union[int, tuple[int, ...]]):
-    ret = _dft_windows.get(name)
-    _dft_windows[name] = windows
-    return ret
-
-
-_dft_column = {
-    # sort alphabetically
-    'cti': 'close',
-    'dma': 'close',
-    'kama': 'close',
-    'ker': 'close',
-    'psl': 'close',
-    'tema': 'close',
-    'trix': 'close',
-}
-
-
-def dft_windows(name: str) -> Optional[str]:
-    if name not in _dft_windows:
-        return None
-    dft = _dft_windows[name]
-    if isinstance(dft, int):
-        return str(dft)
-    return ','.join(map(str, dft))
-
-
-def dft_column(name: str) -> Optional[str]:
-    if name not in _dft_column:
-        return None
-    return _dft_column[name]
+from stockstats_model import (
+    dft_column,
+    dft_windows,
+    StockStatsError,
+    _dft_windows,
+)
 
 
 class _Meta:

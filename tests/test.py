@@ -26,24 +26,33 @@
 from __future__ import unicode_literals
 
 import os
-from unittest import TestCase
 
 import pandas as pd
+import polars as pl
+import pytest
 import yfinance as yf
+from pathlib import Path
+
 from hamcrest import greater_than, assert_that, equal_to, close_to, \
     contains_exactly, none, is_not, raises, has_items, instance_of, \
     not_, has_item, has_length
 from numpy import isnan
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in os.sys.path:
+    os.sys.path.insert(0, str(ROOT))
+
 import stockstats
 from stockstats import StockDataFrame as Sdf, StockDataFrame
 from stockstats import wrap, unwrap
+from stockstats_model import set_dft_window
+from tests.conftest import wrap_for_tests, PolarsStockFrameStub
 
 __author__ = 'Cedric Zhuang'
 
 
 def get_file(filename):
-    filename = os.path.join('test_data', filename)
+    filename = os.path.join('../test_data', filename)
     return os.path.join(os.path.split(__file__)[0], filename)
 
 
@@ -55,7 +64,34 @@ def not_has(item):
     return not_(has_item(item))
 
 
-class YFinanceCompatibilityTest(TestCase):
+def _load_stock_dataframe(filename):
+    path = get_file(filename)
+    return pd.read_csv(path)
+
+
+@pytest.fixture
+def stock_wrapped(backend):
+    if backend == "pandas":
+        return wrap(_load_stock_dataframe('987654.csv'))
+    elif backend == "polars":
+        df = pl.read_csv(get_file('987654.csv'))
+        return wrap_for_tests(PolarsStockFrameStub(df))
+    else:
+        pytest.fail("Unsupported backend: {}".format(backend))
+
+
+@pytest.fixture
+def supor_wrapped(backend):
+    if backend == "pandas":
+        return Sdf.retype(_load_stock_dataframe('002032.csv'))
+    elif backend == "polars":
+        df = pl.read_csv(get_file('002032.csv'))
+        return wrap_for_tests(PolarsStockFrameStub(df))
+    else:
+        pytest.fail("Unsupported backend: {}".format(backend))
+
+
+class YFinanceCompatibilityTest:
     _stock = wrap(yf.download('002032.SZ', period='max'))
 
     def test_wrap_yfinance(self):
@@ -75,9 +111,12 @@ class YFinanceCompatibilityTest(TestCase):
         assert_that(wr.loc['2016-08-17'], near_to(15.6078))
 
 
-class StockDataFrameTest(TestCase):
-    _stock = wrap(pd.read_csv(get_file('987654.csv')))
-    _supor = Sdf.retype(pd.read_csv(get_file('002032.csv')))
+class TestStockData:
+    @pytest.fixture(autouse=True)
+    def _bind_backend(self, backend, stock_wrapped, supor_wrapped):
+        self._backend = backend
+        self._stock = stock_wrapped
+        self._supor = supor_wrapped
 
     def get_stock_20days(self):
         return self.get_stock().within(20110101, 20110120)
@@ -89,7 +128,7 @@ class StockDataFrameTest(TestCase):
         return self.get_stock().within(20110101, 20110331)
 
     def get_stock(self):
-        return Sdf(self._stock.copy())
+        return self._stock
 
     def test_delta(self):
         stock = self.get_stock()
@@ -254,12 +293,12 @@ class StockDataFrameTest(TestCase):
         assert_that(rsv[idx], equal_to(rsv_9[idx]))
         assert_that(rsv[idx], not_(equal_to(rsv_5[idx])))
 
-        orig = stockstats.set_dft_window('rsv', 5)
+        orig = set_dft_window('rsv', 5)
         assert_that(orig, equal_to(9))
         stock.drop_column('rsv', inplace=True)
         rsv = stock['rsv']
         assert_that(rsv[idx], equal_to(rsv_5[idx]))
-        stockstats.set_dft_window('rsv', orig)
+        set_dft_window('rsv', orig)
 
     def test_column_kdj_default(self):
         stock = self.get_stock_20days()
@@ -421,9 +460,9 @@ class StockDataFrameTest(TestCase):
 
     def test_column_parse_error(self):
         stock = self.get_stock_90days()
-        with self.assertRaises(UserWarning):
+        with pytest.raises(UserWarning):
             _ = stock["foobarbaz"]
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             _ = stock["close_1_foo_3_4"]
 
     @staticmethod
@@ -1042,14 +1081,14 @@ class StockDataFrameTest(TestCase):
         i = 20110225
         assert_that(macd[i], equal_to(ref[i]))
 
-        orig = stockstats.set_dft_window('macd', (10, 20, 5))
+        orig = set_dft_window('macd', (10, 20, 5))
         assert_that(orig, contains_exactly(12, 26, 9))
         stock.drop_column(['macd', 'macdh', 'macds'], inplace=True)
         macd = stock['macd']
         ref = stock['macd_10,20,5']
         assert_that(macd[i], equal_to(ref[i]))
 
-        stockstats.set_dft_window('macd', orig)
+        set_dft_window('macd', orig)
 
     def test_inertia(self):
         stock = self.get_stock_90days()

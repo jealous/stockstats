@@ -27,10 +27,13 @@ jobs:
           pip install -r test-requirements.txt
           pip install codecov
       - name: Check Formats with flake8
-        run: flake8 stockstats.py test.py
+        run: flake8 stockstats*.py tests/*
       - name: Run Tests
         run: |
           py.test --cov=stockstats test.py
+      - name: Validate Polars stub
+        run: |
+          python scripts/update_polars_stub.py --check
       - name: Publish Test Results
         if: ${{ matrix.python-version == '3.11' }}
         run: codecov
