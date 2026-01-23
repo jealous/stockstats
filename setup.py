@@ -29,12 +29,12 @@ import io
 import re
 import os
 
-__author__ = 'Cedric Zhuang'
+__author__ = "Cedric Zhuang"
 
 
 def version():
     desc = get_long_description()
-    ret = re.findall(r'VERSION: (.*)', desc)[0]
+    ret = re.findall(r"VERSION: (.*)", desc)[0]
     return ret.strip()
 
 
@@ -46,8 +46,8 @@ def here(filename=None):
 
 
 def read(*filenames, **kwargs):
-    encoding = kwargs.get('encoding', 'utf-8')
-    sep = kwargs.get('sep', '\n\n')
+    encoding = kwargs.get("encoding", "utf-8")
+    sep = kwargs.get("sep", "\n\n")
     buf = []
     for filename in filenames:
         with io.open(here(filename), encoding=encoding) as f:
@@ -61,7 +61,7 @@ def read_requirements(filename):
 
 
 def get_long_description():
-    filename = 'README.md'
+    filename = "README.md"
     return read(filename)
 
 
@@ -74,8 +74,8 @@ setup(
     license="BSD",
     keywords="stock statistics indicator",
     url="https://github.com/jealous/stockstats",
-    py_modules=['stockstats'],
-    platforms=['any'],
+    py_modules=["stockstats"],
+    platforms=["any"],
     long_description=get_long_description(),
     classifiers=[
         "Programming Language :: Python",
@@ -91,7 +91,7 @@ setup(
         "Topic :: Utilities",
         "License :: OSI Approved :: BSD License",
     ],
-    install_requires=read_requirements('requirements.txt'),
-    tests_require=read_requirements('test-requirements.txt'),
-    long_description_content_type='text/markdown',
+    install_requires=read_requirements("requirements.txt"),
+    tests_require=read_requirements("test-requirements.txt"),
+    long_description_content_type="text/markdown",
 )

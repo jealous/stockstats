@@ -29,14 +29,13 @@ from __future__ import unicode_literals
 import functools
 import itertools
 import re
+from collections import deque
 from typing import Optional, Callable, Union
 
 import numpy as np
 import pandas as pd
 
-__author__ = 'Cedric Zhuang'
-
-from numpy.lib.stride_tricks import as_strided
+__author__ = "Cedric Zhuang"
 
 
 class StockStatsError(Exception):
@@ -45,50 +44,50 @@ class StockStatsError(Exception):
 
 _dft_windows = {
     # sort alphabetically
-    'ao': (5, 34),
-    'aroon': 25,
-    'atr': 14,
-    'boll': 20,
-    'cci': 14,
-    'change': 1,
-    'chop': 14,
-    'cmo': 14,
-    'coppock': (10, 11, 14),
-    'cr': 26,
-    'cti': 12,
-    'dma': (10, 50),
-    'eri': 13,
-    'eribear': 13,
-    'eribull': 13,
-    'ichimoku': (9, 26, 52),
-    'inertia': (20, 14),
-    'ftr': 9,
-    'kama': (10, 5, 34),  # window, fast, slow
-    'kdjd': 9,
-    'kdjj': 9,
-    'kdjk': 9,
-    'ker': 10,
-    'macd': (12, 26, 9),  # short, long, signal
-    'mfi': 14,
-    'ndi': 14,
-    'pdi': 14,
-    'pgo': 14,
-    'ppo': (12, 26, 9),  # short, long, signal
-    'pvo': (12, 26, 9),  # short, long, signal
-    'psl': 12,
-    'qqe': (14, 5),  # rsi, rsi ema
-    'rsi': 14,
-    'rsv': 9,
-    'rvgi': 14,
-    'stochrsi': 14,
-    'supertrend': 14,
-    'tema': 5,
-    'trix': 12,
-    'wr': 14,
-    'wt': (10, 21),
-    'vr': 26,
-    'vwma': 14,
-    'num': 0,
+    "ao": (5, 34),
+    "aroon": 25,
+    "atr": 14,
+    "boll": 20,
+    "cci": 14,
+    "change": 1,
+    "chop": 14,
+    "cmo": 14,
+    "coppock": (10, 11, 14),
+    "cr": 26,
+    "cti": 12,
+    "dma": (10, 50),
+    "eri": 13,
+    "eribear": 13,
+    "eribull": 13,
+    "ichimoku": (9, 26, 52),
+    "inertia": (20, 14),
+    "ftr": 9,
+    "kama": (10, 5, 34),  # window, fast, slow
+    "kdjd": 9,
+    "kdjj": 9,
+    "kdjk": 9,
+    "ker": 10,
+    "macd": (12, 26, 9),  # short, long, signal
+    "mfi": 14,
+    "ndi": 14,
+    "pdi": 14,
+    "pgo": 14,
+    "ppo": (12, 26, 9),  # short, long, signal
+    "pvo": (12, 26, 9),  # short, long, signal
+    "psl": 12,
+    "qqe": (14, 5),  # rsi, rsi ema
+    "rsi": 14,
+    "rsv": 9,
+    "rvgi": 14,
+    "stochrsi": 14,
+    "supertrend": 14,
+    "tema": 5,
+    "trix": 12,
+    "wr": 14,
+    "wt": (10, 21),
+    "vr": 26,
+    "vwma": 14,
+    "num": 0,
 }
 
 
@@ -100,13 +99,13 @@ def set_dft_window(name: str, windows: Union[int, tuple[int, ...]]):
 
 _dft_column = {
     # sort alphabetically
-    'cti': 'close',
-    'dma': 'close',
-    'kama': 'close',
-    'ker': 'close',
-    'psl': 'close',
-    'tema': 'close',
-    'trix': 'close',
+    "cti": "close",
+    "dma": "close",
+    "kama": "close",
+    "ker": "close",
+    "psl": "close",
+    "tema": "close",
+    "trix": "close",
 }
 
 
@@ -116,7 +115,7 @@ def dft_windows(name: str) -> Optional[str]:
     dft = _dft_windows[name]
     if isinstance(dft, int):
         return str(dft)
-    return ','.join(map(str, dft))
+    return ",".join(map(str, dft))
 
 
 def dft_column(name: str) -> Optional[str]:
@@ -126,11 +125,7 @@ def dft_column(name: str) -> Optional[str]:
 
 
 class _Meta:
-    def __init__(self,
-                 name,
-                 *,
-                 column=None,
-                 windows=None):
+    def __init__(self, name, *, column=None, windows=None):
         self._name = name
         self._column = column
         self._windows = windows
@@ -139,8 +134,8 @@ class _Meta:
 
     @staticmethod
     def _process_segment(windows):
-        if '~' in windows:
-            start, end = windows.split('~')
+        if "~" in windows:
+            start, end = windows.split("~")
             shifts = range(int(start), int(end) + 1)
         else:
             shifts = [int(windows)]
@@ -148,14 +143,14 @@ class _Meta:
 
     @property
     def ints(self) -> list[int]:
-        items = map(self._process_segment, self.windows.split(','))
+        items = map(self._process_segment, self.windows.split(","))
         return list(itertools.chain(*items))
 
     @property
-    def int(self) -> int:
+    def as_int(self) -> int:
         numbers = self.ints
         if len(numbers) != 1:
-            raise StockStatsError('only accept 1 number')
+            raise StockStatsError("only accept 1 number")
         return numbers[0]
 
     def _get_int(self, i):
@@ -165,7 +160,7 @@ class _Meta:
             dft_numbers = _dft_windows[self._name]
             if len(dft_numbers) > i:
                 return dft_numbers[i]
-            raise StockStatsError(f'not enough ints, need {i + 1}')
+            raise StockStatsError(f"not enough ints, need {i + 1}")
         return self.ints[i]
 
     @property
@@ -182,9 +177,9 @@ class _Meta:
 
     @property
     def positive_int(self) -> int:
-        ret = self.int
+        ret = self.as_int
         if ret <= 0:
-            raise StockStatsError('window must be greater than 0')
+            raise StockStatsError("window must be greater than 0")
         return ret
 
     @property
@@ -204,18 +199,18 @@ class _Meta:
         if self._windows is None and self._column is None:
             return self._name
         if self._column is None:
-            return f'{self._name}_{self._windows}'
-        return f'{self.column}_{self.windows}_{self._name}'
+            return f"{self._name}_{self._windows}"
+        return f"{self.column}_{self.windows}_{self._name}"
 
     def set_name(self, name: str):
         self._name = name
         return self
 
     def name_ex(self, ex):
-        ret = f'{self._name}{ex}'
+        ret = f"{self._name}{ex}"
         if self._windows is None:
             return ret
-        return f'{ret}_{self.windows}'
+        return f"{ret}_{self.windows}"
 
 
 def _call_handler(handler: Callable):
@@ -224,7 +219,7 @@ def _call_handler(handler: Callable):
 
 
 def wrap(df, index_column=None):
-    """ wraps a pandas DataFrame to StockDataFrame
+    """wraps a pandas DataFrame to StockDataFrame
 
     :param df: pandas DataFrame
     :param index_column: the name of the index column, default to ``date``
@@ -234,7 +229,7 @@ def wrap(df, index_column=None):
 
 
 def unwrap(sdf):
-    """ convert a StockDataFrame back to a pandas DataFrame """
+    """convert a StockDataFrame back to a pandas DataFrame"""
     return pd.DataFrame(sdf)
 
 
@@ -258,44 +253,47 @@ class StockDataFrame(pd.DataFrame):
     def _df_to_series(column):
         # if column is data frame, retrieve the first column
         if isinstance(column, pd.DataFrame):
+            num_col = column.shape[1]
+            if num_col != 1:
+                raise ValueError(f"Expected a single column, got {num_col}")
             column = column.iloc[:, 0]
         return column
 
     @property
     def high(self) -> pd.Series:
-        return self._df_to_series(self['high'])
+        return self._df_to_series(self["high"])
 
     @property
     def low(self) -> pd.Series:
-        return self._df_to_series(self['low'])
+        return self._df_to_series(self["low"])
 
     @property
     def close(self) -> pd.Series:
-        return self._df_to_series(self['close'])
+        return self._df_to_series(self["close"])
 
     @property
     def open(self) -> pd.Series:
-        return self._df_to_series(self['open'])
+        return self._df_to_series(self["open"])
 
     @property
     def volume(self) -> pd.Series:
-        return self._df_to_series(self['volume'])
+        return self._df_to_series(self["volume"])
 
     @property
     def amount(self) -> pd.Series:
-        return self._df_to_series(self['amount'])
+        return self._df_to_series(self["amount"])
 
     def _get_change(self, meta: _Meta):
-        """ Get the percentage change column
+        """Get the percentage change column
 
         It's an alias for ROC
 
         :return: result series
         """
-        self[meta.name] = self.roc(self.close, meta.int)
+        self[meta.name] = self.roc(self.close, meta.as_int)
 
     def _get_p(self, meta: _Meta):
-        """ get the permutation of specified range
+        """get the permutation of specified range
 
         example:
         index    x   x_-2,-1_p
@@ -325,7 +323,7 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def to_ints(cls, shifts):
-        items = map(cls._process_shifts_segment, shifts.split(','))
+        items = map(cls._process_shifts_segment, shifts.split(","))
         return sorted(list(set(itertools.chain(*items))))
 
     @classmethod
@@ -337,8 +335,8 @@ class StockDataFrame(pd.DataFrame):
 
     @staticmethod
     def _process_shifts_segment(shift_segment):
-        if '~' in shift_segment:
-            start, end = shift_segment.split('~')
+        if "~" in shift_segment:
+            start, end = shift_segment.split("~")
             shifts = range(int(start), int(end) + 1)
         else:
             shifts = [int(shift_segment)]
@@ -365,18 +363,31 @@ class StockDataFrame(pd.DataFrame):
             pd_obj.iloc[:-shift] = val
 
     def _get_r(self, meta: _Meta):
-        """ Get rate of change of column
+        """Get rate of change of column
 
         Note this function is different to the roc function.
         negative values meaning data in the past,
         positive values meaning data in the future.
         """
-        shift = -meta.int
+        shift = -meta.as_int
         self[meta.name] = self.roc(self[meta.column], shift)
 
     @staticmethod
-    def s_shift(series: pd.Series, window: int):
-        """ Shift the series
+    def _shift_arr(arr: np.ndarray, window: int) -> np.ndarray:
+        out = np.empty_like(arr)
+        if window < 0:
+            k = -window
+            out[:k] = arr[0]
+            out[k:] = arr[:-k]
+        else:
+            k = window
+            out[:-k] = arr[k:]
+            out[-k:] = arr[-1]
+        return out
+
+    @classmethod
+    def s_shift(cls, series: pd.Series, window: int):
+        """Shift the series
 
         When window is negative, shift the past period to current.
         Fill the gap with the first data available.
@@ -388,56 +399,68 @@ class StockDataFrame(pd.DataFrame):
         :param window: number of periods to shift
         :return: the shifted series with filled gap
         """
-        if series.empty:
+        if series.empty or window == 0:
             return series.copy()
-        ret = series.shift(-window).copy()
-        if window < 0:
-            ret.iloc[:-window] = series.iloc[0]
-        elif window > 0:
-            ret.iloc[-window:] = series.iloc[-1]
-        return ret
+
+        out = cls._shift_arr(series.values, window)
+        return pd.Series(out, index=series.index, name=series.name)
 
     def _get_s(self, meta: _Meta):
-        """ Get the column shifted by periods
+        """Get the column shifted by periods
 
         Note this method is different to the shift method of pandas.
         negative values meaning data in the past,
         positive values meaning data in the future.
         """
-        self[meta.name] = self.s_shift(self[meta.column], meta.int)
+        self[meta.name] = self.s_shift(self[meta.column], meta.as_int)
 
     def _get_log_ret(self, _: _Meta):
         close = self.close
-        self['log-ret'] = np.log(close / self.s_shift(close, -1))
+        self["log-ret"] = np.log(close / self.s_shift(close, -1))
+
+    @staticmethod
+    def _rolling_sum(arr, window):
+        """Compute rolling sum with min_periods=1 using numpy."""
+        n = len(arr)
+        out = np.zeros(n, dtype=float)
+        # Use cumsum for efficient rolling sum
+        cumsum = np.cumsum(arr)
+        # For positions >= window, subtract cumsum[i-window] from cumsum[i]
+        out[window:] = cumsum[window:] - cumsum[:-window]
+        # For positions < window, just use cumsum (partial window)
+        out[:window] = cumsum[:window]
+        return out
 
     def _get_c(self, meta: _Meta) -> pd.Series:
-        """ get the count of column in range (shifts)
+        """get the count of column in range (shifts)
 
         example: change_20_c
         :return: result series
         """
-        rolled = self._rolling(self[meta.column], meta.int)
-        counts = rolled.apply(np.count_nonzero, raw=True)
+        series = self[meta.column]
+        window = meta.as_int
+        arr = series.values.astype(bool).astype(float)
+        counts = pd.Series(self._rolling_sum(arr, window), index=series.index)
         self[meta.name] = counts
         return counts
 
     def _get_fc(self, meta: _Meta) -> pd.Series:
-        """ get the count of column in range of future (shifts)
+        """get the count of column in range of future (shifts)
 
         example: change_20_fc
         :return: result series
         """
-        shift = meta.int
         series = self[meta.column]
-        reversed_series = series[::-1]
-        rolled = self._rolling(reversed_series, shift)
-        reversed_counts = rolled.apply(np.count_nonzero, raw=True)
-        counts = reversed_counts[::-1]
+        window = meta.as_int
+        arr = series.values.astype(bool).astype(float)
+        # Reverse, count, then reverse back
+        arr_rev = arr[::-1]
+        out_rev = self._rolling_sum(arr_rev, window)
+        counts = pd.Series(out_rev[::-1].copy(), index=series.index)
         self[meta.name] = counts
         return counts
 
-    def _shifted_columns(self,
-                         column: pd.Series,
+    def _shifted_columns(self, column: pd.Series,
                          shifts: list[int]) -> pd.DataFrame:
         # initialize the column if not
         col = self.get(column)
@@ -458,49 +481,70 @@ class StockDataFrame(pd.DataFrame):
         cols = self._shifted_columns(column, shifts)
         self[meta.name] = cols.min(axis=1).values
 
-    def _rsv(self, window):
-        low_min = self.mov_min(self.low, window)
-        high_max = self.mov_max(self.high, window)
+    @staticmethod
+    def _divide(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        out = np.zeros_like(a, dtype=float)
+        if out.size == 0:
+            return out
+        np.divide(a, b, out=out, where=b != 0)
 
-        cv = (self.close - low_min) / (high_max - low_min)
-        cv.fillna(0.0, inplace=True)
-        return cv * 100
+        # handle nan / inf in one pass
+        np.nan_to_num(out, copy=False)
+        return out
+
+    def _rsv(self, window):
+        low_min = self.mov_min(self.low, window).values
+        high_max = self.mov_max(self.high, window).values
+        close = self.close.values
+        cv = self._divide(close - low_min, high_max - low_min) * 100
+        return self.to_series(cv)
 
     def _get_rsv(self, meta: _Meta):
-        """ Calculate the RSV (Raw Stochastic Value) within N periods
+        """Calculate the RSV (Raw Stochastic Value) within N periods
 
         This value is essential for calculating KDJs
         Current day is included in N
 
         """
-        self[meta.name] = self._rsv(meta.int)
+        self[meta.name] = self._rsv(meta.as_int)
+
+    @staticmethod
+    def _np_diff(arr: np.ndarray) -> np.ndarray:
+        diff = np.zeros_like(arr)
+        diff[1:] = np.diff(arr)
+        return diff
 
     def _rsi(self, window) -> pd.Series:
-        change = self.close.diff()
-        change.iloc[0] = 0
-        close_pm = (change + change.abs()) / 2
-        close_nm = (-change + change.abs()) / 2
-        p_ema = self.smma(close_pm, window)
-        n_ema = self.smma(close_nm, window)
+        close = self.close.values
+        diff = self._np_diff(close)
 
-        rs = p_ema / n_ema
-        return 100 - 100 / (1.0 + rs)
+        up = np.where(diff > 0, diff, 0.0)
+        down = np.where(diff < 0, -diff, 0.0)
+        up_sma = self.smma(pd.Series(up), window).values
+        down_sma = self.smma(pd.Series(down), window).values
+
+        total_chg = up_sma + down_sma
+        with np.errstate(divide="ignore", invalid="ignore"):
+            rsi = np.where(total_chg != 0, 100 * (up_sma / total_chg), 50.0)
+
+        rsi[0] = 50.0
+        return self.to_series(rsi)
 
     def _get_rsi(self, meta: _Meta):
-        """ Calculate the RSI (Relative Strength Index) within N periods
+        """Calculate the RSI (Relative Strength Index) within N periods
 
         calculated based on the formula at:
         https://en.wikipedia.org/wiki/Relative_strength_index
         """
-        self[meta.name] = self._rsi(meta.int)
+        self[meta.name] = self._rsi(meta.as_int)
 
     def _get_stochrsi(self, meta: _Meta):
-        """ Calculate the Stochastic RSI
+        """Calculate the Stochastic RSI
 
         calculated based on the formula at:
         https://www.investopedia.com/terms/s/stochrsi.asp
         """
-        window = meta.int
+        window = meta.as_int
         rsi = self._rsi(window)
         rsi_min = self.mov_min(rsi, window)
         rsi_max = self.mov_max(rsi, window)
@@ -509,7 +553,7 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = cv * 100
 
     def _wt1(self, n1: int, n2: int) -> pd.Series:
-        """ wave trand 1
+        """wave trand 1
 
         n1: period of EMA on typical price
         n2: period of EMA
@@ -528,53 +572,55 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = self.sma(wt1, 4)
 
     def _get_wt(self, meta: _Meta):
-        """ Calculate LazyBear's Wavetrend
+        """Calculate LazyBear's Wavetrend
+
         Check the algorithm described below:
         https://medium.com/@samuel.mcculloch/lets-take-a-look-at-wavetrend-with-crosses-lazybear-s-indicator-2ece1737f72f
         """
         tci = self._wt1(meta.int0, meta.int1)
-        self[meta.name_ex('1')] = tci
-        self[meta.name_ex('2')] = self.sma(tci, 4)
+        self[meta.name_ex("1")] = tci
+        self[meta.name_ex("2")] = self.sma(tci, 4)
 
     @staticmethod
     def smma(series, window):
         return series.ewm(
-            ignore_na=False,
-            alpha=1.0 / window,
-            min_periods=0,
-            adjust=True).mean()
+            ignore_na=False, alpha=1.0 / window, min_periods=0, adjust=True
+        ).mean()
 
     def _get_smma(self, meta: _Meta):
-        """ get smoothed moving average """
-        self[meta.name] = self.smma(self[meta.column], meta.int)
+        """get smoothed moving average"""
+        self[meta.name] = self.smma(self[meta.column], meta.as_int)
 
     def _get_trix(self, meta: _Meta):
-        """ Triple Exponential Average
+        """Triple Exponential Average
 
         https://www.investopedia.com/articles/technical/02/092402.asp
         """
-        window = meta.int
+        window = meta.as_int
         single = self.ema(self[meta.column], window)
         double = self.ema(single, window)
         triple = self.ema(double, window)
-        prev_triple = self.s_shift(triple, -1)
-        triple_change = self._delta(triple, -1)
-        self[meta.name] = triple_change * 100 / prev_triple
+
+        triple_values = triple.values
+        trix = np.zeros_like(triple_values)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            trix[1:] = (triple_values[1:] / triple_values[:-1] - 1) * 100
+        self[meta.name] = self.to_series(trix)
 
     def _get_tema(self, meta: _Meta):
-        """ Another implementation for triple ema
+        """Another implementation for triple ema
 
         Check the algorithm described below:
         https://www.forextraders.com/forex-education/forex-technical-analysis/triple-exponential-moving-average-the-tema-indicator/
         """
-        window = meta.int
+        window = meta.as_int
         single = self.ema(self[meta.column], window)
         double = self.ema(single, window)
         triple = self.ema(double, window)
         self[meta.name] = 3.0 * single - 3.0 * double + triple
 
     def _get_wr(self, meta: _Meta):
-        """ Williams Overbought/Oversold Index
+        """Williams Overbought/Oversold Index
 
         Definition: https://www.investopedia.com/terms/w/williamsr.asp
         WMS=[(Hn—Ct)/(Hn—Ln)] × -100
@@ -582,13 +628,13 @@ class StockDataFrame(pd.DataFrame):
         Hn - N periods high
         Ln - N periods low
         """
-        window = meta.int
+        window = meta.as_int
         ln = self.mov_min(self.low, window)
         hn = self.mov_max(self.high, window)
         self[meta.name] = (hn - self.close) / (hn - ln) * -100
 
     def _get_cci(self, meta: _Meta):
-        """ Commodity Channel Index
+        """Commodity Channel Index
 
         CCI = (Typical Price  -  20-period SMA of TP) / (.015 x Mean Deviation)
         * when amount is not available:
@@ -597,23 +643,25 @@ class StockDataFrame(pd.DataFrame):
           Typical Price (TP) = Amount / Volume
         TP is also implemented as 'middle'.
         """
-        window = meta.int
+        window = meta.as_int
         tp = self._tp()
         tp_sma = self.sma(tp, window)
         mad = self._mad(tp, window)
-        self[meta.name] = (tp - tp_sma) / (.015 * mad)
+        self[meta.name] = (tp - tp_sma) / (0.015 * mad)
 
     def _tr(self):
-        prev_close = self.s_shift(self['close'], -1)
-        high = self.high
-        low = self.low
+        prev_close = self._shift_arr(self.close.values, -1)
+        high = self.high.values
+        low = self.low.values
         c1 = high - low
-        c2 = (high - prev_close).abs()
-        c3 = (low - prev_close).abs()
-        return pd.concat((c1, c2, c3), axis=1).max(axis=1)
+        c2 = np.abs(high - prev_close)
+        c3 = np.abs(low - prev_close)
+        tr = np.maximum(c1, np.maximum(c2, c3))
+        np.nan_to_num(tr, copy=False)
+        return self.to_series(tr)
 
     def _get_tr(self, meta: _Meta):
-        """ True Range of the trading
+        """True Range of the trading
 
          TR is a measure of volatility of a High-Low-Close series
 
@@ -624,77 +672,89 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = self._tr()
 
     def _get_supertrend(self, meta: _Meta):
-        """ Supertrend
+        """Supertrend
 
         Supertrend indicator shows trend direction.
         It provides buy or sell indicators.
         https://medium.com/codex/step-by-step-implementation-of-the-supertrend-indicator-in-python-656aa678c111
         """
-        window = meta.int
-        high = self.high
-        low = self.low
-        close = self.close
-        m_atr = self.SUPERTREND_MUL * self._atr(window)
-        hl_avg = (high + low) / 2.0
-        # basic upper band
-        b_ub = list(hl_avg + m_atr)
-        # basic lower band
-        b_lb = list(hl_avg - m_atr)
+        # 1. Vectorized Calculation of Basic Bands
+        high = self["high"].values
+        low = self["low"].values
+        close = self["close"].values
+        multiplier = self.SUPERTREND_MUL
+        window = meta.as_int
 
-        size = len(close)
-        ub = np.empty(size, dtype=np.float64)
-        lb = np.empty(size, dtype=np.float64)
-        st = np.empty(size, dtype=np.float64)
-        close = list(close)
+        # Calculate ATR (Assuming get_atr is already optimized/vectorized)
+        atr = self._atr(window).values
 
-        for i in range(size):
-            if i == 0:
-                ub[i] = b_ub[i]
-                lb[i] = b_lb[i]
-                if close[i] <= ub[i]:
-                    st[i] = ub[i]
-                else:
-                    st[i] = lb[i]
-                continue
+        hl2 = (high + low) / 2
+        basic_ub = hl2 + (multiplier * atr)
+        basic_lb = hl2 - (multiplier * atr)
 
-            last_close = close[i - 1]
-            curr_close = close[i]
-            last_ub = ub[i - 1]
-            last_lb = lb[i - 1]
-            last_st = st[i - 1]
-            curr_b_ub = b_ub[i]
-            curr_b_lb = b_lb[i]
+        # 2. Initialize recursive arrays
+        final_ub = np.zeros_like(basic_ub)
+        final_lb = np.zeros_like(basic_lb)
+        supertrend = np.zeros_like(basic_ub)
+        direction = np.zeros_like(basic_ub)  # 1 for Up, -1 for Down
 
-            # calculate current upper band
-            if curr_b_ub < last_ub or last_close > last_ub:
-                ub[i] = curr_b_ub
+        # 3. The Recursive Loop (Optimized by using raw NumPy arrays)
+        # Faster than .apply() because it avoids Pandas overhead per row.
+        for i in range(1, len(close)):
+            # Final Upper Band Logic
+            if basic_ub[i] < final_ub[i - 1] or close[i - 1] > final_ub[i - 1]:
+                final_ub[i] = basic_ub[i]
             else:
-                ub[i] = last_ub
+                final_ub[i] = final_ub[i - 1]
 
-            # calculate current lower band
-            if curr_b_lb > last_lb or last_close < last_lb:
-                lb[i] = curr_b_lb
+            # Final Lower Band Logic
+            if basic_lb[i] > final_lb[i - 1] or close[i - 1] < final_lb[i - 1]:
+                final_lb[i] = basic_lb[i]
             else:
-                lb[i] = last_lb
+                final_lb[i] = final_lb[i - 1]
 
-            # calculate supertrend
-            if last_st == last_ub:
-                if curr_close <= last_ub:
-                    st[i] = ub[i]
-                else:
-                    st[i] = lb[i]
-            elif last_st == last_lb:
-                if curr_close > last_lb:
-                    st[i] = lb[i]
-                else:
-                    st[i] = ub[i]
+            # Determine Trend Direction
+            if close[i] > final_ub[i]:
+                direction[i] = 1
+            elif close[i] < final_lb[i]:
+                direction[i] = -1
+            else:
+                direction[i] = direction[i - 1]
 
-        self[f'{meta.name}_ub'] = ub
-        self[f'{meta.name}_lb'] = lb
-        self[f'{meta.name}'] = st
+            # Set Supertrend value
+            supertrend[i] = final_lb[i] if direction[i] == 1 else final_ub[i]
+
+        self["supertrend"] = supertrend
+        self[f"{meta.name}_ub"] = final_ub
+        self[f"{meta.name}_lb"] = final_lb
+
+    @staticmethod
+    def _rolling_arg_index(arr, window, mode="max"):
+        n = len(arr)
+        out = np.full(n, np.nan, dtype=float)
+        dq = deque()
+
+        for i in range(n):
+            # Remove old indices
+            while dq and dq[0] <= i - window:
+                dq.popleft()
+
+            # Remove smaller/larger elements depending on mode
+            while dq and (
+                (mode == "max" and arr[dq[-1]] <= arr[i])
+                or (mode == "min" and arr[dq[-1]] >= arr[i])
+            ):
+                dq.pop()
+
+            dq.append(i)
+
+            if i >= window - 1:
+                out[i] = i - dq[0]  # periods since high/low
+
+        return out
 
     def _get_aroon(self, meta: _Meta):
-        """ Aroon Oscillator
+        """Aroon Oscillator
 
         The Aroon Oscillator measures the strength of a trend and
         the likelihood that it will continue.
@@ -706,23 +766,23 @@ class StockDataFrame(pd.DataFrame):
         * Aroon Down = 100 * (n - periods since n-period low) / n
         * n = window size
         """
-        window = meta.int
 
-        def _window_pct(s):
-            n = float(window)
-            return (n - (n - (s + 1))) / n * 100
+        window = meta.as_int
+        high_arr = self.high.values
+        low_arr = self.low.values
 
-        high_since = self._rolling(
-            self.high, window).apply(np.argmax, raw=True)
-        low_since = self._rolling(
-            self.low, window).apply(np.argmin, raw=True)
+        # periods since last high / low in window
+        high_idx = self._rolling_arg_index(high_arr, window, mode="max")
+        low_idx = self._rolling_arg_index(low_arr, window, mode="min")
 
-        aroon_up = _window_pct(high_since)
-        aroon_down = _window_pct(low_since)
-        self[meta.name] = aroon_up - aroon_down
+        # Compute Aroon Up / Down
+        aroon_up = (window - high_idx) / window * 100
+        aroon_down = (window - low_idx) / window * 100
+
+        self[meta.name] = pd.Series(aroon_up - aroon_down, index=self.index)
 
     def _get_z(self, meta: _Meta):
-        """ Z score
+        """Z score
 
         Z-score is a statistical measurement that describes a value's
         relationship to the mean of a group of values.
@@ -739,7 +799,7 @@ class StockDataFrame(pd.DataFrame):
         * μ = the mean
         * σ = the standard deviation
         """
-        window = meta.int
+        window = meta.as_int
         col = self[meta.column]
         mean = self.sma(col, window)
         std = self.mov_std(col, window)
@@ -753,17 +813,17 @@ class StockDataFrame(pd.DataFrame):
         return self.smma(tr, window)
 
     def _get_atr(self, meta: _Meta):
-        """ Average True Range
+        """Average True Range
 
         The average true range is an N-day smoothed moving average (SMMA) of
         the true range values.  Default to 14 periods.
         https://en.wikipedia.org/wiki/Average_true_range
         """
-        window = meta.int
+        window = meta.as_int
         self[meta.name] = self._atr(window)
 
     def _get_dma(self, meta: _Meta):
-        """ Difference of Moving Average
+        """Difference of Moving Average
 
         default to 10 and 50.
 
@@ -776,7 +836,7 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = diff
 
     def _get_dmi(self, _: _Meta):
-        """ get the default setting for DMI
+        """get the default setting for DMI
 
         including:
         +DI: 14 periods SMMA of +DM,
@@ -786,18 +846,23 @@ class StockDataFrame(pd.DataFrame):
 
         :return:
         """
-        self['dx'] = self._dx(self.DX_SMMA)
-        self['adx'] = self.ema(self['dx'], self.ADX_EMA)
-        self['adxr'] = self.ema(self['adx'], self.ADXR_EMA)
+        self["dx"] = self._dx(self.DX_SMMA)
+        self["adx"] = self.ema(self["dx"], self.ADX_EMA)
+        self["adxr"] = self.ema(self["adx"], self.ADXR_EMA)
 
     def _get_pdm_ndm(self, window):
-        hd = self._col_diff('high')
-        ld = -self._col_diff('low')
-        p = ((hd > 0) & (hd > ld)) * hd
-        n = ((ld > 0) & (ld > hd)) * ld
+        hd = self._np_diff(self.high.values)
+        ld = -self._np_diff(self.low.values)
+
+        p = np.where((hd > 0) & (hd > ld), hd, 0.0)
+        n = np.where((ld > 0) & (ld > hd), ld, 0.0)
+
         if window > 1:
-            p = self.smma(p, window)
-            n = self.smma(n, window)
+            p = self.smma(self.to_series(p), window)
+            n = self.smma(self.to_series(n), window)
+        else:
+            p = self.to_series(p)
+            n = self.to_series(n)
         return p, n
 
     def _pdm(self, window):
@@ -809,36 +874,36 @@ class StockDataFrame(pd.DataFrame):
         return ret
 
     def _get_pdm(self, meta: _Meta):
-        """ +DM, positive directional moving
+        """+DM, positive directional moving
 
         If window is not 1, calculate the SMMA of +DM
         """
-        self[meta.name] = self._pdm(meta.int)
+        self[meta.name] = self._pdm(meta.as_int)
 
     def _get_ndm(self, meta: _Meta):
-        """ -DM, negative directional moving accumulation
+        """-DM, negative directional moving accumulation
 
         If window is not 1, return the SMA of -DM.
         """
-        self[meta.name] = self._ndm(meta.int)
+        self[meta.name] = self._ndm(meta.as_int)
 
     def _get_vr(self, meta: _Meta):
-        """ VR - Volume Variation Index """
-        window = meta.int
-        idx = self.index
-        gt_zero = np.where(self['change'] > 0, self.volume, 0)
-        av = pd.Series(gt_zero, index=idx)
-        avs = self.mov_sum(av, window)
+        """VR - Volume Variation Index"""
+        window = meta.as_int
+        change = self["change"].values
+        volume = self.volume.values
 
-        lt_zero = np.where(self['change'] < 0, self.volume, 0)
-        bv = pd.Series(lt_zero, index=idx)
-        bvs = self.mov_sum(bv, window)
+        gt_zero = np.where(change > 0, volume, 0.0)
+        lt_zero = np.where(change < 0, volume, 0.0)
+        eq_zero = np.where(change == 0, volume, 0.0)
 
-        eq_zero = np.where(self['change'] == 0, self.volume, 0)
-        cv = pd.Series(eq_zero, index=idx)
-        cvs = self.mov_sum(cv, window)
+        avs = self._rolling_sum(gt_zero, window)
+        bvs = self._rolling_sum(lt_zero, window)
+        cvs = self._rolling_sum(eq_zero, window)
 
-        self[meta.name] = (avs + cvs / 2) / (bvs + cvs / 2) * 100
+        half_cvs = cvs * 0.5
+        vr = (avs + half_cvs) / (bvs + half_cvs) * 100
+        self[meta.name] = pd.Series(vr, index=self.index)
 
     def _get_pdi_ndi(self, window):
         pdm, ndm = self._get_pdm_ndm(window)
@@ -848,14 +913,14 @@ class StockDataFrame(pd.DataFrame):
         return pdi, ndi
 
     def _get_pdi(self, meta: _Meta):
-        """ +DI, positive directional moving index """
-        pdi, _ = self._get_pdi_ndi(meta.int)
+        """+DI, positive directional moving index"""
+        pdi, _ = self._get_pdi_ndi(meta.as_int)
         self[meta.name] = pdi
         return pdi
 
     def _get_ndi(self, meta: _Meta):
-        """ -DI, negative directional moving index """
-        _, ndi = self._get_pdi_ndi(meta.int)
+        """-DI, negative directional moving index"""
+        _, ndi = self._get_pdi_ndi(meta.as_int)
         self[meta.name] = ndi
         return ndi
 
@@ -864,17 +929,17 @@ class StockDataFrame(pd.DataFrame):
         return abs(pdi - mdi) / (pdi + mdi) * 100
 
     def _get_dx(self, meta: _Meta):
-        self[meta.name] = self._dx(meta.int)
+        self[meta.name] = self._dx(meta.as_int)
 
     def _get_cr(self, meta: _Meta):
-        """ Energy Index (Intermediate Willingness Index)
+        """Energy Index (Intermediate Willingness Index)
 
         https://support.futunn.com/en/topic167/?lang=en-us
         Use the relationship between the highest price, the lowest price and
         yesterday's middle price to reflect the market's willingness to buy
         and sell.
         """
-        window = meta.int
+        window = meta.as_int
         middle = self._tp()
         last_middle = self.s_shift(middle, -1)
         ym = self.s_shift(middle, -1)
@@ -887,18 +952,19 @@ class StockDataFrame(pd.DataFrame):
 
         name = meta.name
         self[name] = cr = p1 / p2 * 100
-        self[f'{name}-ma1'] = self._shifted_cr_sma(cr, self.CR_MA[0])
-        self[f'{name}-ma2'] = self._shifted_cr_sma(cr, self.CR_MA[1])
-        self[f'{name}-ma3'] = self._shifted_cr_sma(cr, self.CR_MA[2])
+        self[f"{name}-ma1"] = self._shifted_cr_sma(cr, self.CR_MA[0])
+        self[f"{name}-ma2"] = self._shifted_cr_sma(cr, self.CR_MA[1])
+        self[f"{name}-ma3"] = self._shifted_cr_sma(cr, self.CR_MA[2])
 
     def _shifted_cr_sma(self, cr, window):
         cr_sma = self.sma(cr, window)
         return self.s_shift(cr_sma, -int(window / 2.5 + 1))
 
     def _tp(self):
-        if 'amount' in self:
-            return self.amount / self.volume
-        return (self.close + self.high + self.low).divide(3.0)
+        if "amount" in self:
+            return self.amount.values / self.volume.values
+        total = self.close.values + self.high.values + self.low.values
+        return self.to_series(total / 3.0)
 
     def _get_tp(self, meta: _Meta):
         self[meta.name] = self._tp()
@@ -915,31 +981,31 @@ class StockDataFrame(pd.DataFrame):
             yield k
 
     def _get_kdjk(self, meta: _Meta):
-        """ Get the K of KDJ
+        """Get the K of KDJ
 
         K ＝ 2/3 × (prev. K) +1/3 × (curr. RSV)
         2/3 and 1/3 are the smooth parameters.
         """
-        window = meta.int
+        window = meta.as_int
         rsv = self._rsv(window)
         self[meta.name] = list(self._calc_kd(rsv))
 
     def _get_kdjd(self, meta: _Meta):
-        """ Get the D of KDJ
+        """Get the D of KDJ
 
         D = 2/3 × (prev. D) +1/3 × (curr. K)
         2/3 and 1/3 are the smooth parameters.
         """
-        k_column = meta.name.replace('kdjd', 'kdjk')
+        k_column = meta.name.replace("kdjd", "kdjk")
         self[meta.name] = list(self._calc_kd(self.get(k_column)))
 
     def _get_kdjj(self, meta: _Meta):
-        """ Get the J of KDJ
+        """Get the J of KDJ
 
         J = 3K-2D
         """
-        k_column = meta.name.replace('kdjj', 'kdjk')
-        d_column = meta.name.replace('kdjj', 'kdjd')
+        k_column = meta.name.replace("kdjj", "kdjk")
+        d_column = meta.name.replace("kdjj", "kdjd")
         self[meta.name] = 3 * self[k_column] - 2 * self[d_column]
 
     @staticmethod
@@ -947,60 +1013,80 @@ class StockDataFrame(pd.DataFrame):
         return series.diff(-window).fillna(0.0)
 
     def _get_d(self, meta: _Meta):
-        self[meta.name] = self._delta(self[meta.column], meta.int)
+        self[meta.name] = self._delta(self[meta.column], meta.as_int)
 
     @classmethod
-    def mov_min(cls, series, size):
+    def mov_min(cls, series, size) -> pd.Series:
         return cls._rolling(series, size).min()
 
     @classmethod
-    def mov_max(cls, series, size):
+    def mov_max(cls, series, size) -> pd.Series:
         return cls._rolling(series, size).max()
 
     @classmethod
-    def mov_sum(cls, series, size):
+    def mov_sum(cls, series, size) -> pd.Series:
         return cls._rolling(series, size).sum()
 
     @classmethod
-    def sma(cls, series, size):
+    def sma(cls, series, size) -> pd.Series:
         return cls._rolling(series, size).mean()
 
     @staticmethod
     def roc(series, size):
-        ret = series.diff(size) / series.shift(size)
-        if size < 0:
-            ret.iloc[size:] = 0
+        x = series.values.astype(np.float64, copy=False)
+        n = x.shape[0]
+
+        out = np.zeros(n, dtype=np.float64)
+
+        if size == 0:
+            return pd.Series(out, index=series.index)
+
+        if size > 0:
+            # x[t] vs x[t-size]
+            out[size:] = (x[size:] - x[:-size]) / x[:-size]
         else:
-            ret.iloc[:size] = 0
-        return ret * 100
+            k = -size
+            # x[t] vs x[t+k]
+            out[:-k] = (x[:-k] - x[k:]) / x[k:]
+
+        return pd.Series(out * 100.0, index=series.index)
 
     @classmethod
     def _mad(cls, series, window):
-        """ Mean Absolute Deviation
+        """Mean Absolute Deviation
 
         :param series: Series
         :param window: number of periods
         :return: Series
         """
 
-        def f(x):
-            return np.fabs(x - x.mean()).mean()
+        arr = series.values
+        n = len(arr)
+        if window > n:
+            nan_arr = np.full(n, np.nan)
+            return pd.Series(nan_arr, index=series.index, name=series.name)
 
-        return cls._rolling(series, window).apply(f, raw=True)
+        sw = np.lib.stride_tricks.sliding_window_view(arr, window)
+        means = sw.mean(axis=1)
+        mad_vals = np.mean(np.abs(sw - means[:, None]), axis=1)
+
+        out = np.zeros(n, dtype=float)
+        out[window - 1:] = mad_vals
+        return pd.Series(out, index=series.index, name=series.name)
 
     def _get_mad(self, meta: _Meta):
-        """ get mean absolute deviation """
-        window = meta.int
+        """get mean absolute deviation"""
+        window = meta.as_int
         self[meta.name] = self._mad(self[meta.column], window)
 
     def _get_sma(self, meta: _Meta):
-        """ get simple moving average """
-        window = meta.int
+        """get simple moving average"""
+        window = meta.as_int
         self[meta.name] = self.sma(self[meta.column], window)
 
     def _get_lrma(self, meta: _Meta):
-        """ get linear regression moving average """
-        window = meta.int
+        """get linear regression moving average"""
+        window = meta.as_int
         self[meta.name] = self.linear_reg(self[meta.column], window)
 
     def _get_roc(self, meta: _Meta):
@@ -1020,15 +1106,13 @@ class StockDataFrame(pd.DataFrame):
         * PriceP: the price of the current period
         * PricePn: the price of the n periods ago
         """
-        self[meta.name] = self.roc(self[meta.column], meta.int)
+        self[meta.name] = self.roc(self[meta.column], meta.as_int)
 
     @staticmethod
     def ema(series, window, *, adjust=True, min_periods=1):
         return series.ewm(
-            ignore_na=False,
-            span=window,
-            min_periods=min_periods,
-            adjust=adjust).mean()
+            ignore_na=False, span=window,
+            min_periods=min_periods, adjust=adjust).mean()
 
     @staticmethod
     def _rolling(series: pd.Series, window: int):
@@ -1036,75 +1120,81 @@ class StockDataFrame(pd.DataFrame):
 
     @classmethod
     def linear_wma(cls, series, window):
+        """
+        Linear Weighted Moving Average (WMA) using vectorized NumPy.
+        Returns 0 for first window-1 positions.
+        """
+        arr = series.values
+        n = len(arr)
+
+        if window > n:
+            return pd.Series(np.zeros(n), index=series.index, name=series.name)
+
+        # linear weights
         total_weight = 0.5 * window * (window + 1)
-        weights = np.arange(1, window + 1) / total_weight
+        weights = np.arange(1, window + 1) / total_weight  # shape (window,)
 
-        def linear(w):
-            def _compute(x):
-                try:
-                    return np.dot(x, w)
-                except ValueError:
-                    return 0.0
+        # create sliding windows (shape: n - window + 1, window)
+        sw = np.lib.stride_tricks.sliding_window_view(arr, window)
 
-            return _compute
+        # compute WMA
+        wma_vals = np.dot(sw, weights)
 
-        rolling = cls._rolling(series, window)
-        return rolling.apply(linear(weights), raw=True)
+        # initialize output array with 0
+        out = np.zeros(n, dtype=float)
+        out[window - 1:] = wma_vals
+
+        return pd.Series(out, index=series.index, name=series.name)
 
     @classmethod
-    def linear_reg(cls,
-                   series,
-                   window,
-                   correlation=False):
+    def linear_reg(cls, series, window, correlation=False):
         window = cls.get_int_positive(window)
+        arr = series.values
+        n = len(arr)
 
-        x = range(1, window + 1)
-        x_sum = 0.5 * window * (window + 1)
-        x2_sum = x_sum * (2 * window + 1) / 3
-        divisor = window * x2_sum - x_sum * x_sum
+        if window > n:
+            return pd.Series(np.zeros(n), index=series.index)
 
-        def linear_regression(s: pd.Series):
-            y_sum = s.sum()
-            xy_sum = (x * s).sum()
+        x = np.arange(1, window + 1)
+        x_sum = x.sum()
+        x2_sum = (x ** 2).sum()
+        divisor = window * x2_sum - x_sum ** 2
 
+        sw = np.lib.stride_tricks.sliding_window_view(arr, window)
+        y_sum = sw.sum(axis=1)
+        xy_sum = np.dot(sw, x)
+
+        if correlation:
+            y2_sum = np.sum(sw ** 2, axis=1)
+            rn = window * xy_sum - x_sum * y_sum
+            rd = np.sqrt(divisor * (window * y2_sum - y_sum ** 2))
+            ret_vals = rn / rd
+        else:
             m = (window * xy_sum - x_sum * y_sum) / divisor
             b = (y_sum * x2_sum - x_sum * xy_sum) / divisor
+            ret_vals = m * (window - 1) + b
 
-            if correlation:
-                y2_sum = (s * s).sum()
-                rn = window * xy_sum - x_sum * y_sum
-                rd = (divisor * (window * y2_sum - y_sum * y_sum)) ** 0.5
-                return rn / rd
-            return m * (window - 1) + b
-
-        def rolling(arr):
-            strides = arr.strides + (arr.strides[-1],)
-            shape = arr.shape[:-1] + (arr.shape[-1] - window + 1, window)
-            return as_strided(arr, shape=shape, strides=strides)
-
-        value = [linear_regression(_)
-                 for _ in rolling(np.array(series))]
-        ret = pd.Series([0.0] * (window - 1) + value,
-                        index=series.index)
-        return ret
+        out = np.zeros(n, dtype=float)
+        out[window - 1:] = ret_vals
+        return pd.Series(out, index=series.index)
 
     def _get_cti(self, meta: _Meta):
-        """ get correlation trend indicator
+        """get correlation trend indicator
 
         Correlation Trend Indicator is a study that estimates
         the current direction and strength of a trend.
         https://tlc.thinkorswim.com/center/reference/Tech-Indicators/studies-library/C-D/CorrelationTrendIndicator
         """
-        value = self.linear_reg(
-            self[meta.column], meta.int, correlation=True)
+        col = self[meta.column]
+        value = self.linear_reg(col, meta.as_int, correlation=True)
         self[meta.name] = value
 
     def _get_ema(self, meta: _Meta):
-        """ get exponential moving average """
-        self[meta.name] = self.ema(self[meta.column], meta.int)
+        """get exponential moving average"""
+        self[meta.name] = self.ema(self[meta.column], meta.as_int)
 
     def _get_boll(self, meta: _Meta):
-        """ Get Bollinger bands.
+        """Get Bollinger bands.
 
         boll_ub means the upper band of the Bollinger bands
         boll_lb means the lower band of the Bollinger bands
@@ -1114,20 +1204,17 @@ class StockDataFrame(pd.DataFrame):
         K = BOLL_STD_TIMES
         :return: None
         """
-        n = meta.int
-        boll = meta.name
-        boll_ub = meta.name_ex('_ub')
-        boll_lb = meta.name_ex('_lb')
+        n = meta.as_int
         moving_avg = self.sma(self.close, n)
         moving_std = self.mov_std(self.close, n)
 
-        self[boll] = moving_avg
+        self[meta.name] = moving_avg
         width = self.BOLL_STD_TIMES * moving_std
-        self[boll_ub] = moving_avg + width
-        self[boll_lb] = moving_avg - width
+        self[meta.name_ex("_ub")] = moving_avg + width
+        self[meta.name_ex("_lb")] = moving_avg - width
 
     def _get_macd(self, meta: _Meta):
-        """ Moving Average Convergence Divergence
+        """Moving Average Convergence Divergence
 
         This function will initialize all following columns.
 
@@ -1140,23 +1227,22 @@ class StockDataFrame(pd.DataFrame):
         ema_short = self.ema(close, short_w)
         ema_long = self.ema(close, long_w)
         macd = meta.name
-        macds = meta.name_ex('s')
-        macdh = meta.name_ex('h')
+        macds = meta.name_ex("s")
+        macdh = meta.name_ex("h")
         self[macd] = ema_short - ema_long
         self[macds] = self.ema(self[macd], signal_w)
         self[macdh] = self[macd] - self[macds]
 
-    def _ppo_and_pvo(self, name: str, col_name: str, meta: _Meta):
-        volume = self[col_name]
+    def _ppo_and_pvo(self, name: str, ser: pd.Series, meta: _Meta):
         short_w, long_w, signal_w = meta.int0, meta.int1, meta.int2
-        pvo_short = self.ema(volume, short_w)
-        pvo_long = self.ema(volume, long_w)
-        self[name] = (pvo_short - pvo_long) / pvo_long * 100
-        self[f'{name}s'] = self.ema(self[name], signal_w)
-        self[f'{name}h'] = self[name] - self[f'{name}s']
+        pvo_short = self.ema(ser, short_w).values
+        pvo_long = self.ema(ser, long_w).values
+        self[name] = self.to_series((pvo_short - pvo_long) / pvo_long * 100)
+        self[f"{name}s"] = self.ema(self[name], signal_w)
+        self[f"{name}h"] = self[name] - self[f"{name}s"]
 
     def _get_pvo(self, meta: _Meta):
-        """ Percentage Volume Oscillator
+        """Percentage Volume Oscillator
 
         The Percentage Volume Oscillator (PVO) is a momentum oscillator for
         volume.  The PVO measures the difference between two volume-based
@@ -1175,10 +1261,10 @@ class StockDataFrame(pd.DataFrame):
 
         PVO Histogram: PVO - Signal Line
         """
-        return self._ppo_and_pvo('pvo', 'volume', meta)
+        return self._ppo_and_pvo("pvo", self.volume, meta)
 
     def _get_ppo(self, meta: _Meta):
-        """ Percentage Price Oscillator
+        """Percentage Price Oscillator
 
         https://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:price_oscillators_ppo
 
@@ -1189,7 +1275,7 @@ class StockDataFrame(pd.DataFrame):
 
         PPO Histogram: PPO - Signal Line
         """
-        return self._ppo_and_pvo('ppo', 'close', meta)
+        return self._ppo_and_pvo("ppo", self.close, meta)
 
     def _eri(self, window):
         ema = self.ema(self.close, window, adjust=False)
@@ -1198,19 +1284,19 @@ class StockDataFrame(pd.DataFrame):
         return bull, bear
 
     def _get_eribull(self, meta: _Meta):
-        """ The bull line of Elder-Ray Index """
-        bull, _ = self._eri(meta.int)
+        """The bull line of Elder-Ray Index"""
+        bull, _ = self._eri(meta.as_int)
         self[meta.name] = bull
         return bull
 
     def _get_eribear(self, meta: _Meta):
-        """ The bear line of Elder-Ray Index """
-        _, bear = self._eri(meta.int)
+        """The bear line of Elder-Ray Index"""
+        _, bear = self._eri(meta.as_int)
         self[meta.name] = bear
         return bear
 
     def _get_eri(self, meta: _Meta):
-        """ The Elder-Ray Index
+        """The Elder-Ray Index
 
         The Elder-Ray Index contains the bull and the bear power.
         Both are calculated based on the EMA of the close price.
@@ -1224,12 +1310,12 @@ class StockDataFrame(pd.DataFrame):
         * Bears Power = Low - EMA
         * EMA is exponential moving average of close of N periods
         """
-        bull, bear = self._eri(meta.int)
-        self[meta.name_ex('bull')] = bull
-        self[meta.name_ex('bear')] = bear
+        bull, bear = self._eri(meta.as_int)
+        self[meta.name_ex("bull")] = bull
+        self[meta.name_ex("bear")] = bear
 
     def _get_coppock(self, meta: _Meta):
-        """ Get Coppock Curve
+        """Get Coppock Curve
 
         Coppock Curve is a momentum indicator that signals
         long-term trend reversals.
@@ -1258,7 +1344,7 @@ class StockDataFrame(pd.DataFrame):
         return (ph + pl) * 0.5
 
     def _get_ichimoku(self, meta: _Meta):
-        """ get Ichimoku Cloud
+        """get Ichimoku Cloud
 
         The Ichimoku Cloud is a collection of technical indicators
         that show support and resistance levels, as well as momentum
@@ -1292,8 +1378,8 @@ class StockDataFrame(pd.DataFrame):
         lead_a = (conv_line + base_line) * 0.5
         lead_b = self._hl_mid(lead)
 
-        lead_a_s = lead_a.shift(base, fill_value=lead_a.iloc[0])
-        lead_b_s = lead_b.shift(base, fill_value=lead_b.iloc[0])
+        lead_a_s = self.s_shift(lead_a, -base)
+        lead_b_s = self.s_shift(lead_b, -base)
         self[meta.name] = lead_a_s - lead_b_s
 
     @classmethod
@@ -1301,31 +1387,31 @@ class StockDataFrame(pd.DataFrame):
         return cls._rolling(series, window).std()
 
     def _get_mstd(self, meta: _Meta):
-        """ get moving standard deviation """
-        self[meta.name] = self.mov_std(self[meta.column], meta.int)
+        """get moving standard deviation"""
+        self[meta.name] = self.mov_std(self[meta.column], meta.as_int)
 
     @classmethod
     def mov_var(cls, series, window):
         return cls._rolling(series, window).var()
 
     def _get_mvar(self, meta: _Meta):
-        """ get moving variance """
-        self[meta.name] = self.mov_var(self[meta.column], meta.int)
+        """get moving variance"""
+        self[meta.name] = self.mov_var(self[meta.column], meta.as_int)
 
     def _get_vwma(self, meta: _Meta):
-        """ get Volume Weighted Moving Average
+        """get Volume Weighted Moving Average
 
         The definition is available at:
         https://www.investopedia.com/articles/trading/11/trading-with-vwap-mvwap.asp
         """
-        window = meta.int
+        window = meta.as_int
         tpv = self.volume * self._tp()
         rolling_tpv = self.mov_sum(tpv, window)
         rolling_vol = self.mov_sum(self.volume, window)
         self[meta.name] = rolling_tpv / rolling_vol
 
     def _get_chop(self, meta: _Meta):
-        """ get Choppiness Index (CHOP)
+        """get Choppiness Index (CHOP)
 
         See the definition of the index here:
         https://www.tradingview.com/education/choppinessindex/
@@ -1339,38 +1425,45 @@ class StockDataFrame(pd.DataFrame):
         SUM(ATR(1), n) = Sum of the Average True Range over past n bars
         MaxHi(n) = The highest high over past n bars
         """
-        window = meta.int
+        window = meta.as_int
         atr = self._atr(1)
-        atr_sum = self.mov_sum(atr, window)
-        high = self.mov_max(self.high, window)
-        low = self.mov_min(self.low, window)
+        atr_sum = self.mov_sum(atr, window).values
+        high = self.mov_max(self.high, window).values
+        low = self.mov_min(self.low, window).values
         choppy = atr_sum / (high - low)
         numerator = np.log10(choppy) * 100
         denominator = np.log10(window)
-        self[meta.name] = numerator / denominator
+        self[meta.name] = self.to_series(numerator / denominator)
 
     def _get_mfi(self, meta: _Meta):
-        """ get money flow index
+        """get money flow index
 
         The definition of money flow index is available at:
         https://www.investopedia.com/terms/m/mfi.asp
         """
-        window = meta.int
-        middle = self._tp()
-        money_flow = (middle * self["volume"]).fillna(0.0)
-        shifted = self.s_shift(middle, -1)
-        delta = (middle - shifted).fillna(0)
-        pos_flow = money_flow.mask(delta < 0, 0)
-        neg_flow = money_flow.mask(delta >= 0, 0)
-        rolling_pos_flow = self.mov_sum(pos_flow, window)
-        rolling_neg_flow = self.mov_sum(neg_flow, window)
-        money_flow_ratio = rolling_pos_flow / (rolling_neg_flow + 1e-12)
-        mfi = (1.0 - 1.0 / (1 + money_flow_ratio))
-        mfi.iloc[:window] = 0.5
-        self[meta.name] = mfi
+        window = meta.as_int
+        tp = self._tp().values
+        volume = self.volume.values
+        raw_money_flow = tp * volume
+
+        tp_diff = np.zeros_like(tp)
+        tp_diff[1:] = np.diff(tp)
+
+        pos_flow = np.where(tp_diff > 0, raw_money_flow, 0.0)
+        neg_flow = np.where(tp_diff < 0, raw_money_flow, 0.0)
+
+        pos_sum = self._rolling_sum(pos_flow, window)
+        neg_sum = self._rolling_sum(neg_flow, window)
+
+        total_flow = pos_sum + neg_sum
+        mfi = np.divide(pos_sum, total_flow, out=np.full_like(pos_sum, 0.5),
+                        where=total_flow > 0)
+        mfi[:window] = 0.5
+
+        self[meta.name] = self.to_series(mfi)
 
     def _get_ao(self, meta: _Meta):
-        """ get awesome oscillator
+        """get awesome oscillator
 
         The AO indicator is a good indicator for measuring the market dynamics,
         it reflects specific changes in the driving force of the market, which
@@ -1391,7 +1484,7 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = ao
 
     def _get_bop(self, meta: _Meta):
-        """ get balance of power
+        """get balance of power
 
         The Balance of Power indicator measures the strength of the bulls.
         https://school.stockcharts.com/doku.php?id=technical_indicators:balance_of_power
@@ -1403,7 +1496,7 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = dividend / divisor
 
     def _get_cmo(self, meta: _Meta):
-        """ get Chande Momentum Oscillator
+        """get Chande Momentum Oscillator
 
         The Chande Momentum Oscillator (CMO) is a technical momentum
         indicator developed by Tushar Chande.
@@ -1415,8 +1508,8 @@ class StockDataFrame(pd.DataFrame):
         * sH=the sum of higher closes over N periods
         * sL=the sum of lower closes of N periods
         """
-        window = meta.int
-        close_diff = self._col_diff('close')
+        window = meta.as_int
+        close_diff = self._col_diff("close")
         up = close_diff.clip(lower=0)
         down = close_diff.clip(upper=0).abs()
         sum_up = self.mov_sum(up, window)
@@ -1438,7 +1531,7 @@ class StockDataFrame(pd.DataFrame):
         return ret
 
     def _get_ker(self, meta: _Meta):
-        """ get Kaufman's efficiency ratio
+        """get Kaufman's efficiency ratio
 
         The Efficiency Ratio (ER) is calculated by
         dividing the price change over a period by the
@@ -1459,10 +1552,10 @@ class StockDataFrame(pd.DataFrame):
         volatility = moving sum of last_change in n
         KER = window_change / volatility
         """
-        self[meta.name] = self.ker(meta.column, meta.int)
+        self[meta.name] = self.ker(meta.column, meta.as_int)
 
     def _get_kama(self, meta: _Meta):
-        """ get Kaufman's Adaptive Moving Average.
+        """get Kaufman's Adaptive Moving Average.
         Implemented after
         https://school.stockcharts.com/doku.php?id=technical_indicators:kaufman_s_adaptive_moving_average
         """
@@ -1472,46 +1565,68 @@ class StockDataFrame(pd.DataFrame):
         slow_ema_smoothing = 2.0 / (slow + 1)
         smoothing_2 = fast_ema_smoothing - slow_ema_smoothing
         efficient_smoothing = efficiency_ratio * smoothing_2
-        smoothing = list(2 * (efficient_smoothing + slow_ema_smoothing))
+        smoothing = (2 * (efficient_smoothing + slow_ema_smoothing)).values
 
         # start with simple moving average
         col = self[meta.column]
-        kama = list(self.sma(col, window))
-        if len(kama) >= window:
+        col_arr = col.values
+        kama = self.sma(col, window).values.copy()
+        n = len(kama)
+
+        if n >= window:
             last_kama = kama[window - 1]
         else:
             last_kama = 0.0
 
-        col_list = list(col)
-        for i in range(window, len(kama)):
-            cur = smoothing[i] * (col_list[i] - last_kama) + last_kama
+        for i in range(window, n):
+            cur = smoothing[i] * (col_arr[i] - last_kama) + last_kama
             kama[i] = cur
             last_kama = cur
-        self[meta.name] = kama
+
+        self[meta.name] = pd.Series(kama, index=col.index)
 
     def _ftr(self, window: int) -> pd.Series:
-        mp = (self.high + self.low) * 0.5
-        highest = mp.rolling(window).max()
-        lowest = mp.rolling(window).min()
-        width = highest - lowest
-        width[width < 0.001] = 0.001
-        position = list(((mp - lowest) / width) - 0.5)
+        high = self.high.values
+        low = self.low.values
+        mp = (high + low) * 0.5
+        n = len(mp)
 
-        v = 0
-        size = self.high.size
+        # Use sliding window view for rolling max/min
+        sw = np.lib.stride_tricks.sliding_window_view(mp, window)
+        highest = np.empty(n, dtype=float)
+        lowest = np.empty(n, dtype=float)
+        highest[:window - 1] = np.nan
+        lowest[:window - 1] = np.nan
+        highest[window - 1:] = sw.max(axis=1)
+        lowest[window - 1:] = sw.min(axis=1)
+
+        width = highest - lowest
+        width = np.maximum(width, 0.001)
+
+        position = ((mp - lowest) / width) - 0.5
+
+        size = high.size
         result = np.zeros(size)
+        v = 0.0
+
         for i in range(window, size):
+            # Update smoothed position (v)
             v = 0.66 * position[i] + 0.67 * v
+
+            # Clamp v to stay within log boundaries (-0.999 to 0.999)
             if v < -0.99:
                 v = -0.999
-            if v > 0.99:
+            elif v > 0.99:
                 v = 0.999
-            r = 0.5 * (np.log((1 + v) / (1 - v)) + result[i - 1])
-            result[i] = r
-        return pd.Series(result, index=self.index)
+
+            # Fisher Transform formula
+            # result[i-1] is the recursive component
+            result[i] = 0.5 * (np.log((1 + v) / (1 - v)) + result[i - 1])
+
+        return self.to_series(result)
 
     def _get_ftr(self, meta: _Meta):
-        """ the Gaussian Fisher Transform Price Reversals indicator
+        """the Gaussian Fisher Transform Price Reversals indicator
 
         The Gaussian Fisher Transform Price Reversals indicator, dubbed
         FTR for short, is a stat based price reversal detection indicator
@@ -1528,19 +1643,29 @@ class StockDataFrame(pd.DataFrame):
         * Fisher Transform = 0.5 * ln((1 + X) / (1 - X))
         * X is a series whose values are between -1 to 1
         """
-        self[meta.name] = self._ftr(meta.int)
+        self[meta.name] = self._ftr(meta.as_int)
 
     @staticmethod
-    def sym_wma4(series: pd.Series) -> pd.Series:
-        arr = np.array([1, 2, 2, 1])
-        weights = arr / sum(arr)
-        rolled = series.rolling(arr.size)
-        ret = rolled.apply(lambda x: np.dot(x, weights), raw=True)
-        ret.iloc[:arr.size - 1] = 0.0
-        return ret
+    def _sym_wma4(arr: np.ndarray) -> np.ndarray:
+        weights = np.array([1, 2, 2, 1], dtype=float)
+        weights /= weights.sum()  # normalize
+
+        # mode='valid' gives length = n - window + 1
+        conv = np.convolve(arr, weights, mode="valid")
+
+        # pad beginning with 0s for first window-1 elements
+        out = np.zeros(len(arr), dtype=float)
+        out[len(weights) - 1:] = conv
+
+        return out
+
+    @classmethod
+    def sym_wma4(cls, series: pd.Series) -> pd.Series:
+        res = cls._sym_wma4(series.values)
+        return pd.Series(res, index=series.index)
 
     def _rvgi(self, window: int) -> pd.Series:
-        """ Relative Vigor Index (RVGI)
+        """Relative Vigor Index (RVGI)
 
         The Relative Vigor Index (RVI) is a momentum indicator
         used in technical analysis that measures the strength
@@ -1570,27 +1695,27 @@ class StockDataFrame(pd.DataFrame):
         * k=RVI Value One Bar Prior to j
         * N=Minutes/Hours/Days/Weeks/Months
         """
-        co = self.close - self.open
-        hl = self.high - self.low
+        co = self.close.values - self.open.values
+        hl = self.high.values - self.low.values
 
-        nu = self.sym_wma4(co)
-        de = self.sym_wma4(hl)
+        nu = self.to_series(self._sym_wma4(co))
+        de = self.to_series(self._sym_wma4(hl))
         ret = self.sma(nu, window) / self.sma(de, window)
         return ret
 
     def _get_rvgis(self, meta: _Meta):
-        self._get_rvgi(meta.set_name('rvgi'))
+        self._get_rvgi(meta.set_name("rvgi"))
 
     def _get_rvgi(self, meta: _Meta):
-        rvgi = self._rvgi(meta.int)
-        rvgi.iloc[:3] = 0.0
-        rvgi_s = self.sym_wma4(rvgi)
-        rvgi_s.iloc[:6] = 0.0
-        self[meta.name] = rvgi
-        self[meta.name_ex('s')] = rvgi_s
+        rvgi = self._rvgi(meta.as_int).values.copy()
+        rvgi[:3] = 0.0
+        rvgi_s = self._sym_wma4(rvgi)
+        rvgi_s[:6] = 0.0
+        self[meta.name] = self.to_series(rvgi)
+        self[meta.name_ex("s")] = self.to_series(rvgi_s)
 
     def _inertia(self, window: int, rvgi_window: int) -> pd.Series:
-        """ Inertia Indicator
+        """Inertia Indicator
 
         https://theforexgeek.com/inertia-indicator/
 
@@ -1603,7 +1728,7 @@ class StockDataFrame(pd.DataFrame):
             return pd.Series(np.zeros(len(self)), index=self.index)
         rvgi = self._rvgi(rvgi_window)
         value = self.linear_reg(rvgi, window)
-        value.iloc[:max(window, rvgi_window) + 2] = 0
+        value.iloc[: max(window, rvgi_window) + 2] = 0
         return value
 
     def _get_inertia(self, meta: _Meta):
@@ -1611,7 +1736,7 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = value
 
     def _kst(self) -> pd.Series:
-        """ Know Sure Thing (kst)
+        """Know Sure Thing (kst)
 
         https://www.investopedia.com/terms/k/know-sure-thing-kst.asp
 
@@ -1638,7 +1763,7 @@ class StockDataFrame(pd.DataFrame):
         self[meta.name] = self._kst()
 
     def _pgo(self, window: int) -> pd.Series:
-        """ Pretty Good Oscillator (PGO)
+        """Pretty Good Oscillator (PGO)
 
         https://library.tradingtechnologies.com/trade/chrt-ti-pretty-good-oscillator.html
 
@@ -1658,10 +1783,10 @@ class StockDataFrame(pd.DataFrame):
         return up / down
 
     def _get_pgo(self, meta: _Meta):
-        self[meta.name] = self._pgo(meta.int)
+        self[meta.name] = self._pgo(meta.as_int)
 
     def _psl(self, col_name: str, window: int) -> pd.Series:
-        """ Psychological Line (PSL)
+        """Psychological Line (PSL)
 
         The Psychological Line indicator is the ratio of the number of
         rising periods over the total number of periods.
@@ -1681,10 +1806,10 @@ class StockDataFrame(pd.DataFrame):
         return self.mov_sum(pos, window) / window * 100
 
     def _get_psl(self, meta: _Meta):
-        self[meta.name] = self._psl(meta.column, meta.int)
+        self[meta.name] = self._psl(meta.column, meta.as_int)
 
     def _get_qqe(self, meta: _Meta):
-        """ QQE (Quantitative Qualitative Estimation)
+        """QQE (Quantitative Qualitative Estimation)
 
         https://www.tradingview.com/script/0vn4HZ7O-Quantitative-Qualitative-Estimation-QQE/
 
@@ -1703,94 +1828,96 @@ class StockDataFrame(pd.DataFrame):
         rsi_ma_window = meta.int1
         factor = 4.236
         wilder_window = rsi_window * 2 - 1
-        ema = functools.partial(self.ema, adjust=False)
 
         rsi = self._rsi(rsi_window)
         rsi.iloc[:rsi_window] = np.nan
-        rsi_ma = ema(rsi, rsi_ma_window)
-        tr = rsi_ma.diff().abs()
+
+        ema = functools.partial(self.ema, adjust=False)
+
+        rsi_ma_ser = ema(rsi, rsi_ma_window)
+        tr = rsi_ma_ser.diff().abs()
         tr_ma = ema(tr, wilder_window)
         tr_ma_ma = ema(tr_ma, wilder_window) * factor
 
-        upper = list(rsi_ma + tr_ma_ma)
-        lower = list(rsi_ma - tr_ma_ma)
-        rsi_ma = list(rsi_ma)
+        rsi_ma = rsi_ma_ser.values
+        upper_band = (rsi_ma_ser + tr_ma_ma).values
+        lower_band = (rsi_ma_ser - tr_ma_ma).values
+        size = rsi_ma.size
 
-        size = self.close.size
-        long = [0] * size
-        short = [0] * size
-        trend = [1] * size
-        qqe = [rsi_ma[0]] * size
-        qqe_long = [np.nan] * size
-        qqe_short = [np.nan] * size
+        # Pre-allocate output arrays (NumPy memory allocation is O(1) here)
+        out_long = np.full(size, 0.0)
+        out_short = np.full(size, 0.0)
+        out_trend = np.ones(size, dtype=int)
+        out_qqe = np.full(size, rsi_ma[0])
+        out_qqe_long = np.full(size, np.nan)
+        out_qqe_short = np.full(size, np.nan)
 
+        # Core Recursive Loop - Optimized for CPU cache locality
         for i in range(1, size):
-            c_rsi, p_rsi = rsi_ma[i], rsi_ma[i - 1]
-            c_long, p_long = long[i - 1], long[i - 2]
-            c_short, p_short = short[i - 1], short[i - 2]
+            c_rsi = rsi_ma[i]
+            p_rsi = rsi_ma[i - 1]
 
-            # Long Line
-            if p_rsi > c_long and c_rsi > c_long:
-                long[i] = max(c_long, lower[i])
+            # Long Line Logic (Recursive)
+            p_long = out_long[i - 1]
+            if p_rsi > p_long and c_rsi > p_long:
+                out_long[i] = max(p_long, lower_band[i])
             else:
-                long[i] = lower[i]
+                out_long[i] = lower_band[i]
 
-            # Short Line
-            if p_rsi < c_short and c_rsi < c_short:
-                short[i] = min(c_short, upper[i])
+            # Short Line Logic (Recursive)
+            p_short = out_short[i - 1]
+            if p_rsi < p_short and c_rsi < p_short:
+                out_short[i] = min(p_short, upper_band[i])
             else:
-                short[i] = upper[i]
+                out_short[i] = upper_band[i]
 
-            # Trend & QQE Calculation
-            # Long: Current RSI_MA value Crosses the Prior Short Line Value
-            # Short: Current RSI_MA Crosses the Prior Long Line Value
-            rsi_ux_short = c_rsi > c_short and p_rsi < p_short
-            rsi_dx_short = c_rsi <= c_short and p_rsi >= p_short
-            rsi_ux_long = c_rsi > c_long and p_rsi < p_long
-            rsi_dx_long = c_rsi <= c_long and p_rsi >= p_long
-            if rsi_ux_short or rsi_dx_short:
-                trend[i] = 1
-                qqe[i] = qqe_long[i] = long[i]
-            elif rsi_ux_long or rsi_dx_long:
-                trend[i] = -1
-                qqe[i] = qqe_short[i] = short[i]
+            # Trend and QQE state machine
+            # We need to check crosses against the previous stop lines
+            if c_rsi > p_short and p_rsi <= out_short[max(0, i - 2)]:
+                out_trend[i] = 1
+            elif c_rsi < p_long and p_rsi >= out_long[max(0, i - 2)]:
+                out_trend[i] = -1
             else:
-                trend[i] = trend[i - 1]
-                if trend[i] == 1:
-                    qqe[i] = qqe_long[i] = long[i]
-                else:
-                    qqe[i] = qqe_short[i] = short[i]
+                out_trend[i] = out_trend[i - 1]
 
-        self[meta.name] = self.to_series(qqe)
-        self[meta.name_ex('l')] = self.to_series(qqe_long)
-        self[meta.name_ex('s')] = self.to_series(qqe_short)
+            # Assign values based on determined trend
+            if out_trend[i] == 1:
+                out_qqe[i] = out_qqe_long[i] = out_long[i]
+            else:
+                out_trend[i] = -1
+                out_qqe[i] = out_qqe_short[i] = out_short[i]
+
+        # Batch assignment back to self (Pandas overhead happens once here)
+        self[meta.name] = self.to_series(out_qqe)
+        self[meta.name_ex("l")] = self.to_series(out_qqe_long)
+        self[meta.name_ex("s")] = self.to_series(out_qqe_short)
 
     def _get_num(self, meta):
-        split = meta.name.split(',')
+        split = meta.name.split(",")
         decimal_places = 0.0
-        if (len(split) > 1):
+        if len(split) > 1:
             decimal_places_str = split[1]
             power = pow(0.1, len(decimal_places_str))
             decimal_places = float(decimal_places_str) * power
         self[meta.name] = meta.int0 + decimal_places
 
-    def to_series(self, arr: list):
+    def to_series(self, arr: Union[list, np.ndarray]) -> pd.Series:
         return pd.Series(arr, index=self.close.index).fillna(0)
 
     @staticmethod
     def parse_column_name(name):
-        m = re.match(r'(.*)_([\d\-+~,.]+)_(\w+)', name)
+        m = re.match(r"(.*)_([\d\-+~,.]+)_(\w+)", name)
         ret = (None,)
         if m is None:
-            m = re.match(r'(.*)_([\d\-+~,]+)', name)
+            m = re.match(r"(.*)_([\d\-+~,]+)", name)
             if m is not None:
                 ret = m.group(1, 2)
         else:
             ret = m.group(1, 2, 3)
         return ret
 
-    CROSS_COLUMN_MATCH_STR = '(.+)_(x|xu|xd)_(.+)'
-    COMPARE_COLUMN_MATCH_STR = '(.+)_(le|ge|lt|gt|eq|ne)_(.+)'
+    CROSS_COLUMN_MATCH_STR = "(.+)_(x|xu|xd)_(.+)"
+    COMPARE_COLUMN_MATCH_STR = "(.+)_(le|ge|lt|gt|eq|ne)_(.+)"
 
     @classmethod
     def is_cross_columns(cls, name):
@@ -1817,8 +1944,8 @@ class StockDataFrame(pd.DataFrame):
         return ret
 
     def _get_rate(self, _: _Meta):
-        """ same as percent """
-        self['rate'] = self.close.pct_change() * 100
+        """same as percent"""
+        self["rate"] = self.close.pct_change() * 100
 
     def _col_diff(self, col):
         ret = self[col].diff()
@@ -1827,7 +1954,7 @@ class StockDataFrame(pd.DataFrame):
         return ret
 
     def _get_delta(self, key):
-        key_to_delta = key.replace('_delta', '')
+        key_to_delta = key.replace("_delta", "")
         self[key] = self._col_diff(key_to_delta)
         return self[key]
 
@@ -1840,37 +1967,37 @@ class StockDataFrame(pd.DataFrame):
             # noinspection PyTypeChecker
             different[1:] = np.diff(lt_series)
             different[0] = False
-        if op == 'x':
+        if op == "x":
             self[key] = different
-        elif op == 'xu':
+        elif op == "xu":
             self[key] = different & lt_series
-        elif op == 'xd':
+        elif op == "xd":
             self[key] = different & ~lt_series
         return self[key]
 
     def _get_compare(self, key):
         left, op, right = StockDataFrame.parse_compare_column(key)
-        if op == 'le':
+        if op == "le":
             self[key] = self[left] <= self[right]
-        elif op == 'ge':
+        elif op == "ge":
             self[key] = self[left] >= self[right]
-        elif op == 'lt':
+        elif op == "lt":
             self[key] = self[left] < self[right]
-        elif op == 'gt':
+        elif op == "gt":
             self[key] = self[left] > self[right]
-        elif op == 'eq':
+        elif op == "eq":
             self[key] = self[left] == self[right]
-        elif op == 'ne':
+        elif op == "ne":
             self[key] = self[left] != self[right]
         return self[key]
 
     def init_all(self):
-        """ initialize all stats. in the handler """
+        """initialize all stats. in the handler"""
         for handler in self.handler.values():
             _call_handler(handler)
 
     def drop_column(self, names=None, inplace=False):
-        """ drop column by the name
+        """drop column by the name
 
         multiple names can be supplied in a list
         :return: StockDataFrame
@@ -1883,18 +2010,18 @@ class StockDataFrame(pd.DataFrame):
         return wrap(ret)
 
     def drop_tail(self, n, inplace=False):
-        """ drop n rows from the tail
+        """drop n rows from the tail
 
         :return: StockDataFrame
         """
         tail = self.tail(n).index
         ret = self.drop(tail, inplace=inplace)
-        if inplace is True:
+        if inplace:
             return self
         return wrap(ret)
 
     def drop_head(self, n, inplace=False):
-        """ drop n rows from the beginning
+        """drop n rows from the beginning
 
         :return: StockDataFrame
         """
@@ -1905,33 +2032,32 @@ class StockDataFrame(pd.DataFrame):
         return wrap(ret)
 
     def _get_handler(self, name: str):
-        return getattr(self, f'_get_{name}')
+        return getattr(self, f"_get_{name}")
 
     @property
     def handler(self):
         ret = {
-            ('rate',): self._get_rate,
-            ('middle',): self._get_middle,
-            ('tp',): self._get_tp,
-            ('boll', 'boll_ub', 'boll_lb'): self._get_boll,
-            ('macd', 'macds', 'macdh'): self._get_macd,
-            ('pvo', 'pvos', 'pvoh'): self._get_pvo,
-            ('ppo', 'ppos', 'ppoh'): self._get_ppo,
-            ('qqe', 'qqel', 'qqes'): self._get_qqe,
-            ('cr', 'cr-ma1', 'cr-ma2', 'cr-ma3'): self._get_cr,
-            ('tr',): self._get_tr,
-            ('dx', 'adx', 'adxr'): self._get_dmi,
-            ('log-ret',): self._get_log_ret,
-            ('wt1', 'wt2'): self._get_wt,
-            ('supertrend',
-             'supertrend_lb',
-             'supertrend_ub'): self._get_supertrend,
-            ('bop',): self._get_bop,
-            ('cti',): self._get_cti,
-            ('eribull', 'eribear'): self._get_eri,
-            ('rvgi', 'rvgis'): self._get_rvgi,
-            ('kst',): self._get_kst,
-            ('num',): self._get_num,
+            ("rate",): self._get_rate,
+            ("middle",): self._get_middle,
+            ("tp",): self._get_tp,
+            ("boll", "boll_ub", "boll_lb"): self._get_boll,
+            ("macd", "macds", "macdh"): self._get_macd,
+            ("pvo", "pvos", "pvoh"): self._get_pvo,
+            ("ppo", "ppos", "ppoh"): self._get_ppo,
+            ("qqe", "qqel", "qqes"): self._get_qqe,
+            ("cr", "cr-ma1", "cr-ma2", "cr-ma3"): self._get_cr,
+            ("tr",): self._get_tr,
+            ("dx", "adx", "adxr"): self._get_dmi,
+            ("log-ret",): self._get_log_ret,
+            ("wt1", "wt2"): self._get_wt,
+            ("supertrend", "supertrend_lb",
+             "supertrend_ub"): self._get_supertrend,
+            ("bop",): self._get_bop,
+            ("cti",): self._get_cti,
+            ("eribull", "eribear"): self._get_eri,
+            ("rvgi", "rvgis"): self._get_rvgi,
+            ("kst",): self._get_kst,
+            ("num",): self._get_num,
         }
         for k in _dft_windows.keys():
             if k not in ret:
@@ -1943,7 +2069,7 @@ class StockDataFrame(pd.DataFrame):
             if key in names:
                 return _call_handler(handler)
 
-        if key.endswith('_delta'):
+        if key.endswith("_delta"):
             self._get_delta(key)
         elif self.is_cross_columns(key):
             self._get_cross(key)
@@ -1957,8 +2083,10 @@ class StockDataFrame(pd.DataFrame):
                 name, n = ret
                 col = None
             else:
-                raise UserWarning("Invalid number of return arguments "
-                                  f"after parsing column name: '{key}'")
+                raise UserWarning(
+                    "Invalid number of return arguments "
+                    f"after parsing column name: '{key}'"
+                )
             meta = _Meta(name, windows=n, column=col)
             self._get_handler(name)(meta)
 
@@ -1999,7 +2127,7 @@ class StockDataFrame(pd.DataFrame):
 
     @staticmethod
     def _ensure_type(obj):
-        """ override the method in pandas, omit the check
+        """override the method in pandas, omit the check
 
         This patch is not the perfect way but could make the lib work.
         """
@@ -2007,19 +2135,19 @@ class StockDataFrame(pd.DataFrame):
 
     @staticmethod
     def retype(value, index_column=None):
-        """ if the input is a `DataFrame`, convert it to this class.
+        """if the input is a `DataFrame`, convert it to this class.
 
         :param index_column: name of the index column, default to `date`
         :param value: value to convert
         :return: this extended class
         """
         if index_column is None:
-            index_column = 'date'
+            index_column = "date"
 
         if isinstance(value, StockDataFrame):
             return value
         elif isinstance(value, pd.DataFrame):
-            value = value.rename(_lower_col_name, axis='columns')
+            value = value.rename(_lower_col_name, axis="columns")
             if index_column in value.columns:
                 value.set_index(index_column, inplace=True)
             ret = StockDataFrame(value)
@@ -2028,7 +2156,7 @@ class StockDataFrame(pd.DataFrame):
 
 
 def _lower_col_name(name):
-    candidates = ('open', 'close', 'high', 'low', 'volume', 'amount')
+    candidates = ("open", "close", "high", "low", "volume", "amount")
     if name.lower() != name and name.lower() in candidates:
         return name.lower()
     return name
