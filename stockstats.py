@@ -969,11 +969,13 @@ class StockDataFrame(pd.DataFrame):
         cr_sma = self.sma(cr, window)
         return self.s_shift(cr_sma, -int(window / 2.5 + 1))
 
-    def _tp(self):
+    def _tp(self) -> pd.Series:
         if "amount" in self:
-            return self.amount.values / self.volume.values
-        total = self.close.values + self.high.values + self.low.values
-        return self.to_series(total / 3.0)
+            tp = self.amount.values / self.volume.values
+        else:
+            total = self.close.values + self.high.values + self.low.values
+            tp = total / 3.0
+        return self.to_series(tp)
 
     def _get_tp(self, meta: _Meta):
         self[meta.name] = self._tp()

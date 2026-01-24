@@ -728,6 +728,10 @@ class StockDataFrameTest(TestCase):
         assert_that(mfi_15.loc[first], near_to(0.5))
         assert_that(mfi_15.loc[last], near_to(0.6733))
 
+    def test_mfi_with_amount(self):
+        mfi = self._supor['mfi']
+        assert_that(mfi.loc[20160817], near_to(0.48265))
+
     def test_ker(self):
         stock = self.get_stock_90days()
         k = stock["ker"]
