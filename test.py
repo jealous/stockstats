@@ -732,12 +732,14 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_90days()
         k = stock["ker"]
         assert_that(k[20110104], equal_to(0))
-        assert_that(k[20110105], equal_to(1))
+        assert_that(k[20110105], equal_to(0))
+        assert_that(k[20110117], equal_to(0))
+        assert_that(k[20110118], near_to(0.0357))
         assert_that(k[20110210], near_to(0.305))
 
         k = stock["close_10_ker"]
         assert_that(k[20110104], equal_to(0))
-        assert_that(k[20110105], equal_to(1))
+        assert_that(k[20110118], near_to(0.0357))
         assert_that(k[20110210], near_to(0.305))
 
         k = stock["high_5_ker"]
@@ -785,7 +787,9 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_90days()
         wt1, wt2 = stock["wt1"], stock["wt2"]
         idx = 20110331
+        assert_that(wt1.iloc[0], equal_to(0))
         assert_that(wt1.loc[idx], near_to(38.9610))
+        assert_that(wt2.iloc[0], equal_to(0))
         assert_that(wt2.loc[idx], near_to(31.6997))
 
         wt1, wt2 = stock["wt1_10,21"], stock["wt2_10,21"]

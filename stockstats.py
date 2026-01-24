@@ -549,7 +549,8 @@ class StockDataFrame(pd.DataFrame):
         rsi_min = self.mov_min(rsi, window)
         rsi_max = self.mov_max(rsi, window)
 
-        cv = (rsi - rsi_min) / (rsi_max - rsi_min)
+        rsi_range = rsi_max - rsi_min
+        cv = np.where(rsi_range != 0, (rsi - rsi_min) / rsi_range, 0.0)
         self[meta.name] = cv * 100
 
     def _wt1(self, n1: int, n2: int) -> pd.Series:
@@ -562,7 +563,9 @@ class StockDataFrame(pd.DataFrame):
         esa = self.ema(tp, n1)
         d = self.ema((tp - esa).abs(), n1)
         ci = (tp - esa) / (0.015 * d)
-        return self.ema(ci, n2)
+        ret = self.ema(ci, n2)
+        ret.iloc[0] = 0.0
+        return ret
 
     def _get_wt1(self, meta: _Meta):
         self[meta.name] = self._wt1(meta.int0, meta.int1)
@@ -631,7 +634,9 @@ class StockDataFrame(pd.DataFrame):
         window = meta.as_int
         ln = self.mov_min(self.low, window)
         hn = self.mov_max(self.high, window)
-        self[meta.name] = (hn - self.close) / (hn - ln) * -100
+        hn_ln = hn - ln
+        wr = np.where(hn_ln != 0, (hn - self.close) / hn_ln, 0.0)
+        self[meta.name] = wr * -100
 
     def _get_cci(self, meta: _Meta):
         """Commodity Channel Index
@@ -647,7 +652,8 @@ class StockDataFrame(pd.DataFrame):
         tp = self._tp()
         tp_sma = self.sma(tp, window)
         mad = self._mad(tp, window)
-        self[meta.name] = (tp - tp_sma) / (0.015 * mad)
+        divisor = 0.015 * mad
+        self[meta.name] = np.where(divisor != 0, (tp - tp_sma) / divisor, 0.0)
 
     def _tr(self):
         prev_close = self._shift_arr(self.close.values, -1)
@@ -902,7 +908,9 @@ class StockDataFrame(pd.DataFrame):
         cvs = self._rolling_sum(eq_zero, window)
 
         half_cvs = cvs * 0.5
-        vr = (avs + half_cvs) / (bvs + half_cvs) * 100
+        divisor = bvs + half_cvs
+        vr = np.divide(avs + half_cvs, divisor,
+                       out=np.zeros_like(divisor), where=divisor != 0) * 100
         self[meta.name] = pd.Series(vr, index=self.index)
 
     def _get_pdi_ndi(self, window):
@@ -926,7 +934,8 @@ class StockDataFrame(pd.DataFrame):
 
     def _dx(self, window):
         pdi, mdi = self._get_pdi_ndi(window)
-        return abs(pdi - mdi) / (pdi + mdi) * 100
+        divisor = pdi + mdi
+        return np.where(divisor != 0, abs(pdi - mdi) / divisor, 0.0) * 100
 
     def _get_dx(self, meta: _Meta):
         self[meta.name] = self._dx(meta.as_int)
@@ -1430,7 +1439,9 @@ class StockDataFrame(pd.DataFrame):
         atr_sum = self.mov_sum(atr, window).values
         high = self.mov_max(self.high, window).values
         low = self.mov_min(self.low, window).values
-        choppy = atr_sum / (high - low)
+        high_low = high - low
+        choppy = np.divide(atr_sum, high_low,
+                           out=np.zeros_like(atr_sum), where=high_low != 0)
         numerator = np.log10(choppy) * 100
         denominator = np.log10(window)
         self[meta.name] = self.to_series(numerator / denominator)
@@ -1491,9 +1502,11 @@ class StockDataFrame(pd.DataFrame):
 
         BOP = (close - open) / (high - low)
         """
-        dividend = self.close - self.open
-        divisor = self.high - self.low
-        self[meta.name] = dividend / divisor
+        dividend = (self.close - self.open).values
+        divisor = (self.high - self.low).values
+        bop = np.divide(dividend, divisor,
+                        out=np.zeros_like(dividend), where=divisor != 0)
+        self[meta.name] = bop
 
     def _get_cmo(self, meta: _Meta):
         """get Chande Momentum Oscillator
@@ -1514,21 +1527,27 @@ class StockDataFrame(pd.DataFrame):
         down = close_diff.clip(upper=0).abs()
         sum_up = self.mov_sum(up, window)
         sum_down = self.mov_sum(down, window)
-        dividend = sum_up - sum_down
-        divisor = sum_up + sum_down
-        res = 100 * dividend / divisor
+        dividend = (sum_up - sum_down).values
+        divisor = (sum_up + sum_down).values
+        cmo = np.divide(100 * dividend, divisor,
+                        out=np.zeros_like(dividend), where=divisor != 0)
+        res = pd.Series(cmo, index=self.index)
         res.iloc[0] = 0.0
         self[meta.name] = res
 
     def ker(self, column, window):
-        col = self[column]
-        col_window_s = self.s_shift(col, -window)
-        window_diff = (col - col_window_s).abs()
-        diff = self._col_diff(column).abs()
-        volatility = self.mov_sum(diff, window)
-        ret = window_diff / volatility
-        ret.iloc[0] = 0
-        return ret
+        val = self[column].values
+        net_change = np.zeros_like(val)
+        net_change[window:] = np.abs(val[window:] - val[:-window])
+
+        abs_diff = np.zeros_like(val)
+        abs_diff[1:] = np.abs(np.diff(val))
+
+        volatility = pd.Series(abs_diff).rolling(window).sum().values
+        with np.errstate(divide='ignore', invalid='ignore'):
+            er = np.where(volatility > 0, net_change / volatility, 0.0)
+        er[:window] = 0.0
+        return pd.Series(er, index=self.index)
 
     def _get_ker(self, meta: _Meta):
         """get Kaufman's efficiency ratio
@@ -1778,9 +1797,11 @@ class StockDataFrame(pd.DataFrame):
         * SMA = Simple Moving Average of Close over N periods
         * EMA of TR = Exponential Moving Average of True Range over N periods
         """
-        up = self.close - self.sma(self.close, window)
-        down = self.ema(self._tr(), window)
-        return up / down
+        up = (self.close - self.sma(self.close, window)).values
+        down = self.ema(self._tr(), window).values
+        return pd.Series(np.divide(up, down,
+                                   out=np.zeros_like(up), where=down != 0),
+                         index=self.index)
 
     def _get_pgo(self, meta: _Meta):
         self[meta.name] = self._pgo(meta.as_int)
