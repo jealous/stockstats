@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stockstats"
+dynamic = ["version"]
+description = "DataFrame with inline stock statistics support."
+readme = {file = "README.md", content-type = "text/markdown"}
+license = "BSD-3-Clause"
+requires-python = ">=3.9"
+authors = [
+    {name = "Cedric Zhuang", email = "jealous@163.com"},
+]
+keywords = ["stock", "statistics", "indicator"]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Natural Language :: English",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "numpy>=1.16.6",
+    "pandas>=0.24.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/jealous/stockstats"
+
+[tool.setuptools]
+py-modules = ["stockstats"]
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "dirty-tag"
