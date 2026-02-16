@@ -780,6 +780,26 @@ class StockDataFrameTest(TestCase):
         assert_that(chop_14.loc[idx], near_to(chop.loc[idx]))
         assert_that(chop_7.loc[idx], is_not(near_to(chop.loc[idx])))
 
+    @staticmethod
+    def test_chop_flat_bars():
+        import warnings
+        import numpy as np
+        data = pd.DataFrame({
+            'open': [10.0] * 20,
+            'high': [10.0] * 20,
+            'low': [10.0] * 20,
+            'close': [10.0] * 20,
+            'volume': [100] * 20,
+        })
+        stock = wrap(data)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            chop = stock["chop"]
+        assert_that(len(chop), equal_to(20))
+        for val in chop.values:
+            assert_that(val, equal_to(0.0))
+            assert_that(np.isfinite(val), equal_to(True))
+
     def test_column_conflict(self):
         stock = self.get_stock_90days()
         res = stock[["close_26_ema", "macd"]]

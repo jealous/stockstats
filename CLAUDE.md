@@ -43,6 +43,16 @@ The library is a single-file module with these key components:
 - `<indicator>` - uses default column and window (e.g., `rsi`, `macd`)
 - `<indicator>_<window>` - uses default column with custom window (e.g., `rsi_6`)
 - `<column>_<window>_<indicator>` - full specification (e.g., `close_20_sma`)
+- `<column>_delta` - difference from previous row (e.g., `close_delta`)
+- `<left>_x_<right>` / `<left>_xu_<right>` / `<left>_xd_<right>` - cross/cross-up/cross-down between two columns
+- `<left>_le_<right>`, `_ge_`, `_lt_`, `_gt_`, `_eq_`, `_ne_` - comparison operators between columns
+
+**Column resolution order** (in `__init_not_exist_column`):
+1. Check the `handler` property map (multi-column indicators like macd/macds/macdh)
+2. Check for `_delta` suffix
+3. Check for cross patterns (`_x_`, `_xu_`, `_xd_`)
+4. Check for comparison patterns (`_le_`, `_ge_`, etc.)
+5. Parse as `(column, window, name)` and dispatch to `_get_<name>` handler
 
 **Configuration**:
 - `_dft_windows` dict: default window sizes for each indicator

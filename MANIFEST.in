@@ -1,3 +1,2 @@
-include *.rst
-include *.cfg
+include *.toml
 include *.txt

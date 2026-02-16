@@ -1444,7 +1444,10 @@ class StockDataFrame(pd.DataFrame):
         high_low = high - low
         choppy = np.divide(atr_sum, high_low,
                            out=np.zeros_like(atr_sum), where=high_low != 0)
-        numerator = np.log10(choppy) * 100
+        numerator = np.zeros_like(choppy)
+        valid = choppy > 0
+        np.log10(choppy, out=numerator, where=valid)
+        numerator *= 100
         denominator = np.log10(window)
         self[meta.name] = self.to_series(numerator / denominator)
 
