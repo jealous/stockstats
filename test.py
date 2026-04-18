@@ -325,10 +325,10 @@ class StockDataFrameTest(TestCase):
         """
         import numpy as np
         data = pd.DataFrame({
-            'open':   [10.0] * 20,
-            'high':   [10.0] * 20,
-            'low':    [10.0] * 20,
-            'close':  [10.0] * 20,
+            'open': [10.0] * 20,
+            'high': [10.0] * 20,
+            'low': [10.0] * 20,
+            'close': [10.0] * 20,
             'volume': [1000] * 20,
         })
         stock = wrap(data)
@@ -353,10 +353,10 @@ class StockDataFrameTest(TestCase):
         """
         import numpy as np
         data = pd.DataFrame({
-            'open':   [10.0] * 30,
-            'high':   [10.5] * 30,
-            'low':    [9.5]  * 30,
-            'close':  [10.0] * 30,   # no change => all neutral days
+            'open': [10.0] * 30,
+            'high': [10.5] * 30,
+            'low': [9.5]  * 30,
+            'close': [10.0] * 30,   # no change => all neutral days
             'volume': [1000] * 30,
         })
         stock = wrap(data)
