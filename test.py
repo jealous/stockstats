@@ -355,7 +355,7 @@ class StockDataFrameTest(TestCase):
         data = pd.DataFrame({
             'open': [10.0] * 30,
             'high': [10.5] * 30,
-            'low': [9.5]  * 30,
+            'low': [9.5] * 30,
             'close': [10.0] * 30,   # no change => all neutral days
             'volume': [1000] * 30,
         })
