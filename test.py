@@ -826,6 +826,21 @@ class StockDataFrameTest(TestCase):
         assert_that(vwma_14.loc[idx], near_to(vwma.loc[idx]))
         assert_that(vwma_7.loc[idx], is_not(near_to(vwma.loc[idx])))
 
+    def test_vwma_with_zero_volume(self):
+        # a rolling window whose volume sums to zero (e.g. an illiquid
+        # instrument or a holiday session) must not divide by zero
+        df = pd.DataFrame({
+            "open": [10, 10, 10, 10, 10],
+            "close": [10, 10, 10, 10, 10],
+            "high": [11, 11, 11, 11, 11],
+            "low": [9, 9, 9, 9, 9],
+            "volume": [0, 0, 0, 0, 0],
+        })
+        stock = StockDataFrame.retype(df.copy())
+        vwma = stock["vwma_3"]
+        assert_that(vwma.isna().any(), equal_to(False))
+        assert_that(list(vwma.values), equal_to([0.0] * 5))
+
     def test_chop(self):
         stock = self.get_stock_90days()
         chop = stock["chop"]

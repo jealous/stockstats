@@ -1417,9 +1417,12 @@ class StockDataFrame(pd.DataFrame):
         """
         window = meta.as_int
         tpv = self.volume * self._tp()
-        rolling_tpv = self.mov_sum(tpv, window)
-        rolling_vol = self.mov_sum(self.volume, window)
-        self[meta.name] = rolling_tpv / rolling_vol
+        rolling_tpv = self.mov_sum(tpv, window).values
+        rolling_vol = self.mov_sum(self.volume, window).values
+        vwma = np.divide(rolling_tpv, rolling_vol,
+                         out=np.zeros_like(rolling_tpv, dtype=float),
+                         where=rolling_vol != 0)
+        self[meta.name] = vwma
 
     def _get_chop(self, meta: _Meta):
         """get Choppiness Index (CHOP)
