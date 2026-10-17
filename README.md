@@ -145,6 +145,8 @@ will be re-evaluated the next time you access them.
 |------|---------------|----------------|-------------|
 | SMA | `close_20_sma` | - | Simple Moving Average |
 | EMA | `close_20_ema` | - | Exponential Moving Average |
+| WMA | `wma` | 10 | Weighted Moving Average |
+| HMA | `hma` | 16 | Hull Moving Average |
 | SMMA | `close_7_smma` | - | Smoothed Moving Average |
 | TEMA | `tema` | 5 | Triple Exponential Moving Average |
 | LRMA | `close_10_lrma` | - | Linear Regression Moving Average |
@@ -269,6 +271,35 @@ It has a parameter for window size. The default window is 14. Change it with
 Examples:
 * `df['vwma']` retrieves the 14 periods VWMA
 * `df['vwma_6']` retrieves the 6 periods VWMA
+
+#### [WMA - Weighted Moving Average](https://www.investopedia.com/terms/l/linearlyweightedmovingaverage.asp)
+
+It's the linearly weighted moving average where recent data points are given more weight.
+
+It has a parameter for window size. The default window is 10. Change it with
+`set_dft_window('wma', n)`.
+
+Examples:
+* `df['wma']` retrieves the 10 periods WMA of the close price
+* `df['wma_20']` retrieves the 20 periods WMA of the close price
+* `df['close_10_wma']` retrieves the 10 periods WMA of the close price
+
+#### [HMA - Hull Moving Average](https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/hull-moving-average)
+
+The Hull Moving Average (HMA), developed by Alan Hull, reduces lag while improving smoothing:
+
+1. Calculate WMA with period `n / 2`
+2. Calculate WMA with period `n`
+3. Calculate non-lag difference: `2 * WMA(n / 2) - WMA(n)`
+4. Calculate WMA of difference with period `sqrt(n)`
+
+It has a parameter for window size. The default window is 16. Change it with
+`set_dft_window('hma', n)`.
+
+Examples:
+* `df['hma']` retrieves the 16 periods HMA of the close price
+* `df['hma_9']` retrieves the 9 periods HMA of the close price
+* `df['close_16_hma']` retrieves the 16 periods HMA of the close price
 
 #### DMA - Difference of Moving Average
 
