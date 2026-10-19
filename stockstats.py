@@ -28,6 +28,7 @@ from __future__ import unicode_literals
 
 import functools
 import itertools
+import math
 import re
 from collections import deque
 from typing import Optional, Callable, Union
@@ -62,6 +63,7 @@ _dft_windows = {
     "ichimoku": (9, 26, 52),
     "inertia": (20, 14),
     "ftr": 9,
+    "hma": 16,
     "kama": (10, 5, 34),  # window, fast, slow
     "kdjd": 9,
     "kdjj": 9,
@@ -87,6 +89,7 @@ _dft_windows = {
     "wt": (10, 21),
     "vr": 26,
     "vwma": 14,
+    "wma": 10,
     "num": 0,
 }
 
@@ -101,11 +104,13 @@ _dft_column = {
     # sort alphabetically
     "cti": "close",
     "dma": "close",
+    "hma": "close",
     "kama": "close",
     "ker": "close",
     "psl": "close",
     "tema": "close",
     "trix": "close",
+    "wma": "close",
 }
 
 
@@ -1100,6 +1105,16 @@ class StockDataFrame(pd.DataFrame):
         window = meta.as_int
         self[meta.name] = self.linear_reg(self[meta.column], window)
 
+    def _get_wma(self, meta: _Meta):
+        """get Weighted Moving Average"""
+        window = meta.as_int
+        self[meta.name] = self.wma(self[meta.column], window)
+
+    def _get_hma(self, meta: _Meta):
+        """get Hull Moving Average"""
+        window = meta.as_int
+        self[meta.name] = self.hma(self[meta.column], window)
+
     def _get_roc(self, meta: _Meta):
         """get Rate of Change (ROC) of a column
 
@@ -1156,6 +1171,53 @@ class StockDataFrame(pd.DataFrame):
         out[window - 1:] = wma_vals
 
         return pd.Series(out, index=series.index, name=series.name)
+
+    @classmethod
+    def wma(cls, series, window):
+        """Weighted Moving Average (WMA)"""
+        return cls.linear_wma(series, window)
+
+    @classmethod
+    def hma(cls, series: pd.Series, window: int) -> pd.Series:
+        """Hull Moving Average (HMA) using vectorized NumPy.
+
+        HMA reduces lag while improving smoothing.
+        Formula:
+            w_half = int(window / 2)
+            w_sqrt = int(sqrt(window))
+            diff = 2 * WMA(series, w_half) - WMA(series, window)
+            hma = WMA(diff, w_sqrt)
+
+        Returns 0 for the initial invalid warmup positions.
+        """
+        window = cls.get_int_positive(window)
+        n = len(series)
+        if window > n:
+            return pd.Series(np.zeros(n), index=series.index,
+                             name=series.name)
+        if window == 1:
+            return series.copy()
+
+        w_half = max(1, int(window / 2))
+        w_sqrt = max(1, int(math.sqrt(window)))
+
+        half_wma = cls.linear_wma(series, w_half)
+        full_wma = cls.linear_wma(series, window)
+
+        diff = 2.0 * half_wma - full_wma
+        diff_arr = diff.values.copy()
+        diff_arr[:window - 1] = 0.0
+
+        hma = cls.linear_wma(
+            pd.Series(diff_arr, index=series.index), w_sqrt)
+        valid_start = (window - 1) + (w_sqrt - 1)
+        if valid_start < n:
+            hma_arr = hma.values.copy()
+            hma_arr[:valid_start] = 0.0
+            return pd.Series(hma_arr, index=series.index,
+                             name=series.name)
+        return pd.Series(np.zeros(n), index=series.index,
+                         name=series.name)
 
     @classmethod
     def linear_reg(cls, series, window, correlation=False):
@@ -2089,8 +2151,8 @@ class StockDataFrame(pd.DataFrame):
             ("num",): self._get_num,
         }
         for k in _dft_windows.keys():
-            if k not in ret:
-                ret[k] = self._get_handler(k)
+            if not any(k in names for names in ret):
+                ret[(k,)] = self._get_handler(k)
         return ret
 
     def __init_not_exist_column(self, key):

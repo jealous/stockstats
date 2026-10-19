@@ -1089,6 +1089,60 @@ class StockDataFrameTest(TestCase):
         assert_that(res[0], equal_to(0))
         assert_that(res[5], near_to(17.571))
 
+        res_wma = StockDataFrame.wma(series, 6)
+        assert_that(list(res), equal_to(list(res_wma)))
+
+    def test_wma(self):
+        stock = self.get_stock_30days()
+        w0 = stock["wma"]
+        assert_that(w0[20110104], equal_to(0))
+        assert_that(w0[20110117], near_to(13.095))
+        assert_that(w0[20110125], near_to(12.784))
+        assert_that(w0[20110128], near_to(12.765))
+
+        w1 = stock["close_10_wma"]
+        assert_that(list(w0), equal_to(list(w1)))
+
+        w2 = stock["close_5_wma"]
+        assert_that(w2[20110104], equal_to(0))
+        assert_that(w2[20110117], near_to(13.067))
+        assert_that(w2[20110125], near_to(12.756))
+
+    def test_hma(self):
+        stock = self.get_stock_90days()
+        h0 = stock["hma"]
+        assert_that(h0[20110104], equal_to(0.0))
+        assert_that(h0[20110125], equal_to(0.0))
+        assert_that(h0[20110128], near_to(12.698))
+        assert_that(h0[20110215], near_to(12.844))
+        assert_that(h0[20110331], near_to(13.635))
+
+        h1 = stock["close_16_hma"]
+        assert_that(list(h0), equal_to(list(h1)))
+
+        h2 = stock["close_9_hma"]
+        assert_that(h2[20110104], equal_to(0.0))
+        assert_that(h2[20110125], near_to(12.690))
+        assert_that(h2[20110128], near_to(12.855))
+
+    @staticmethod
+    def test_hma_edge_cases():
+        series = pd.Series([10.0, 15.0, 15.0, 17.0, 18.0, 21.0])
+        # window 4 raw calculation
+        res = StockDataFrame.hma(series, 4)
+        assert_that(res[0], equal_to(0.0))
+        assert_that(res[3], equal_to(0.0))
+        assert_that(res[4], near_to(18.144))
+        assert_that(res[5], near_to(20.378))
+
+        # window 1 returns identical series
+        h1 = StockDataFrame.hma(series, 1)
+        assert_that(list(h1), equal_to([10.0, 15.0, 15.0, 17.0, 18.0, 21.0]))
+
+        # window larger than series returns zeros
+        h_large = StockDataFrame.hma(series, 10)
+        assert_that(list(h_large), equal_to([0.0] * 6))
+
     def test_coppock(self):
         stock = self.get_stock_90days()
         c0 = stock["coppock"]
