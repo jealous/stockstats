@@ -1756,6 +1756,8 @@ class StockDataFrame(pd.DataFrame):
         low = self.low.values
         mp = (high + low) * 0.5
         n = len(mp)
+        if window > n:
+            return self.to_series(np.zeros(n))
 
         # Use sliding window view for rolling max/min
         sw = np.lib.stride_tricks.sliding_window_view(mp, window)
@@ -1815,6 +1817,8 @@ class StockDataFrame(pd.DataFrame):
     def _sym_wma4(arr: np.ndarray) -> np.ndarray:
         weights = np.array([1, 2, 2, 1], dtype=float)
         weights /= weights.sum()  # normalize
+        if len(arr) < len(weights):
+            return np.zeros(len(arr), dtype=float)
 
         # mode='valid' gives length = n - window + 1
         conv = np.convolve(arr, weights, mode="valid")

@@ -1065,6 +1065,16 @@ class StockDataFrameTest(TestCase):
         assert_that(res[3], near_to(2.666))
         assert_that(res[4], near_to(3.666))
 
+    @staticmethod
+    def test_sym_wma4_shorter_than_window():
+        res = StockDataFrame.sym_wma4(pd.Series([4, 2, 2]))
+        assert_that(list(res), equal_to([0.0, 0.0, 0.0]))
+
+    def test_rvgi_shorter_than_window(self):
+        stock = self.get_stock().within(20110104, 20110106)
+        assert_that(list(stock["rvgi"]), equal_to([0.0] * 3))
+        assert_that(list(stock["rvgis"]), equal_to([0.0] * 3))
+
     def test_ichimoku(self):
         stock = self.get_stock_90days()
         i0 = stock["ichimoku"]
@@ -1257,6 +1267,11 @@ class StockDataFrameTest(TestCase):
 
         f = stock["ftr_15"]
         assert_that(f[20110128], near_to(-1.005))
+
+    def test_ftr_shorter_than_window(self):
+        stock = self.get_stock().within(20110104, 20110110)
+        f = stock["ftr"]
+        assert_that(list(f), equal_to([0.0] * len(stock)))
 
     def test_rvgi(self):
         stock = self.get_stock_30days()
