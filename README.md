@@ -15,7 +15,7 @@ Supported statistics/indicators are:
 
 **Momentum**: RSI, StochRSI, MACD, PPO, KDJ, ROC, CMO, KST, Coppock, AO, BOP, CTI, Inertia, PSL
 
-**Trend**: Supertrend, Aroon, Ichimoku, CR, DMI (+DI/-DI/ADX/ADXR), TRIX, WT
+**Trend**: Supertrend, Aroon, Ichimoku, CR, DMI (+DI/-DI/ADX/ADXR), TRIX, WT, SSL Channel
 
 **Volatility**: Bollinger Bands, ATR, TR, CCI, WR, CHOP, KER, Z-Score, MAD, PGO
 
@@ -174,6 +174,7 @@ will be re-evaluated the next time you access them.
 | DMI | `pdi`, `ndi`, `adx` | 14 | Directional Movement Index |
 | TRIX | `trix` | 12 | Triple Exponential Average |
 | WT | `wt1`, `wt2` | 10, 21 | Wave Trend |
+| SSL | `ssl`, `ssl_up`, `ssl_down` | 10 | SSL Channel |
 | Bollinger | `boll` | 20 | Bollinger Bands |
 | ATR | `atr` | 14 | Average True Range |
 | TR | `tr` | - | True Range |
@@ -660,6 +661,26 @@ Retrieve the LazyBear's Wave Trend with `df['wt1']` and `df['wt2']`.
 
 Wave trend uses two parameters. You can tune them with
 `set_dft_window('wt', (10, 21))`.
+
+#### [SSL Channel](https://www.tradingview.com/script/xzIoaIJC-SSL-channel/)
+
+The SSL Channel (Securement Stop Loss Channel), created by Erwin Beckers, is a
+trend-following indicator that calculates dynamic support and resistance bands
+using the simple moving averages of High and Low prices. The channel lines flip
+positions based on whether the closing price crosses above the SMA of High
+(bullish) or below the SMA of Low (bearish).
+
+It has a parameter for window size. The default window is 10. Change it with
+`set_dft_window('ssl', n)`.
+
+Examples:
+* `df['ssl']` retrieves the 10-period SSL Channel line (defaults to SSL Up)
+* `df['ssl_up']` retrieves the 10-period SSL Up line
+* `df['ssl_down']` retrieves the 10-period SSL Down line
+* `df['ssl_up_5']` retrieves the 5-period SSL Up line
+* `df['ssl_down_5']` retrieves the 5-period SSL Down line
+* `df['ssl_up_xu_ssl_down']` detects bullish crossover (Buy signal)
+* `df['ssl_up_xd_ssl_down']` detects bearish crossunder (Sell signal)
 
 ---
 

@@ -82,6 +82,9 @@ _dft_windows = {
     "rsv": 9,
     "rvgi": 14,
     "stochrsi": 14,
+    "ssl": 10,
+    "ssl_down": 10,
+    "ssl_up": 10,
     "supertrend": 14,
     "tema": 5,
     "trix": 12,
@@ -739,6 +742,30 @@ class StockDataFrame(pd.DataFrame):
         self[f"{meta.name}_ub"] = final_ub
         self[f"{meta.name}_lb"] = final_lb
 
+    def _get_ssl(self, meta: _Meta):
+        """SSL Channel (Securement Stop Loss Channel)
+
+        https://www.tradingview.com/script/xzIoaIJC-SSL-channel/
+        Created by Erwin Beckers.
+
+        Calculates dynamic support and resistance bands based on the
+        SMA of High and Low prices and the close price relative position.
+        """
+        window = meta.as_int
+        ssl_up, ssl_down = self.ssl_channel(
+            self.high, self.low, self.close, window)
+
+        suffix = f"_{meta.windows}" if meta._windows is not None else ""
+        self[f"ssl{suffix}"] = ssl_up
+        self[f"ssl_up{suffix}"] = ssl_up
+        self[f"ssl_down{suffix}"] = ssl_down
+
+    def _get_ssl_up(self, meta: _Meta):
+        self._get_ssl(meta)
+
+    def _get_ssl_down(self, meta: _Meta):
+        self._get_ssl(meta)
+
     @staticmethod
     def _rolling_arg_index(arr, window, mode="max"):
         n = len(arr)
@@ -1218,6 +1245,56 @@ class StockDataFrame(pd.DataFrame):
                              name=series.name)
         return pd.Series(np.zeros(n), index=series.index,
                          name=series.name)
+
+    @classmethod
+    def ssl_channel(cls, high: pd.Series, low: pd.Series, close: pd.Series,
+                    window: int = 10) -> tuple[pd.Series, pd.Series]:
+        """SSL Channel (Securement Stop Loss Channel)
+
+        Created by Erwin Beckers. Uses SMA of High and Low prices to track
+        trend direction and dynamic support/resistance channel bands.
+
+        Formula:
+            sma_high = SMA(high, window)
+            sma_low = SMA(low, window)
+            hlv[i] = 1 if close[i] > sma_high[i] else (
+                -1 if close[i] < sma_low[i] else hlv[i-1])
+            ssl_down = sma_high if hlv < 0 else sma_low
+            ssl_up = sma_low if hlv < 0 else sma_high
+
+        :param high: series of high prices
+        :param low: series of low prices
+        :param close: series of close prices
+        :param window: lookback period (default 10)
+        :return: (ssl_up, ssl_down) tuple of Series
+        """
+        window = cls.get_int_positive(window)
+        n = len(close)
+        if n == 0:
+            empty = pd.Series(dtype=float, index=close.index)
+            return empty.copy(), empty.copy()
+
+        sma_high = cls.sma(high, window).values
+        sma_low = cls.sma(low, window).values
+        close_arr = close.values
+
+        hlv = np.zeros(n, dtype=int)
+        hlv[0] = 1 if close_arr[0] >= sma_high[0] else (
+            -1 if close_arr[0] < sma_low[0] else 1)
+
+        for i in range(1, n):
+            if close_arr[i] > sma_high[i]:
+                hlv[i] = 1
+            elif close_arr[i] < sma_low[i]:
+                hlv[i] = -1
+            else:
+                hlv[i] = hlv[i - 1]
+
+        ssl_up = np.where(hlv < 0, sma_low, sma_high)
+        ssl_down = np.where(hlv < 0, sma_high, sma_low)
+
+        return (pd.Series(ssl_up, index=close.index, name="ssl_up"),
+                pd.Series(ssl_down, index=close.index, name="ssl_down"))
 
     @classmethod
     def linear_reg(cls, series, window, correlation=False):
@@ -2143,6 +2220,7 @@ class StockDataFrame(pd.DataFrame):
             ("wt1", "wt2"): self._get_wt,
             ("supertrend", "supertrend_lb",
              "supertrend_ub"): self._get_supertrend,
+            ("ssl", "ssl_up", "ssl_down"): self._get_ssl,
             ("bop",): self._get_bop,
             ("cti",): self._get_cti,
             ("eribull", "eribear"): self._get_eri,
