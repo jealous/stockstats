@@ -1143,6 +1143,58 @@ class StockDataFrameTest(TestCase):
         h_large = StockDataFrame.hma(series, 10)
         assert_that(list(h_large), equal_to([0.0] * 6))
 
+    def test_ssl_channel(self):
+        stock = self.get_stock_30days()
+        ssl = stock["ssl"]
+        ssl_up = stock["ssl_up"]
+        ssl_down = stock["ssl_down"]
+        assert_that(list(ssl), equal_to(list(ssl_up)))
+
+        # Initial bullish state
+        assert_that(ssl_up[20110104], near_to(12.6800))
+        assert_that(ssl_down[20110104], near_to(12.3000))
+        assert_that(ssl_up[20110114], near_to(13.2322))
+        assert_that(ssl_down[20110114], near_to(12.8500))
+
+        # Bearish flip on 20110117 (close drops below sma_low)
+        assert_that(ssl_up[20110117], near_to(12.8060))
+        assert_that(ssl_down[20110117], near_to(13.2190))
+        assert_that(ssl_up[20110128], near_to(12.5660))
+        assert_that(ssl_down[20110128], near_to(12.9140))
+
+        # Crossunder detection (sell signal)
+        sell_cross = stock["ssl_up_xd_ssl_down"]
+        assert_that(sell_cross[20110117], equal_to(True))
+
+        # Default window equivalence
+        assert_that(list(stock["ssl_up_10"]), equal_to(list(ssl_up)))
+        assert_that(list(stock["ssl_down_10"]), equal_to(list(ssl_down)))
+
+        # Custom window
+        u5 = stock["ssl_up_5"]
+        d5 = stock["ssl_down_5"]
+        assert_that(u5[20110104], near_to(12.6800))
+        assert_that(d5[20110104], near_to(12.3000))
+        assert_that(u5[20110114], near_to(13.4200))
+        assert_that(d5[20110114], near_to(13.1080))
+        assert_that(u5[20110117], near_to(13.0040))
+        assert_that(d5[20110117], near_to(13.3720))
+
+    @staticmethod
+    def test_ssl_channel_edge_cases():
+        # Empty series
+        empty_up, empty_down = StockDataFrame.ssl_channel(
+            pd.Series(dtype=float), pd.Series(dtype=float),
+            pd.Series(dtype=float), 5)
+        assert_that(len(empty_up), equal_to(0))
+        assert_that(len(empty_down), equal_to(0))
+
+        # Single-row series
+        s_up, s_down = StockDataFrame.ssl_channel(
+            pd.Series([10.5]), pd.Series([9.5]), pd.Series([10.0]), 3)
+        assert_that(list(s_up), equal_to([10.5]))
+        assert_that(list(s_down), equal_to([9.5]))
+
     def test_coppock(self):
         stock = self.get_stock_90days()
         c0 = stock["coppock"]
