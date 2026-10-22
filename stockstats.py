@@ -1297,6 +1297,38 @@ class StockDataFrame(pd.DataFrame):
                 pd.Series(ssl_down, index=close.index, name="ssl_down"))
 
     @classmethod
+    def obv(cls, close: pd.Series, volume: pd.Series) -> pd.Series:
+        """On-Balance Volume (OBV) using vectorized NumPy.
+
+        OBV is a momentum indicator that uses volume flow to predict
+        changes in stock price.
+
+        Formula:
+            OBV[0] = 0.0
+            OBV[t] = OBV[t-1] + sign(close[t] - close[t-1]) * volume[t]
+
+        :param close: series of close prices
+        :param volume: series of trading volume
+        :return: On-Balance Volume series
+        """
+        n = len(close)
+        if n == 0:
+            return pd.Series(dtype=float, index=close.index, name="obv")
+        if n == 1:
+            return pd.Series([0.0], index=close.index, name="obv")
+
+        close_arr = close.values
+        vol_arr = volume.values
+
+        diff = np.diff(close_arr)
+        direction = np.sign(diff)
+        steps = np.zeros(n, dtype=float)
+        steps[1:] = direction * vol_arr[1:]
+        out = np.cumsum(steps)
+
+        return pd.Series(out, index=close.index, name="obv")
+
+    @classmethod
     def linear_reg(cls, series, window, correlation=False):
         window = cls.get_int_positive(window)
         arr = series.values
@@ -1619,6 +1651,10 @@ class StockDataFrame(pd.DataFrame):
         mfi[:window] = 0.5
 
         self[meta.name] = self.to_series(mfi)
+
+    def _get_obv(self, meta: _Meta):
+        """get On-Balance Volume (OBV)"""
+        self[meta.name] = self.obv(self.close, self.volume)
 
     def _get_ao(self, meta: _Meta):
         """get awesome oscillator
@@ -2222,6 +2258,7 @@ class StockDataFrame(pd.DataFrame):
              "supertrend_ub"): self._get_supertrend,
             ("ssl", "ssl_up", "ssl_down"): self._get_ssl,
             ("bop",): self._get_bop,
+            ("obv",): self._get_obv,
             ("cti",): self._get_cti,
             ("eribull", "eribear"): self._get_eri,
             ("rvgi", "rvgis"): self._get_rvgi,

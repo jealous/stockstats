@@ -19,7 +19,7 @@ Supported statistics/indicators are:
 
 **Volatility**: Bollinger Bands, ATR, TR, CCI, WR, CHOP, KER, Z-Score, MAD, PGO
 
-**Volume**: VR, MFI, PVO, VWMA
+**Volume**: VR, MFI, PVO, VWMA, OBV
 
 **Oscillators**: QQE, RVGI, ERI, FTR
 
@@ -188,6 +188,7 @@ will be re-evaluated the next time you access them.
 | VR | `vr` | 26 | Volume Variation Index |
 | MFI | `mfi` | 14 | Money Flow Index |
 | PVO | `pvo` | 12, 26, 9 | Percentage Volume Oscillator |
+| OBV | `obv` | - | On-Balance Volume |
 | QQE | `qqe` | 14, 5 | Quantitative Qualitative Estimation |
 | RVGI | `rvgi` | 14 | Relative Vigor Index |
 | ERI | `eribull`, `eribear` | 13 | Elder-Ray Index |
@@ -882,6 +883,22 @@ Example:
 The period of short, long EMA and signal line can be tuned with
 `set_dft_window('pvo', (short, long, signal))`. The default
 windows are 12 and 26 and 9.
+
+#### [OBV - On-Balance Volume](https://www.investopedia.com/terms/o/onbalancevolume.asp)
+
+On-Balance Volume (OBV) is a momentum indicator that uses volume flow to predict
+changes in stock price. Joseph Granville developed the metric in 1963.
+
+Formula:
+* If Close > Prior Close: `OBV = Prior OBV + Volume`
+* If Close < Prior Close: `OBV = Prior OBV - Volume`
+* If Close == Prior Close: `OBV = Prior OBV`
+* `OBV[0] = 0`
+
+Examples:
+* `df['obv']` retrieves the On-Balance Volume
+* `df['obv_10_sma']` retrieves the 10-period SMA of OBV
+* `df['obv_20_ema']` retrieves the 20-period EMA of OBV
 
 ---
 
