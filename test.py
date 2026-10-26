@@ -1195,6 +1195,45 @@ class StockDataFrameTest(TestCase):
         assert_that(list(s_up), equal_to([10.5]))
         assert_that(list(s_down), equal_to([9.5]))
 
+    def test_obv(self):
+        stock = self.get_stock_30days()
+        obv = stock["obv"]
+        assert_that(obv[20110104], equal_to(0.0))
+        assert_that(obv[20110105], equal_to(139118400.0))
+        assert_that(obv[20110106], equal_to(55978100.0))
+        assert_that(obv[20110107], equal_to(418414900.0))
+        assert_that(obv[20110110], equal_to(252005200.0))
+        assert_that(obv[20110111], equal_to(400858500.0))
+        assert_that(obv[20110112], equal_to(534845200.0))
+
+        # test moving average of obv
+        obv_sma = stock["obv_5_sma"]
+        expected_sma = StockDataFrame.sma(obv, 5)
+        assert_that(list(obv_sma), equal_to(list(expected_sma)))
+
+    @staticmethod
+    def test_obv_edge_cases():
+        close = pd.Series([10.0, 12.0, 11.0, 11.0, 13.0])
+        volume = pd.Series([1000.0, 500.0, 300.0, 200.0, 400.0])
+        res = StockDataFrame.obv(close, volume)
+        assert_that(list(res), equal_to([0.0, 500.0, 200.0, 200.0, 600.0]))
+
+        # empty series
+        empty_obv = StockDataFrame.obv(pd.Series(dtype=float),
+                                       pd.Series(dtype=float))
+        assert_that(len(empty_obv), equal_to(0))
+
+        # single-element series
+        single_obv = StockDataFrame.obv(pd.Series([100.0]),
+                                        pd.Series([500.0]))
+        assert_that(list(single_obv), equal_to([0.0]))
+
+        # flat prices (no price movement)
+        flat_close = pd.Series([10.0, 10.0, 10.0])
+        flat_volume = pd.Series([100.0, 200.0, 300.0])
+        flat_obv = StockDataFrame.obv(flat_close, flat_volume)
+        assert_that(list(flat_obv), equal_to([0.0, 0.0, 0.0]))
+
     def test_coppock(self):
         stock = self.get_stock_90days()
         c0 = stock["coppock"]
