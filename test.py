@@ -461,6 +461,32 @@ class StockDataFrameTest(TestCase):
         finally:
             stockstats.set_dft_window(name, orig)
 
+    def test_family_member_with_custom_window(self):
+        cases = [
+            ("macd", (5, 10, 3), "macds", "macds_5,10,3"),
+            ("macd", (5, 10, 3), "macdh", "macdh_5,10,3"),
+            ("ppo", (5, 10, 3), "ppos", "ppos_5,10,3"),
+            ("ppo", (5, 10, 3), "ppoh", "ppoh_5,10,3"),
+            ("pvo", (5, 10, 3), "pvos", "pvos_5,10,3"),
+            ("pvo", (5, 10, 3), "pvoh", "pvoh_5,10,3"),
+            ("boll", 10, "boll_ub", "boll_ub_10"),
+            ("boll", 10, "boll_lb", "boll_lb_10"),
+        ]
+        for family, windows, default_name, custom_name in cases:
+            stock = self.get_stock_90days()
+            default = stock[default_name].copy()
+
+            custom = stock[custom_name]
+
+            # the default column is not overwritten
+            assert_that(stock[default_name].equals(default), equal_to(True))
+            orig = stockstats.set_dft_window(family, windows)
+            try:
+                ref = self.get_stock_90days()[default_name]
+            finally:
+                stockstats.set_dft_window(family, orig)
+            assert_that(custom.equals(ref), equal_to(True), custom_name)
+
     def test_ppo_custom_window(self):
         self._check_custom_window_family("ppo")
 
