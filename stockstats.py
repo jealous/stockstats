@@ -2296,8 +2296,24 @@ class StockDataFrame(pd.DataFrame):
                     "Invalid number of return arguments "
                     f"after parsing column name: '{key}'"
                 )
-            meta = _Meta(name, windows=n, column=col)
-            self._get_handler(name)(meta)
+            handler, meta = self._resolve_handler(name, n, col)
+            handler(meta)
+
+    def _resolve_handler(self, name: str, windows, column):
+        """Find the handler and meta for a parsed column name.
+
+        A member of a multi-column indicator, like ``macds`` in
+        ``macds_5,10,3``, has no handler of its own.  It is served by the
+        handler of the whole family, which creates all of its columns.
+        """
+        if not hasattr(self, f"_get_{name}"):
+            for names, handler in self.handler.items():
+                if name in names:
+                    family = handler.__name__[5:]
+                    return handler, _Meta(family, windows=windows,
+                                          column=column)
+        return (self._get_handler(name),
+                _Meta(name, windows=windows, column=column))
 
     def __init_column(self, key):
         if key not in self:
