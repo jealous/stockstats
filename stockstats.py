@@ -1354,7 +1354,7 @@ class StockDataFrame(pd.DataFrame):
         else:
             m = (window * xy_sum - x_sum * y_sum) / divisor
             b = (y_sum * x2_sum - x_sum * xy_sum) / divisor
-            ret_vals = m * (window - 1) + b
+            ret_vals = m * window + b
 
         out = np.zeros(n, dtype=float)
         out[window - 1:] = ret_vals
