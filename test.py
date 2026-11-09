@@ -929,6 +929,25 @@ class StockDataFrameTest(TestCase):
         assert_that(st_ub[idx], near_to(14.6457))
         assert_that(st_lb[idx], near_to(12.9021))
 
+    def test_supertrend_custom_window(self):
+        stock = self.get_stock_90days()
+        default = stock["supertrend"].tolist()
+
+        st_10 = stock["supertrend_10"]
+
+        assert_that(stock.columns, has_items("supertrend_10_ub",
+                                             "supertrend_10_lb"))
+        # a custom window must not overwrite the default column
+        assert_that(stock["supertrend"].tolist(), equal_to(default))
+        assert_that(st_10.tolist(), not_(equal_to(default)))
+
+        orig = stockstats.set_dft_window("supertrend", 10)
+        try:
+            ref = self.get_stock_90days()["supertrend"]
+        finally:
+            stockstats.set_dft_window("supertrend", orig)
+        assert_that(st_10.tolist(), equal_to(ref.tolist()))
+
     def test_ao(self):
         stock = self.get_stock_90days()
         ao = stock["ao"]

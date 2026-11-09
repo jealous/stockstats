@@ -738,7 +738,7 @@ class StockDataFrame(pd.DataFrame):
             # Set Supertrend value
             supertrend[i] = final_lb[i] if direction[i] == 1 else final_ub[i]
 
-        self["supertrend"] = supertrend
+        self[meta.name] = supertrend
         self[f"{meta.name}_ub"] = final_ub
         self[f"{meta.name}_lb"] = final_lb
 
