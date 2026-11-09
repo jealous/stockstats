@@ -1330,7 +1330,7 @@ class StockDataFrameTest(TestCase):
         series = pd.Series(arr)
         lg = StockDataFrame.linear_reg(series, 5)
         assert_that(lg.iloc[3], equal_to(0.0))
-        assert_that(lg.iloc[8], equal_to(5.2))
+        assert_that(lg.iloc[8], equal_to(5.4))
 
         cr = StockDataFrame.linear_reg(series, 5, correlation=True)
         assert_that(cr.iloc[3], equal_to(0.0))
@@ -1341,6 +1341,25 @@ class StockDataFrameTest(TestCase):
         lr = stock["close_10_lrma"]
         assert_that(lr[20110114], equal_to(0))
         assert_that(lr[20110127], near_to(12.782))
+
+    @staticmethod
+    def test_lrma_straight_line():
+        import numpy as np
+        close = np.arange(1.0, 21.0)
+        df = pd.DataFrame(
+            dict(
+                open=close,
+                high=close + 1,
+                low=close - 1,
+                close=close,
+                volume=100.0,
+            )
+        )
+        stock = StockDataFrame.retype(df)
+        lr = stock["close_10_lrma"]
+        assert_that(lr.iloc[-3], near_to(18.0))
+        assert_that(lr.iloc[-2], near_to(19.0))
+        assert_that(lr.iloc[-1], near_to(20.0))
 
     def test_cti(self):
         stock = self.get_stock_90days()
@@ -1405,22 +1424,22 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_90days()
         inertia = stock["inertia"]
         assert_that(inertia[20110209], equal_to(0))
-        assert_that(inertia[20110210], near_to(-0.024856))
-        assert_that(inertia[20110304], near_to(0.155576))
+        assert_that(inertia[20110210], near_to(-0.045118))
+        assert_that(inertia[20110304], near_to(0.163205))
 
         inertia_dft = stock["inertia_20,14"]
         assert_that(inertia_dft[20110209], equal_to(0))
-        assert_that(inertia_dft[20110210], near_to(-0.024856))
-        assert_that(inertia_dft[20110304], near_to(0.155576))
+        assert_that(inertia_dft[20110210], near_to(-0.045118))
+        assert_that(inertia_dft[20110304], near_to(0.163205))
 
         inertia14 = stock["inertia_20"]
         assert_that(inertia14[20110209], equal_to(0))
-        assert_that(inertia14[20110210], near_to(-0.024856))
-        assert_that(inertia14[20110304], near_to(0.155576))
+        assert_that(inertia14[20110210], near_to(-0.045118))
+        assert_that(inertia14[20110304], near_to(0.163205))
 
         inertia10 = stock["inertia_10"]
-        assert_that(inertia10[20110209], near_to(0.011085))
-        assert_that(inertia10[20110210], near_to(-0.014669))
+        assert_that(inertia10[20110209], near_to(-0.003018))
+        assert_that(inertia10[20110210], near_to(-0.032097))
 
     def test_kst(self):
         stock = self.get_stock_90days()
