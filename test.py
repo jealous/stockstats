@@ -862,12 +862,29 @@ class StockDataFrameTest(TestCase):
     def test_column_kama(self):
         stock = self.get_stock_90days()
         kama_10 = stock["close_10,2,30_kama"]
-        assert_that(kama_10.loc[20110331], near_to(13.6648))
+        assert_that(kama_10.loc[20110331], near_to(13.4183))
 
     def test_kama_with_default_fast_slow(self):
         stock = self.get_stock_90days()
         kama_2 = stock["close_2_kama"]
-        assert_that(kama_2.loc[20110331], near_to(13.7326))
+        assert_that(kama_2.loc[20110331], near_to(13.2778))
+
+    @staticmethod
+    def test_kama_straight_line():
+        import numpy as np
+        close = np.arange(1.0, 21.0)
+        df = pd.DataFrame(
+            dict(
+                open=close,
+                high=close + 1,
+                low=close - 1,
+                close=close,
+                volume=100.0,
+            )
+        )
+        stock = StockDataFrame.retype(df)
+        kama = stock["close_10,2,30_kama"]
+        assert_that(kama.iloc[-1], near_to(18.7409))
 
     def test_vwma(self):
         stock = self.get_stock_90days()

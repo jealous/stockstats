@@ -1770,7 +1770,7 @@ class StockDataFrame(pd.DataFrame):
         slow_ema_smoothing = 2.0 / (slow + 1)
         smoothing_2 = fast_ema_smoothing - slow_ema_smoothing
         efficient_smoothing = efficiency_ratio * smoothing_2
-        smoothing = (2 * (efficient_smoothing + slow_ema_smoothing)).values
+        smoothing = ((efficient_smoothing + slow_ema_smoothing) ** 2).values
 
         # start with simple moving average
         col = self[meta.column]
