@@ -1415,13 +1415,16 @@ class StockDataFrame(pd.DataFrame):
         self[macds] = self.ema(self[macd], signal_w)
         self[macdh] = self[macd] - self[macds]
 
-    def _ppo_and_pvo(self, name: str, ser: pd.Series, meta: _Meta):
+    def _ppo_and_pvo(self, ser: pd.Series, meta: _Meta):
         short_w, long_w, signal_w = meta.int0, meta.int1, meta.int2
         pvo_short = self.ema(ser, short_w).values
         pvo_long = self.ema(ser, long_w).values
-        self[name] = self.to_series((pvo_short - pvo_long) / pvo_long * 100)
-        self[f"{name}s"] = self.ema(self[name], signal_w)
-        self[f"{name}h"] = self[name] - self[f"{name}s"]
+        line = meta.name
+        signal = meta.name_ex("s")
+        hist = meta.name_ex("h")
+        self[line] = self.to_series((pvo_short - pvo_long) / pvo_long * 100)
+        self[signal] = self.ema(self[line], signal_w)
+        self[hist] = self[line] - self[signal]
 
     def _get_pvo(self, meta: _Meta):
         """Percentage Volume Oscillator
@@ -1443,7 +1446,7 @@ class StockDataFrame(pd.DataFrame):
 
         PVO Histogram: PVO - Signal Line
         """
-        return self._ppo_and_pvo("pvo", self.volume, meta)
+        return self._ppo_and_pvo(self.volume, meta)
 
     def _get_ppo(self, meta: _Meta):
         """Percentage Price Oscillator
@@ -1457,7 +1460,7 @@ class StockDataFrame(pd.DataFrame):
 
         PPO Histogram: PPO - Signal Line
         """
-        return self._ppo_and_pvo("ppo", self.close, meta)
+        return self._ppo_and_pvo(self.close, meta)
 
     def _eri(self, window):
         ema = self.ema(self.close, window, adjust=False)
