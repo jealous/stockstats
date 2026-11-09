@@ -439,6 +439,34 @@ class StockDataFrameTest(TestCase):
         assert_that(stock["ppos"].loc[20110331], near_to(0.6840))
         assert_that(stock["ppoh"].loc[20110331], near_to(0.4349))
 
+    def _check_custom_window_family(self, name):
+        """name_<w> must create the whole family and keep defaults intact."""
+        family = [name, f"{name}s", f"{name}h"]
+        custom = [f"{c}_5,10,3" for c in family]
+
+        stock = self.get_stock_90days()
+        defaults = [stock[c].copy() for c in family]
+
+        _ = stock[custom[0]]
+
+        assert_that(stock.columns, has_items(*custom))
+        for col, default in zip(family, defaults):
+            assert_that(stock[col].equals(default), equal_to(True))
+
+        orig = stockstats.set_dft_window(name, (5, 10, 3))
+        try:
+            ref = self.get_stock_90days()
+            for col, cust in zip(family, custom):
+                assert_that(stock[cust].equals(ref[col]), equal_to(True))
+        finally:
+            stockstats.set_dft_window(name, orig)
+
+    def test_ppo_custom_window(self):
+        self._check_custom_window_family("ppo")
+
+    def test_pvo_custom_window(self):
+        self._check_custom_window_family("pvo")
+
     def test_eri(self):
         stock = self.get_stock_90days()
         bull = stock["eribull"]
