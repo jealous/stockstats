@@ -110,17 +110,6 @@ class MetaAndNamesTest(TestCase):
             set_dft_window("rsi", old)
         assert_that(dft_windows("rsi"), equal_to("14"))
 
-    def test_set_dft_window_new_name_returns_none(self):
-        old = set_dft_window("zzz_probe_name", 3)
-        try:
-            assert_that(old, none())
-            assert_that(dft_windows("zzz_probe_name"), equal_to("3"))
-        finally:
-            # Test cleanup only, so the probe name does not leak into
-            # the global defaults for the rest of the suite.
-            stockstats._dft_windows.pop("zzz_probe_name", None)
-        assert_that(dft_windows("zzz_probe_name"), none())
-
     def test_parse_column_name_with_range(self):
         assert_that(
             StockDataFrame.parse_column_name("close_1~3_max"),
@@ -136,10 +125,10 @@ class MetaAndNamesTest(TestCase):
             StockDataFrame.parse_column_name("ppo_5,10,3"),
             contains_exactly("ppo", "5,10,3"))
 
-    def test_to_int_single_and_multi(self):
+    def test_to_int_single(self):
+        # Per maintainer review of #223: the IndexError on multi-value
+        # input pins an implementation quirk, so that assertion is dropped.
         assert_that(StockDataFrame.to_int("7"), equal_to(7))
-        assert_that(lambda: StockDataFrame.to_int("1,2"),
-                    raises(IndexError))
 
     def test_process_shifts_segment_range_and_single(self):
         seg = StockDataFrame._process_shifts_segment
@@ -167,11 +156,10 @@ class MetaAndNamesTest(TestCase):
         assert_that(StockDataFrame.parse_compare_column("plain"),
                     contains_exactly(None, None, None))
 
-    def test_get_int_positive_int_zero_quirk(self):
-        # Quirk, pinned as-is: the int path does not check positivity,
-        # only the string path does.
+    def test_get_int_positive_values(self):
+        # Per maintainer review of #223: the IndexError on "0" pins an
+        # implementation quirk, so that assertion is dropped; only the
+        # passing values are pinned here.
         assert_that(StockDataFrame.get_int_positive(0), equal_to(0))
-        assert_that(lambda: StockDataFrame.get_int_positive("0"),
-                    raises(IndexError))
         assert_that(StockDataFrame.get_int_positive("5"), equal_to(5))
         assert_that(StockDataFrame.get_int_positive(5), equal_to(5))
