@@ -14,13 +14,13 @@ pip install -r requirements.txt
 pip install -r test-requirements.txt
 
 # Run all tests with coverage
-pytest --cov=stockstats test.py
+pytest --cov=stockstats tests/
 
 # Run a single test
-pytest test.py::StockDataFrameTest::test_get_rsi -v
+pytest tests/test.py::StockDataFrameTest::test_get_rsi -v
 
 # Run linting
-flake8 stockstats.py test.py
+flake8 stockstats.py tests/
 
 # Run tox (for multi-version testing)
 tox
@@ -66,11 +66,11 @@ The library is a single-file module with these key components:
 3. Create `_get_<name>(self, meta: _Meta)` method
 4. For multi-column indicators, add entry to `handler` property mapping tuple of names to handler
 
-### Test File: test.py
+### Test File: tests/test.py
 
-Uses PyHamcrest matchers. Test data files are in `test_data/`. The `YFinanceCompatibilityTest` class downloads live data from Yahoo Finance.
+Uses PyHamcrest matchers. Test data files are in `tests/test_data/`. The `YFinanceCompatibilityTest` class downloads live data from Yahoo Finance.
 
 ## Commit Guidelines
 
-- Run `flake8 stockstats.py test.py` before each commit to ensure code style compliance
+- Run `flake8 stockstats.py tests/` before each commit to ensure code style compliance
 - Use `git commit --amend` for subsequent changes within a single PR to keep history clean
