@@ -439,6 +439,60 @@ class StockDataFrameTest(TestCase):
         assert_that(stock["ppos"].loc[20110331], near_to(0.6840))
         assert_that(stock["ppoh"].loc[20110331], near_to(0.4349))
 
+    def _check_custom_window_family(self, name):
+        """name_<w> must create the whole family and keep defaults intact."""
+        family = [name, f"{name}s", f"{name}h"]
+        custom = [f"{c}_5,10,3" for c in family]
+
+        stock = self.get_stock_90days()
+        defaults = [stock[c].copy() for c in family]
+
+        _ = stock[custom[0]]
+
+        assert_that(stock.columns, has_items(*custom))
+        for col, default in zip(family, defaults):
+            assert_that(stock[col].equals(default), equal_to(True))
+
+        orig = stockstats.set_dft_window(name, (5, 10, 3))
+        try:
+            ref = self.get_stock_90days()
+            for col, cust in zip(family, custom):
+                assert_that(stock[cust].equals(ref[col]), equal_to(True))
+        finally:
+            stockstats.set_dft_window(name, orig)
+
+    def test_family_member_with_custom_window(self):
+        cases = [
+            ("macd", (5, 10, 3), "macds", "macds_5,10,3"),
+            ("macd", (5, 10, 3), "macdh", "macdh_5,10,3"),
+            ("ppo", (5, 10, 3), "ppos", "ppos_5,10,3"),
+            ("ppo", (5, 10, 3), "ppoh", "ppoh_5,10,3"),
+            ("pvo", (5, 10, 3), "pvos", "pvos_5,10,3"),
+            ("pvo", (5, 10, 3), "pvoh", "pvoh_5,10,3"),
+            ("boll", 10, "boll_ub", "boll_ub_10"),
+            ("boll", 10, "boll_lb", "boll_lb_10"),
+        ]
+        for family, windows, default_name, custom_name in cases:
+            stock = self.get_stock_90days()
+            default = stock[default_name].copy()
+
+            custom = stock[custom_name]
+
+            # the default column is not overwritten
+            assert_that(stock[default_name].equals(default), equal_to(True))
+            orig = stockstats.set_dft_window(family, windows)
+            try:
+                ref = self.get_stock_90days()[default_name]
+            finally:
+                stockstats.set_dft_window(family, orig)
+            assert_that(custom.equals(ref), equal_to(True), custom_name)
+
+    def test_ppo_custom_window(self):
+        self._check_custom_window_family("ppo")
+
+    def test_pvo_custom_window(self):
+        self._check_custom_window_family("pvo")
+
     def test_eri(self):
         stock = self.get_stock_90days()
         bull = stock["eribull"]
@@ -808,12 +862,29 @@ class StockDataFrameTest(TestCase):
     def test_column_kama(self):
         stock = self.get_stock_90days()
         kama_10 = stock["close_10,2,30_kama"]
-        assert_that(kama_10.loc[20110331], near_to(13.6648))
+        assert_that(kama_10.loc[20110331], near_to(13.4183))
 
     def test_kama_with_default_fast_slow(self):
         stock = self.get_stock_90days()
         kama_2 = stock["close_2_kama"]
-        assert_that(kama_2.loc[20110331], near_to(13.7326))
+        assert_that(kama_2.loc[20110331], near_to(13.2778))
+
+    @staticmethod
+    def test_kama_straight_line():
+        import numpy as np
+        close = np.arange(1.0, 21.0)
+        df = pd.DataFrame(
+            dict(
+                open=close,
+                high=close + 1,
+                low=close - 1,
+                close=close,
+                volume=100.0,
+            )
+        )
+        stock = StockDataFrame.retype(df)
+        kama = stock["close_10,2,30_kama"]
+        assert_that(kama.iloc[-1], near_to(18.7409))
 
     def test_vwma(self):
         stock = self.get_stock_90days()
@@ -928,6 +999,25 @@ class StockDataFrameTest(TestCase):
         assert_that(st[idx], near_to(12.9021))
         assert_that(st_ub[idx], near_to(14.6457))
         assert_that(st_lb[idx], near_to(12.9021))
+
+    def test_supertrend_custom_window(self):
+        stock = self.get_stock_90days()
+        default = stock["supertrend"].tolist()
+
+        st_10 = stock["supertrend_10"]
+
+        assert_that(stock.columns, has_items("supertrend_10_ub",
+                                             "supertrend_10_lb"))
+        # a custom window must not overwrite the default column
+        assert_that(stock["supertrend"].tolist(), equal_to(default))
+        assert_that(st_10.tolist(), not_(equal_to(default)))
+
+        orig = stockstats.set_dft_window("supertrend", 10)
+        try:
+            ref = self.get_stock_90days()["supertrend"]
+        finally:
+            stockstats.set_dft_window("supertrend", orig)
+        assert_that(st_10.tolist(), equal_to(ref.tolist()))
 
     def test_ao(self):
         stock = self.get_stock_90days()
@@ -1195,6 +1285,45 @@ class StockDataFrameTest(TestCase):
         assert_that(list(s_up), equal_to([10.5]))
         assert_that(list(s_down), equal_to([9.5]))
 
+    def test_obv(self):
+        stock = self.get_stock_30days()
+        obv = stock["obv"]
+        assert_that(obv[20110104], equal_to(0.0))
+        assert_that(obv[20110105], equal_to(139118400.0))
+        assert_that(obv[20110106], equal_to(55978100.0))
+        assert_that(obv[20110107], equal_to(418414900.0))
+        assert_that(obv[20110110], equal_to(252005200.0))
+        assert_that(obv[20110111], equal_to(400858500.0))
+        assert_that(obv[20110112], equal_to(534845200.0))
+
+        # test moving average of obv
+        obv_sma = stock["obv_5_sma"]
+        expected_sma = StockDataFrame.sma(obv, 5)
+        assert_that(list(obv_sma), equal_to(list(expected_sma)))
+
+    @staticmethod
+    def test_obv_edge_cases():
+        close = pd.Series([10.0, 12.0, 11.0, 11.0, 13.0])
+        volume = pd.Series([1000.0, 500.0, 300.0, 200.0, 400.0])
+        res = StockDataFrame.obv(close, volume)
+        assert_that(list(res), equal_to([0.0, 500.0, 200.0, 200.0, 600.0]))
+
+        # empty series
+        empty_obv = StockDataFrame.obv(pd.Series(dtype=float),
+                                       pd.Series(dtype=float))
+        assert_that(len(empty_obv), equal_to(0))
+
+        # single-element series
+        single_obv = StockDataFrame.obv(pd.Series([100.0]),
+                                        pd.Series([500.0]))
+        assert_that(list(single_obv), equal_to([0.0]))
+
+        # flat prices (no price movement)
+        flat_close = pd.Series([10.0, 10.0, 10.0])
+        flat_volume = pd.Series([100.0, 200.0, 300.0])
+        flat_obv = StockDataFrame.obv(flat_close, flat_volume)
+        assert_that(list(flat_obv), equal_to([0.0, 0.0, 0.0]))
+
     def test_coppock(self):
         stock = self.get_stock_90days()
         c0 = stock["coppock"]
@@ -1218,7 +1347,7 @@ class StockDataFrameTest(TestCase):
         series = pd.Series(arr)
         lg = StockDataFrame.linear_reg(series, 5)
         assert_that(lg.iloc[3], equal_to(0.0))
-        assert_that(lg.iloc[8], equal_to(5.2))
+        assert_that(lg.iloc[8], equal_to(5.4))
 
         cr = StockDataFrame.linear_reg(series, 5, correlation=True)
         assert_that(cr.iloc[3], equal_to(0.0))
@@ -1229,6 +1358,25 @@ class StockDataFrameTest(TestCase):
         lr = stock["close_10_lrma"]
         assert_that(lr[20110114], equal_to(0))
         assert_that(lr[20110127], near_to(12.782))
+
+    @staticmethod
+    def test_lrma_straight_line():
+        import numpy as np
+        close = np.arange(1.0, 21.0)
+        df = pd.DataFrame(
+            dict(
+                open=close,
+                high=close + 1,
+                low=close - 1,
+                close=close,
+                volume=100.0,
+            )
+        )
+        stock = StockDataFrame.retype(df)
+        lr = stock["close_10_lrma"]
+        assert_that(lr.iloc[-3], near_to(18.0))
+        assert_that(lr.iloc[-2], near_to(19.0))
+        assert_that(lr.iloc[-1], near_to(20.0))
 
     def test_cti(self):
         stock = self.get_stock_90days()
@@ -1293,22 +1441,22 @@ class StockDataFrameTest(TestCase):
         stock = self.get_stock_90days()
         inertia = stock["inertia"]
         assert_that(inertia[20110209], equal_to(0))
-        assert_that(inertia[20110210], near_to(-0.024856))
-        assert_that(inertia[20110304], near_to(0.155576))
+        assert_that(inertia[20110210], near_to(-0.045118))
+        assert_that(inertia[20110304], near_to(0.163205))
 
         inertia_dft = stock["inertia_20,14"]
         assert_that(inertia_dft[20110209], equal_to(0))
-        assert_that(inertia_dft[20110210], near_to(-0.024856))
-        assert_that(inertia_dft[20110304], near_to(0.155576))
+        assert_that(inertia_dft[20110210], near_to(-0.045118))
+        assert_that(inertia_dft[20110304], near_to(0.163205))
 
         inertia14 = stock["inertia_20"]
         assert_that(inertia14[20110209], equal_to(0))
-        assert_that(inertia14[20110210], near_to(-0.024856))
-        assert_that(inertia14[20110304], near_to(0.155576))
+        assert_that(inertia14[20110210], near_to(-0.045118))
+        assert_that(inertia14[20110304], near_to(0.163205))
 
         inertia10 = stock["inertia_10"]
-        assert_that(inertia10[20110209], near_to(0.011085))
-        assert_that(inertia10[20110210], near_to(-0.014669))
+        assert_that(inertia10[20110209], near_to(-0.003018))
+        assert_that(inertia10[20110210], near_to(-0.032097))
 
     def test_kst(self):
         stock = self.get_stock_90days()
