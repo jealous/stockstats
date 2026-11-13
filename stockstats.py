@@ -809,9 +809,9 @@ class StockDataFrame(pd.DataFrame):
         high_arr = self.high.values
         low_arr = self.low.values
 
-        # periods since last high / low in window
-        high_idx = self._rolling_arg_index(high_arr, window, mode="max")
-        low_idx = self._rolling_arg_index(low_arr, window, mode="min")
+        # periods since last high / low in the current bar plus the n before it
+        high_idx = self._rolling_arg_index(high_arr, window + 1, mode="max")
+        low_idx = self._rolling_arg_index(low_arr, window + 1, mode="min")
 
         # Compute Aroon Up / Down
         aroon_up = (window - high_idx) / window * 100

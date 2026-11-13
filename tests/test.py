@@ -1113,8 +1113,14 @@ class StockDataFrameTest(TestCase):
         assert_that(stock.loc[20040924, "aroon_25"], equal_to(28))
 
         _ = stock["aroon_5"]
-        assert_that(stock.loc[20040924, "aroon_5"], equal_to(40))
+        assert_that(stock.loc[20040924, "aroon_5"], equal_to(60))
         assert_that(stock.loc[20041020, "aroon_5"], equal_to(-80))
+
+    def test_aroon_new_high_every_bar(self):
+        high = pd.Series(range(10, 30), dtype=float)
+        df = pd.DataFrame({"high": high, "low": high - 1, "close": high})
+        stock = wrap(df)
+        assert_that(stock["aroon_5"].iloc[-1], equal_to(100))
 
     def test_close_z(self):
         stock = self._supor[:100]
