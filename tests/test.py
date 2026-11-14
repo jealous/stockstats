@@ -1035,6 +1035,13 @@ class StockDataFrameTest(TestCase):
         assert_that(bop[20110104], near_to(0.5))
         assert_that(bop[20110106], near_to(-0.207))
 
+    def test_bop_integer_prices(self):
+        df = pd.DataFrame(dict(open=[10, 11, 12], high=[12, 13, 14],
+                               low=[9, 10, 11], close=[11, 12, 12]))
+        bop = wrap(df)['bop']
+        assert_that(bop[0], near_to(0.333))
+        assert_that(bop[2], equal_to(0))
+
     def test_cmo(self):
         stock = self.get_stock_30days()
         cmo = stock["cmo"]
