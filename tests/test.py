@@ -1340,6 +1340,63 @@ class StockDataFrameTest(TestCase):
         flat_obv = StockDataFrame.obv(flat_close, flat_volume)
         assert_that(list(flat_obv), equal_to([0.0, 0.0, 0.0]))
 
+    def test_bh_mass(self):
+        stock = self.get_stock_90days()
+        mass = stock["bh_mass_100"]
+        assert_that(mass[20110104], equal_to(0.0))
+        assert_that(mass[20110105], near_to(0.0872))
+        assert_that(mass[20110221], near_to(0.3522))
+        assert_that(mass[20110222], near_to(0.2466))
+        assert_that(stock["bh_dir_100"][20110221], equal_to(-1))
+        assert_that(stock["bh_dir_100"][20110228], equal_to(1))
+        assert_that(stock["bh_active_100"].any(), equal_to(False))
+
+        default = stock["bh_mass"]
+        expected, _, _ = StockDataFrame.bh_mass(stock["close"], cf=0.001)
+        assert_that(list(default), equal_to(list(expected)))
+        assert_that(stock.columns, has_items("bh_active", "bh_dir"))
+
+    @staticmethod
+    def test_bh_mass_forms_and_collapses():
+        import numpy as np
+        # 20 bars up 0.08% each, a 2% drop, then one quiet bar
+        close = list(100 * 1.0008 ** np.arange(21))
+        close += [close[-1] * 0.98, close[-1] * 0.98 * 1.0001]
+        mass, active, direction = StockDataFrame.bh_mass(pd.Series(close))
+        # first bar: 0.0008 * 100 * 1.1
+        assert_that(mass[1], near_to(0.088))
+        assert_that(mass[14], near_to(1.4262))
+        assert_that(mass[15], near_to(1.5148))
+        assert_that(list(active[:15]), equal_to([False] * 15))
+        assert_that(list(active[15:21]), equal_to([True] * 6))
+        assert_that(direction[20], equal_to(1))
+        # the drop is SPACELIKE: mass * 0.7 and the well collapses
+        assert_that(mass[21], near_to(1.3272))
+        assert_that(active[21], equal_to(False))
+        # re-forming right after a collapse adds back half the old mass
+        assert_that(mass[22], near_to(1.9355))
+
+    @staticmethod
+    def test_bh_mass_edge_cases():
+        mass, active, direction = StockDataFrame.bh_mass(
+            pd.Series([100.0, 100.05, float("nan"), 99.95]))
+        assert_that(mass[1], near_to(0.055))
+        assert_that(isnan(mass[2]), equal_to(True))
+        # the gap is skipped: 99.95 is compared with 100.05
+        assert_that(mass[3], near_to(0.1722))
+        assert_that(list(direction), equal_to([0, 1, 0, -1]))
+
+        flat, flat_active, _ = StockDataFrame.bh_mass(pd.Series([10.0] * 8))
+        assert_that(list(flat), equal_to([0.0] * 8))
+        assert_that(flat_active.any(), equal_to(False))
+
+        empty, _, _ = StockDataFrame.bh_mass(pd.Series(dtype=float))
+        assert_that(len(empty), equal_to(0))
+
+        assert_that(
+            lambda: StockDataFrame.bh_mass(pd.Series([1.0, 2.0]), cf=0),
+            raises(stockstats.StockStatsError))
+
     def test_coppock(self):
         stock = self.get_stock_90days()
         c0 = stock["coppock"]

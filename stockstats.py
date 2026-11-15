@@ -48,6 +48,9 @@ _dft_windows = {
     "ao": (5, 34),
     "aroon": 25,
     "atr": 14,
+    "bh_active": 10,  # light speed in basis points
+    "bh_dir": 10,
+    "bh_mass": 10,
     "boll": 20,
     "cci": 14,
     "change": 1,
@@ -760,6 +763,28 @@ class StockDataFrame(pd.DataFrame):
         self[f"ssl_up{suffix}"] = ssl_up
         self[f"ssl_down{suffix}"] = ssl_down
 
+    def _get_bh_mass(self, meta: _Meta):
+        """Black-hole mass from SRFM (Special Relativity Financial Modelling)
+
+        https://github.com/Mattbusel/srfm-core
+
+        The window is the light speed ``cf`` in basis points (default 10,
+        i.e. 0.1% per bar).  Sets ``bh_mass``, ``bh_active`` and ``bh_dir``.
+        """
+        bp = meta.positive_int
+        mass, active, direction = self.bh_mass(self.close, cf=bp / 10000.0)
+
+        suffix = f"_{meta.windows}" if meta._windows is not None else ""
+        self[f"bh_mass{suffix}"] = mass
+        self[f"bh_active{suffix}"] = active
+        self[f"bh_dir{suffix}"] = direction
+
+    def _get_bh_active(self, meta: _Meta):
+        self._get_bh_mass(meta)
+
+    def _get_bh_dir(self, meta: _Meta):
+        self._get_bh_mass(meta)
+
     def _get_ssl_up(self, meta: _Meta):
         self._get_ssl(meta)
 
@@ -1327,6 +1352,107 @@ class StockDataFrame(pd.DataFrame):
         out = np.cumsum(steps)
 
         return pd.Series(out, index=close.index, name="obv")
+
+    @classmethod
+    def bh_mass(cls, close: pd.Series, cf: float = 0.001,
+                form: float = 1.5, collapse: float = 1.0,
+                timelike_decay: float = 0.95, spacelike_decay: float = 0.7,
+                ctl_min: int = 5, gain: Optional[float] = None
+                ) -> tuple[pd.Series, pd.Series, pd.Series]:
+        """Black-hole mass (SRFM)
+
+        A bar is TIMELIKE when ``|close[t] - close[t-1]| / close[t-1] < cf``
+        and SPACELIKE otherwise.  Mass builds up over runs of TIMELIKE bars
+        and decays on SPACELIKE ones.  A well is active once the mass is
+        above ``form`` after at least ``ctl_min`` TIMELIKE bars in a row, and
+        stays active while the mass is above ``collapse``.  ``bh_dir`` is
+        the sign of the return summed over the current TIMELIKE run.
+
+        Formula, with ``r = (close[t] - close[t-1]) / close[t-1]``:
+            TIMELIKE:  ctl += 1
+                       mass = mass * timelike_decay
+                              + |r| * gain * min(2, 1 + 0.1 * ctl)
+            SPACELIKE: ctl = 0, mass = mass * spacelike_decay
+
+        ``gain`` defaults to ``0.1 / cf``, so ``form`` and ``collapse`` mean
+        the same thing at any ``cf``.  At ``cf = 0.001`` that is the
+        reference value of 100 and the output equals ``srfm_core.bh_mass``
+        (https://github.com/Mattbusel/srfm-core), whose golden vectors this
+        follows, including the reform boost: a well that re-forms within
+        15 bars of collapsing gets half of its collapse mass back once.
+        NaN closes are skipped and give NaN mass.
+
+        :param close: series of close prices
+        :param cf: light speed, the per-bar return that separates TIMELIKE
+            from SPACELIKE bars
+        :param form: mass needed to form a well
+        :param collapse: mass an active well must stay above
+        :param timelike_decay: share of the mass kept on a TIMELIKE bar
+        :param spacelike_decay: share of the mass kept on a SPACELIKE bar
+        :param ctl_min: TIMELIKE bars in a row needed for an active well
+        :param gain: accretion scale, ``0.1 / cf`` when None
+        :return: (bh_mass, bh_active, bh_dir) tuple of Series
+        """
+        if not cf > 0:
+            raise StockStatsError("cf must be greater than 0")
+        if gain is None:
+            gain = 0.1 / cf
+        eps = 1e-9
+        arr = np.asarray(close, dtype=float)
+        n = len(arr)
+        mass_out = np.full(n, np.nan)
+        active_out = np.zeros(n, dtype=bool)
+        dir_out = np.zeros(n, dtype=int)
+
+        mass = cum = prev_mass = 0.0
+        active = False
+        direction = ctl = reform = 0
+        prev = None
+        for i in range(n):
+            x = arr[i]
+            if not np.isfinite(x):
+                continue
+            if prev is not None:
+                r = (x - prev) / (prev + eps)
+                if abs(x - prev) / (prev + eps) / cf < 1.0:
+                    ctl += 1
+                    cum += r
+                    boost = min(2.0, 1.0 + ctl * 0.1)
+                    mass = mass * timelike_decay + abs(r) * gain * boost
+                else:
+                    ctl = 0
+                    mass *= spacelike_decay
+                if cum > 0:
+                    direction = 1
+                elif cum < 0:
+                    direction = -1
+                was = active
+                if not was:
+                    if 0 < reform < 15:
+                        mass += prev_mass * 0.5
+                        prev_mass = 0.0
+                    active = mass > form and ctl >= ctl_min
+                else:
+                    active = mass > collapse and ctl >= ctl_min
+                if active and not was:
+                    reform = 0
+                elif was and not active:
+                    prev_mass = mass
+                    reform = 1
+                if not active:
+                    if reform > 0:
+                        reform += 1
+                    if ctl == 0:
+                        cum = 0.0
+            mass_out[i] = mass
+            active_out[i] = active
+            dir_out[i] = direction
+            prev = x
+
+        index = getattr(close, "index", None)
+        return (pd.Series(mass_out, index=index, name="bh_mass"),
+                pd.Series(active_out, index=index, name="bh_active"),
+                pd.Series(dir_out, index=index, name="bh_dir"))
 
     @classmethod
     def linear_reg(cls, series, window, correlation=False):
@@ -2264,6 +2390,7 @@ class StockDataFrame(pd.DataFrame):
             ("supertrend", "supertrend_lb",
              "supertrend_ub"): self._get_supertrend,
             ("ssl", "ssl_up", "ssl_down"): self._get_ssl,
+            ("bh_mass", "bh_active", "bh_dir"): self._get_bh_mass,
             ("bop",): self._get_bop,
             ("obv",): self._get_obv,
             ("cti",): self._get_cti,
