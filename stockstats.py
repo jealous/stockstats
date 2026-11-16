@@ -1388,7 +1388,7 @@ class StockDataFrame(pd.DataFrame):
         """
         n = meta.as_int
         moving_avg = self.sma(self.close, n)
-        moving_std = self.mov_std(self.close, n)
+        moving_std = self._rolling(self.close, n).std(ddof=0)
 
         self[meta.name] = moving_avg
         width = self.BOLL_STD_TIMES * moving_std
