@@ -1691,7 +1691,8 @@ class StockDataFrame(pd.DataFrame):
         dividend = (self.close - self.open).values
         divisor = (self.high - self.low).values
         bop = np.divide(dividend, divisor,
-                        out=np.zeros_like(dividend), where=divisor != 0)
+                        out=np.zeros_like(dividend, dtype=float),
+                        where=divisor != 0)
         self[meta.name] = bop
 
     def _get_cmo(self, meta: _Meta):
